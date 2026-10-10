@@ -1,4 +1,6 @@
 /** Default map tile styles — Carto basemaps used across all map sections */
+export { buildBasemapStyle, type BasemapAppearance } from './basemap-appearance.js'
+
 export const MAP_STYLES = {
   light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',

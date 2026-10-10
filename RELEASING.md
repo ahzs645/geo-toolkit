@@ -1,8 +1,8 @@
 # Versioning and releases
 
-The toolkit currently remains a private MIT-licensed package inside PG Maps.
-Its source, build scripts, tests, API documentation and license move together
-when it gets a separate repository. No package is published by the current CI.
+The toolkit is maintained in the public `ahzs645/geo-toolkit` repository under
+the MIT license. The package keeps `private: true` until registry publication
+is configured. CI verifies artifacts without publishing them.
 
 ## Supported surface
 
@@ -18,18 +18,18 @@ At 1.0, follow semantic versioning: breaking changes require a major version.
 
 ## Release verification
 
-From the host repository, run:
+From this repository, run:
 
 ```sh
-npm run toolkit:check
-npm run toolkit:lint
-npm run toolkit:format:check
-npm run toolkit:test
-npm run toolkit:example:build
-npm run toolkit:watch:check
-npm run toolkit:example:test
-npm run toolkit:nested:test
-npm run toolkit:pack:check -- --browser
+npm run check
+npm run lint
+npm run format:check
+npm run test
+npm run example:build
+npm run watch:check
+npm run example:test
+npm run nested:test
+npm run pack:check -- --browser
 ```
 
 Also run the host's affected compatibility/browser tests and TypeScript build.
@@ -41,18 +41,16 @@ Keep the existing MIT license and contributor attribution in each artifact.
 Third-party datasets, services, attribution and permissions remain the host's
 responsibility; the toolkit license does not relicense them.
 
-## Separate repository
+## Consumer updates
 
-1. Copy this package directory and the independent consumer to the new repository.
-2. Port the toolkit CI commands and packed-consumer check to that repository's
-   layout, then verify a fresh dependency installation and source build.
-3. Keep the package name and documented exports. Choose the release version,
-   record the changes, and configure a registry or packaged-artifact release.
-4. Remove `private` only when publication is intended. No registry credentials
-   or publishing automation are required for the current in-repo stage.
-5. Replace PG Maps' `file:packages/geo-toolkit` dependency with the released
-   version. Remove its local toolkit workspace, source paths and test aliases
-   after the host builds and its compatibility checks pass against the artifact.
+PG Maps consumes this repository as a pinned Git submodule at
+`packages/geo-toolkit`, retaining its npm workspace link and compatibility tests.
+Commit and push changes here first, then update and validate the host pointer.
+Updating this repository alone does not update deployed websites.
 
-Versioned consumers receive toolkit changes when their dependency is updated;
-changing the toolkit repository alone does not update deployed websites.
+For other consumers, `npm pack` produces a tarball containing compiled exports,
+CSS and documentation. Install that artifact until a registry release is available.
+
+Before a registry release, remove `private`, configure the package scope, choose
+a version, record behavior changes and run the checks above against the exact
+artifact. No registry credentials or automated publication are included here.

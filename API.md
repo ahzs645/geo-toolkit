@@ -18,6 +18,7 @@ not a promise that every historical module is stable.
 | `/index-lab/react`                   | `IndexLab`, `useIndexLabController`, controls, result lists/cards and metric library components                                                      | React, React DOM                                               |
 | `/scales`                            | `resolvePaletteScale`, `samplePalette`, `paletteInterpolator`, `paletteContrast`, color helpers, `createScaleLegend`; their options and legend types | None                                                           |
 | `/visualizations`                    | `renderDonutSvg`, `DonutOptions`                                                                                                                     | None                                                           |
+| `/visualizations/react` | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, canvas points and typed series/axis contracts | React, React DOM |
 | `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                  | None                                                           |
 | `/grids/map-raster-grid`             | `createRasterGridLayer`, `RasterGridPick`                                                                                                            | `@deck.gl/core`, `@deck.gl/geo-layers`, `@deck.gl/layers`      |
 | `/map`                               | `Map`, markers/popups, controls, routes, layer components, `MapStory` composition, camera/scale helpers and shared map style constants               | React, React DOM, MapLibre                                     |
@@ -46,6 +47,11 @@ presence alone does not make those modules part of the documented API. Prefer
 the entry points above; do not import `dist` files or package `src` paths.
 
 ## Calculate, then resolve display semantics
+
+`buildBasemapStyle` and `BasemapAppearance`, exported from `/map` and
+`/map/map-styles`, apply explicit colors/visibility to a copy of a supplied
+Carto/OpenMapTiles style. They preserve sources, filters and zoom constraints.
+The host provides tile transport and named presets.
 
 Calculation normalization determines scores. Display classification determines
 which colors represent scores. Persist those configurations separately so a
@@ -394,3 +400,64 @@ The package carries the repository's existing MIT license with its contributor
 notice. Dataset, tile-provider, imagery and third-party dependency licenses
 remain those of their respective sources; package licensing does not grant
 rights to external data.
+
+## Charts and dashboard controls
+
+Import charts from `/visualizations/react`; the pure `/visualizations` entry
+still loads without React. Import `DashboardToolbar`, `RangeControls`,
+`SeriesLegend`, `SelectedSeriesList` and `FullscreenPanel` from `/ui`, and include
+`/styles.css`. The host chooses layout and supplies its theme variables.
+
+- `TimeSeriesChart` takes sorted wide rows `{ x, [seriesId]: number | null }`,
+  descriptors `{ id, label, color }`, a controlled numeric `range` and `onRange`.
+  Dragging or brushing emits `[min, max]`; selecting the whole navigator emits
+  `null`. Hosts filter downstream inputs and exports using that range.
+- `LineBandChart` takes series with sorted points `{ x, y, range? }`.
+  `y: null` leaves a gap; optional `range: [low, high]` supplies the drawn band.
+  The component never calculates means or interprets a band as uncertainty.
+- `ScatterPlot` takes colored point arrays `{ x, y, ...metadata }`.
+  It draws all visible finite points on one high-DPI canvas; a nearest-point
+  tooltip receives the original typed point. Radius, opacity, hit radius and
+  an optional identity line are configurable.
+- XY charts take finite, increasing `extent: [xmin, xmax, ymin, ymax]`, accessible
+  `label`, numeric axis formatters/labels, configurable `yAxis.width` and a height. They keep zoom locally
+  unless `zoom` / `onZoom` control it. Drag selects a rectangle, `+` zooms and
+  `Home` resets. Zoom and fullscreen preserve the mounted chart instance.
+- `ChartViewport` reports the available height of a host-styled slot;
+  `SizedChart` observes width. For custom renderers, `XYPlot` and canvas points
+  accept plot insets, including axis sizes, to align pointer and draw coordinates.
+- `RangeControls` accepts two controlled string fields (date, number, time or
+  datetime), field constraints, preset descriptors and reset/onChange callbacks.
+  Hosts validate edits and calculate presets; no default date or domain policy
+  is embedded in the component.
+- `SeriesLegend` and `SelectedSeriesList` accept `{ id, label, color, visible,
+  detail? }` and controlled toggle/remove callbacks. The host owns color slots
+  and selection limits. `DashboardToolbar` uses its own container width to
+  switch between a single row and wrapped controls (`inlineAt`, default 1000px).
+
+Numeric x can represent UTC timestamps, elapsed hours or another ordered measure.
+Zero and negative values remain observations; nulls remain gaps. `numericExtent`
+ignores missing/nonfinite values and pads constant domains. Pass complete inputs
+for the timeline navigator; supply independently filtered inputs for other plots.
+There is no implicit global coordination, fetching, aggregation or CSV transport.
+
+```tsx
+import { LineBandChart } from '@pgmaps/geo-toolkit/visualizations/react'
+
+<LineBandChart
+  label="Energy output envelope"
+  height={280}
+  extent={[0, 24, -5, 15]}
+  xAxis={{ format: (hour) => `${hour} h` }}
+  yAxis={{ label: 'kWh' }}
+  series={[{
+    id: 'solar', label: 'Solar', color: '#d97706',
+    points: [{ x: 0, y: 0, range: [-1, 1] }, { x: 12, y: 10, range: [8, 12] }],
+  }]}
+/>
+```
+
+`examples/toolkit-consumer/src/ChartExperience.tsx` demonstrates the full API with
+non-water data. Its `/charts` browser suite verifies linked ranges, a missing
+line segment, zero-point tooltip metadata, stable colors, canvas rendering,
+fullscreen/zoom preservation, container resizing and independent workspace state.

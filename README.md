@@ -1,30 +1,34 @@
 # Geographic toolkit
 
-`@pgmaps/geo-toolkit` is the local, package-owned foundation used by PG Maps.
-Its implementations live here; the old application paths are compatibility
-exports or host adapters. It is private while its public API is being exercised.
+`@pgmaps/geo-toolkit` is an MIT-licensed toolkit for geographic calculations,
+map workspaces, charts, UI, and interactive stories. This public repository is
+its source of truth. [PG Maps](https://github.com/ahzs645/PGMaps) uses the toolkit
+through host adapters and a pinned Git submodule. The npm package remains private
+until a registry release is configured.
 
 ## Build and use
 
 From the repository root:
 
 ```sh
-npm install
-npm run toolkit:build
-npm run toolkit:check
-npm run toolkit:pack:check
-npm run toolkit:example
+git clone https://github.com/ahzs645/geo-toolkit.git
+cd geo-toolkit
+npm ci
+npm run build
+npm run check
+npm run pack:check
+npm run example
 ```
 
-The package also builds independently with `npm install && npm run build` in
-this directory; `npm test` runs its independent package tests. Building requires TypeScript and Tailwind, not PG Maps data,
+`npm test` runs the independent package tests. Building requires TypeScript and
+Tailwind, without PG Maps data,
 Vite plugins, a router, scraper submodules, or the PG Maps application.
 The output includes ESM, declarations, CSS, native validators and the loader worker.
 
-For development, run `npm run toolkit:watch` in a second terminal alongside the
+For development, run `npm run watch` in a second terminal alongside the
 host or example dev server. Changes rebuild compiled exports automatically;
 failed builds retain the last working output, and successful builds remove
-obsolete exports. `npm run toolkit:watch:check` verifies this recovery path.
+obsolete exports. `npm run watch:check` verifies this recovery path.
 
 ```tsx
 import { Map, MapFillLayer } from '@pgmaps/geo-toolkit/map'
@@ -61,6 +65,7 @@ provider automatically. Host a persistent map above the views that share it.
 | `/index-lab/react` | Configurable metric library, weight controls, ranked results and isolated state/controller |
 | `/scales` | Palette sampling, classification, colors and exact serializable legend definitions |
 | `/visualizations` | Donut SVG generation independent of a map |
+| `/visualizations/react` | Linked timelines, range bands, scatter plots and chart panels |
 | `/grids` | Source-pixel decoding, grid classification and optional deck.gl grid rendering |
 | `/map` | MapLibre rendering, layers, markers, controls, source ownership and camera helpers |
 | `/map/persistent-map` | Optional persistent canvas/provider integration |
@@ -108,11 +113,18 @@ viewport responsiveness/placement and the legacy navbar/window-event bridge.
 Responsive utility styles use CSS `@scope` so nested workspaces remain independent;
 use a modern browser with `@scope` support. See API.md for responsive options.
 
-## Moving to a separate repository
+## Development and integration
 
-Move this directory, including its build configuration, tests and documentation,
-to the toolkit repository. Keep its package name and entry points. Publish a
-version or use a packaged artifact, replace PG Maps' local workspace dependency,
-and remove the toolkit workspace/source test aliases. PG Maps adapters, source
-data, project catalogs and deployment preparation stay in PG Maps.
-See `docs/toolkit-extraction.md` in the host repository for the verification gates.
+The package source and tests are at the repository root. The standalone Vite
+consumer lives in `examples/toolkit-consumer`; its `/charts` route exercises the
+chart toolkit. CI checks source boundaries, unit tests, builds, watch recovery,
+browser interactions and a packed consumer outside this repository.
+
+The toolkit's original package history was extracted from PG Maps, preserving
+commit authorship. PG Maps pins a commit of this repository at
+`packages/geo-toolkit`; commit and push toolkit changes here before updating
+that pointer. Its application compatibility tests remain in PG Maps.
+
+To use compiled exports in another app before npm publication, run `npm pack`
+and install the resulting tarball in the app. Registry publishing is not enabled.
+See [RELEASING.md](RELEASING.md) for the verification and versioning policy.

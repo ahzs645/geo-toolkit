@@ -76,13 +76,27 @@
     "./projects/react": {
       "types": "./dist/projects/react.d.ts",
       "default": "./dist/projects/react.js"
+    },
+    "./visualizations/react": {
+      "types": "./dist/visualizations/react.d.ts",
+      "default": "./dist/visualizations/react.js"
     }
   },
   "scripts": {
     "build": "node ./scripts/build.mjs",
     "prepack": "npm run build",
     "test": "vitest run",
-    "watch": "node ./scripts/watch.mjs"
+    "watch": "node ./scripts/watch.mjs",
+    "check": "node scripts/toolkit/check-boundaries.mjs && tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src scripts tests tailwind.config.js examples/toolkit-consumer/src examples/toolkit-consumer/tests",
+    "format": "prettier --write \"{src,scripts,tests}/**/*.{ts,tsx,css,mjs}\" \"examples/toolkit-consumer/{src,tests}/**/*.{ts,tsx,css}\"",
+    "format:check": "prettier --check \"{src,scripts,tests}/**/*.{ts,tsx,css,mjs}\" \"examples/toolkit-consumer/{src,tests}/**/*.{ts,tsx,css}\"",
+    "example": "npm run build && npm run dev --workspace @pgmaps/toolkit-consumer",
+    "example:build": "npm run build && npm run build --workspace @pgmaps/toolkit-consumer",
+    "example:test": "npm run build && npm run test:browser --workspace @pgmaps/toolkit-consumer",
+    "watch:check": "node scripts/toolkit/check-watch.mjs",
+    "nested:test": "npm run build && node scripts/toolkit/check-nested-workspace.mjs",
+    "pack:check": "npm run build && node scripts/toolkit/check-packed-consumer.mjs"
   },
   "dependencies": {
     "@types/geojson": "^7946.0.16",
@@ -98,7 +112,8 @@
     "@turf/helpers": "^6.5.0",
     "@radix-ui/react-slider": "^1.3.6",
     "class-variance-authority": "^0.7.1",
-    "@radix-ui/react-slot": "^1.2.4"
+    "@radix-ui/react-slot": "^1.2.4",
+    "recharts": "^3.8.1"
   },
   "peerDependencies": {
     "react": "^18.3.1 || ^19.0.0",
@@ -146,10 +161,31 @@
     "@deck.gl/mapbox": "^9.3.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "postcss": "^8.5.6"
+    "postcss": "^8.5.6",
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "typescript-eslint": "^8.58.1",
+    "prettier": "^3.8.2",
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^20.11.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.3"
   },
   "license": "MIT",
   "engines": {
     "node": ">=20.19.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ahzs645/geo-toolkit.git"
+  },
+  "homepage": "https://github.com/ahzs645/geo-toolkit#readme",
+  "bugs": {
+    "url": "https://github.com/ahzs645/geo-toolkit/issues"
+  },
+  "workspaces": [
+    "examples/toolkit-consumer"
+  ]
 }
