@@ -415,6 +415,11 @@ still loads without React. Import `DashboardToolbar`, `RangeControls`,
 - `LineBandChart` takes series with sorted points `{ x, y, range? }`.
   `y: null` leaves a gap; optional `range: [low, high]` supplies the drawn band.
   The component never calculates means or interprets a band as uncertainty.
+  Opt into `highlightOnHover` to emphasize the nearest line, dim the others and
+  show only that line's original point in the tooltip. Null gaps are not bridged.
+- `TimeSeriesChart` accepts an optional numeric `yDomain`; hosts can supply a
+  baseline and rounded bounds with matching `yAxis.ticks`. Its Y label is vertical.
+  Chart tooltip cards wrap long content and stay within the measured chart slot.
 - `ScatterPlot` takes colored point arrays `{ x, y, ...metadata }`.
   It draws all visible finite points on one high-DPI canvas; a nearest-point
   tooltip receives the original typed point. Radius, opacity, hit radius and

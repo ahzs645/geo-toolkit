@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Brush, CartesianGrid, Line, LineChart, ReferenceArea, Tooltip, XAxis, YAxis } from 'recharts'
 import { SizedChart } from './XYPlot.js'
 import { rangeIndices, type NumericRange } from './geometry.js'
-import { axisStyle, tooltipStyle, numberLabel } from './axes.js'
+import { axisStyle, tooltipStyle, tooltipWrapperStyle, numberLabel } from './axes.js'
 import type { ChartAxis, ChartSeries, TimelineRow } from './types.js'
 
 /** Controlled drag/brush range; hosts link the returned numeric interval to other plots. */
@@ -15,6 +15,7 @@ export function TimeSeriesChart({
   label = 'Time series',
   xAxis = {},
   yAxis = {},
+  yDomain,
   formatValue = numberLabel,
   formatTooltipX,
   formatNavigatorX,
@@ -28,6 +29,8 @@ export function TimeSeriesChart({
   label?: string
   xAxis?: ChartAxis
   yAxis?: ChartAxis
+  /** Optional host-supplied Y domain; otherwise the visible observations determine the scale. */
+  yDomain?: readonly [number, number]
   formatValue?: (value: number) => string
   formatTooltipX?: (value: number) => string
   formatNavigatorX?: (value: number) => string
@@ -48,7 +51,7 @@ export function TimeSeriesChart({
             width={width}
             height={height}
             data={rows}
-            margin={{ top: 12, right: 12, left: -15, bottom: 0 }}
+            margin={{ top: 12, right: 12, left: 0, bottom: 0 }}
             onMouseDown={(event) => {
               const x = Number(event.activeLabel)
               if (Number.isFinite(x)) setDrag([x, x])
@@ -81,17 +84,21 @@ export function TimeSeriesChart({
             />
             <YAxis
               {...axisStyle}
-              domain={['dataMin', 'dataMax']}
-              width={yAxis.width ?? 60}
+              domain={yDomain ? [...yDomain] : ['auto', 'auto']}
+              width={yAxis.width ?? (yAxis.label ? 72 : 60)}
               ticks={yAxis.ticks ? [...yAxis.ticks] : undefined}
+              interval={yAxis.ticks ? 0 : 'preserveEnd'}
               tickFormatter={yAxis.format}
               label={
                 yAxis.label
-                  ? { value: yAxis.label, position: 'insideTopRight', fill: axisStyle.stroke, fontSize: 11 }
+                  ? { value: yAxis.label, angle: -90, position: 'insideLeft', fill: axisStyle.stroke, fontSize: 11 }
                   : undefined
               }
             />
             <Tooltip
+              isAnimationActive={false}
+              allowEscapeViewBox={{ x: false, y: false }}
+              wrapperStyle={tooltipWrapperStyle}
               contentStyle={tooltipStyle}
               labelFormatter={(value) => (formatTooltipX ?? xAxis.format ?? numberLabel)(Number(value))}
               formatter={(value) => [value == null ? 'Missing' : formatValue(Number(value))]}

@@ -122,8 +122,12 @@ export function ScatterPoints<P extends ScatterPoint>({
           />
           <div
             role="tooltip"
-            className="pointer-events-none absolute bottom-10 max-w-[calc(100%-3rem)] rounded-lg border bg-popover px-2 py-1.5 text-xs text-popover-foreground shadow-sm"
-            style={hover.x > plot.width / 2 ? { left: plot.left + 4 } : { right: 12 }}
+            className="pointer-events-none absolute bottom-10 rounded-lg border bg-popover px-2 py-1.5 text-xs text-popover-foreground shadow-sm"
+            style={{
+              ...(hover.x > plot.width / 2 ? { left: plot.left + 4 } : { right: 12 }),
+              maxWidth: Math.max(1, plot.width - 16),
+              overflowWrap: 'anywhere',
+            }}
           >
             {renderTooltip ? renderTooltip(hover.point, hover.color) : `${hover.point.x}, ${hover.point.y}`}
           </div>

@@ -16,7 +16,7 @@ export function SizedChart({ height, children }: { height: number; children: (wi
     return () => observer.disconnect()
   }, [])
   return (
-    <div ref={ref} className="w-full min-w-0" style={{ height }}>
+    <div ref={ref} className="w-full min-w-0" style={{ height, overflow: 'clip' }}>
       {width > 0 && children(width)}
     </div>
   )
