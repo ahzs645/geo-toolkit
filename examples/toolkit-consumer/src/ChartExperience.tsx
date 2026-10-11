@@ -5,6 +5,8 @@ import {
   LineBandChart,
   ScatterPlot,
   numericExtent,
+  captureChartSvg,
+  rasterizeChart,
   type NumericRange,
 } from '@pgmaps/geo-toolkit/visualizations/react'
 import {
@@ -136,7 +138,29 @@ function EnergyWorkspace({ name }: { name: string }) {
             </ChartViewport>
           )}
         </FullscreenPanel>
-        <FullscreenPanel title="Energy observations" compact className="energy-panel">
+        <FullscreenPanel
+          title="Energy observations"
+          compact
+          className="energy-panel"
+          help="Hover a point for its source and hour. Drag a rectangle to zoom both axes."
+          menuActions={(['svg', 'png'] as const).map((format) => ({
+            id: format,
+            label: `Download ${format.toUpperCase()}`,
+            onSelect: async (panel: HTMLElement) => {
+              const snapshot = captureChartSvg(panel.querySelector<HTMLElement>('.energy-chart, .energy-chart-full')!, {
+                title: `${name} observations`,
+                series: visible,
+              })
+              const blob = format === 'svg' ? snapshot.blob : await rasterizeChart(snapshot, 'image/png')
+              const url = URL.createObjectURL(blob)
+              const link = document.createElement('a')
+              link.href = url
+              link.download = `${name}.${format}`
+              link.click()
+              URL.revokeObjectURL(url)
+            },
+          }))}
+        >
           {(full) => (
             <ChartViewport className={full ? 'energy-chart-full' : 'energy-chart'}>
               {(height) => (

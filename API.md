@@ -419,6 +419,8 @@ still loads without React. Import `DashboardToolbar`, `RangeControls`,
   show only that line's original point in the tooltip. Null gaps are not bridged.
 - `TimeSeriesChart` accepts an optional numeric `yDomain`; hosts can supply a
   baseline and rounded bounds with matching `yAxis.ticks`. Its Y label is vertical.
+  `showPoints` adds colored markers to the plot and navigator for sparse or
+  aggregated observations. Tooltips retain each descriptor's label and units.
   Chart tooltip cards wrap long content and stay within the measured chart slot.
 - `ScatterPlot` takes colored point arrays `{ x, y, ...metadata }`.
   It draws all visible finite points on one high-DPI canvas; a nearest-point
@@ -431,6 +433,19 @@ still loads without React. Import `DashboardToolbar`, `RangeControls`,
 - `ChartViewport` reports the available height of a host-styled slot;
   `SizedChart` observes width. For custom renderers, `XYPlot` and canvas points
   accept plot insets, including axis sizes, to align pointer and draw coordinates.
+- `captureChartSvg(element, { title?, subtitle?, series? })` resolves theme CSS
+  and captures SVG plots/axes and canvas observations in a standalone SVG Blob,
+  with its pixel width/height. Canvas points are embedded as PNG; controls and
+  HTML hover cards are excluded. `rasterizeChart(snapshot, mimeType, scale?)`
+  returns PNG/JPEG (default scale 2). Hosts own filenames, downloads and PDF
+  packaging. These are browser-only helpers in `/visualizations/react`.
+- `FullscreenPanel` accepts opt-in `menuActions` (`id`, `label`, `disabled?`,
+  async `onSelect(panelElement)`) and `help` for a compact options/help dialog.
+  Action errors and progress remain in the dialog; closing it preserves
+  fullscreen/zoom and returns focus to its trigger. `loading` shows a nonblocking
+  spinner and marks the panel busy. No export formats or data policy are assumed.
+  `dialogOptions` can inject a standalone host's theme and `onOpenEffect` chrome
+  integration; otherwise the nearest workspace supplies them.
 - `RangeControls` accepts two controlled string fields (date, number, time or
   datetime), field constraints, preset descriptors and reset/onChange callbacks.
   Hosts validate edits and calculate presets; no default date or domain policy

@@ -19,6 +19,7 @@ export function TimeSeriesChart({
   formatValue = numberLabel,
   formatTooltipX,
   formatNavigatorX,
+  showPoints = false,
   empty = 'No observations.',
 }: {
   rows: TimelineRow[]
@@ -34,6 +35,8 @@ export function TimeSeriesChart({
   formatValue?: (value: number) => string
   formatTooltipX?: (value: number) => string
   formatNavigatorX?: (value: number) => string
+  /** Show observation markers, useful for sparse or aggregated series. */
+  showPoints?: boolean
   empty?: ReactNode
 }) {
   const [drag, setDrag] = useState<[number, number] | null>(null)
@@ -101,7 +104,7 @@ export function TimeSeriesChart({
               wrapperStyle={tooltipWrapperStyle}
               contentStyle={tooltipStyle}
               labelFormatter={(value) => (formatTooltipX ?? xAxis.format ?? numberLabel)(Number(value))}
-              formatter={(value) => [value == null ? 'Missing' : formatValue(Number(value))]}
+              formatter={(value, name) => [value == null ? 'Missing' : formatValue(Number(value)), name]}
             />
             {series.map((item) => (
               <Line
@@ -110,7 +113,7 @@ export function TimeSeriesChart({
                 name={item.label}
                 stroke={item.color}
                 strokeWidth={1.8}
-                dot={false}
+                dot={showPoints ? { r: 3, fill: item.color, strokeWidth: 0 } : false}
                 connectNulls={false}
                 isAnimationActive={false}
               />
@@ -146,7 +149,7 @@ export function TimeSeriesChart({
                     key={item.id}
                     dataKey={item.id}
                     stroke={item.color}
-                    dot={false}
+                    dot={showPoints ? { r: 2, fill: item.color, strokeWidth: 0 } : false}
                     connectNulls={false}
                     isAnimationActive={false}
                   />

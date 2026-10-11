@@ -1,4 +1,5 @@
 export { ChartViewport } from './charts/ChartViewport.js'
+export { captureChartSvg, rasterizeChart } from './charts/export.js'
 export { SizedChart, XYPlot } from './charts/XYPlot.js'
 export { TimeSeriesChart } from './charts/TimeSeriesChart.js'
 export { LineBandChart } from './charts/LineBandChart.js'

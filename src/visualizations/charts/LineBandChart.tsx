@@ -94,6 +94,7 @@ export function LineBandChart<P extends LineBandPoint>({
                   : undefined
               }
               minTickGap={24}
+              interval="preserveStartEnd"
               {...axisStyle}
             />
             <YAxis
@@ -155,7 +156,9 @@ export function LineBandChart<P extends LineBandPoint>({
                       tooltipType="none"
                       stroke="none"
                       fill={item.color}
-                      fillOpacity={item.bandOpacity ?? 0.2}
+                      fillOpacity={
+                        (item.bandOpacity ?? 0.2) * (activeHover && activeHover.item.id !== item.id ? 0.25 : 1)
+                      }
                       activeDot={false}
                       connectNulls={false}
                       isAnimationActive={false}

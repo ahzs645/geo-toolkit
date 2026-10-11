@@ -84,3 +84,34 @@ test('canvas hover preserves host metadata and units for a zero-valued observati
   await a.getByRole('button', { name: '24h', exact: true }).click()
   await expect(scatter.getByRole('tooltip')).toHaveCount(0)
 })
+
+test('chart options and SVG/canvas exports work without a PG Maps host', async ({ page }) => {
+  await page.goto('/charts')
+  const a = page.getByRole('region', { name: 'Energy A', exact: true })
+  const plot = a.getByRole('region', { name: 'Energy observations', exact: true })
+  await plot.getByRole('button', { name: 'Fullscreen Energy observations', exact: true }).click()
+  await plot.getByRole('button', { name: 'Chart options Energy observations', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Energy observations options', exact: true })
+  await expect(dialog).toContainText('Hover a point')
+  for (const format of ['SVG', 'PNG']) {
+    const downloaded = page.waitForEvent('download')
+    await dialog.getByRole('button', { name: `Download ${format}`, exact: true }).click()
+    const file = await downloaded
+    expect(file.suggestedFilename()).toBe(`Energy A.${format.toLowerCase()}`)
+    const stream = await file.createReadStream()
+    const chunks: Buffer[] = []
+    for await (const chunk of stream!) chunks.push(Buffer.from(chunk))
+    const bytes = Buffer.concat(chunks)
+    expect(bytes.length).toBeGreaterThan(1000)
+    if (format === 'SVG') {
+      expect(bytes.toString()).toContain('data:image/png;base64,')
+      expect(bytes.toString()).toContain('Solar')
+      expect(bytes.toString()).toContain('Elapsed hours')
+    } else expect(bytes.subarray(1, 4).toString()).toBe('PNG')
+  }
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(plot).toHaveAttribute('data-fullscreen', 'true')
+  await page.keyboard.press('Escape')
+  await expect(plot).not.toHaveAttribute('data-fullscreen', 'true')
+})
