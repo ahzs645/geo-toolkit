@@ -106,6 +106,8 @@ export function useMobileSheetController({
   const draggingRef = useRef(false)
   const translateRef = useRef(0)
   const suppressScrim = useRef(false)
+  /** Geometry the sheet was last snapped for; see the resize effect. */
+  const lastSnapLayoutRef = useRef<string | null>(null)
 
   // ------ helpers ----------------------------------------------------------
 
@@ -418,12 +420,21 @@ export function useMobileSheetController({
           scrimRef.current.style.opacity = '0'
           scrimRef.current.style.pointerEvents = 'none'
         }
+        lastSnapLayoutRef.current = null
       } else if (!draggingRef.current) {
         const sheetHeight = getSheetHeight()
+        const fullSnapOffset = getFullSnapOffset()
+        // This effect also re-runs when its callbacks change identity, e.g. when a
+        // feature card opens. That is not a resize: re-snapping then would pull a sheet
+        // stacked behind the card back up to its plain snap point, leaving the card
+        // floating over half of the sheet. Only snap again when the geometry moved.
+        const layout = `${Math.round(sheetHeight)}:${Math.round(fullSnapOffset)}:${mobileCollapsedVisibleHeight}`
+        if (layout === lastSnapLayoutRef.current) return
+        lastSnapLayoutRef.current = layout
         // Desktop has no translateY. Preserve the logical mobile snap when
         // crossing a breakpoint rather than interpreting that zero as "full".
         applyTransform(
-          getSnapPositions(sheetHeight, getFullSnapOffset(), mobileCollapsedVisibleHeight)[mobileSheetStateRef.current],
+          getSnapPositions(sheetHeight, fullSnapOffset, mobileCollapsedVisibleHeight)[mobileSheetStateRef.current],
           false,
         )
       }
