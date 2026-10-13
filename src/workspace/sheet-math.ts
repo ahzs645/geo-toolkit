@@ -69,5 +69,6 @@ export function stateFromTranslate(
 }
 
 export const SPRING = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)'
-export const MOBILE_STACK_REAR_SHEET_VISIBLE_GAP = 6
+/** How much of the sheet's top edge shows above a feature card stacked in front of it. */
+export const MOBILE_STACK_REAR_SHEET_VISIBLE_GAP = 10
 export const MOBILE_FEATURE_CARD_FRONT_OFFSET = 8

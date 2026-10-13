@@ -4,6 +4,7 @@ import { cn } from '../utils.js'
 import { MAP_OVERLAY_ROOT_STYLE } from '../ui/map-overlay.js'
 import { WorkspaceProvider, useWorkspace } from './workspace-context.js'
 import { useMobileSheetController } from './useMobileSheetController.js'
+import { useIsMobile } from './useIsMobile.js'
 import { SidebarResizeHandle } from './SidebarResizeHandle.js'
 import { MOBILE_COLLAPSED_VISIBLE_HEIGHT, type MobileSheetState } from './sheet-math.js'
 export { DESKTOP_SIDEBAR_MIN_WIDTH, DESKTOP_SIDEBAR_MAX_WIDTH } from './SidebarResizeHandle.js'
@@ -118,6 +119,7 @@ function MapSectionLayoutInner({
   const showDesktopSidebar = showDesktopSidebarProp ?? uncontrolledSidebarOpen
   const toggleUncontrolledSidebar = useCallback(() => setUncontrolledSidebarOpen((open) => !open), [])
   const onToggleDesktopSidebar = onToggleDesktopSidebarProp ?? toggleUncontrolledSidebar
+  const isMobile = useIsMobile()
 
   const {
     rootRef,
@@ -236,7 +238,14 @@ function MapSectionLayoutInner({
           <div
             ref={sheetRef}
             className={cn(
-              'absolute inset-x-0 bottom-0 flex h-full max-h-full flex-col overflow-hidden rounded-t-lg border border-b-0 border-border bg-background shadow-[0_-2px_16px_rgba(0,0,0,0.24)]',
+              'absolute bottom-0 flex h-full max-h-full flex-col overflow-hidden rounded-t-lg border border-b-0 border-border shadow-[0_-2px_16px_rgba(0,0,0,0.24)]',
+              // Behind a feature card the sheet reads as the rear card of a stack, as in
+              // Apple Maps: inset from the edges and a shade darker, so the strip of it
+              // above the front card is plainly a second card. Tapping it comes forward.
+              // Phones only: a desktop sidebar can sit beside a mounted (hidden) feature card.
+              isMobile && mobileFeatureCardOpen && !mobileControlsInFront
+                ? 'inset-x-2 bg-muted'
+                : 'inset-x-0 bg-background',
               mobileSheetInteractive || mobileControlsInFront || mobileFeatureCardOpen
                 ? 'pointer-events-auto'
                 : 'pointer-events-none',
