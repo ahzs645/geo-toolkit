@@ -44,8 +44,13 @@ export function VirtualResultList<T>({ items, getKey, estimateSize, label, child
     const list = listRef.current
     const scroll = getScrollElement()
     if (!list || !scroll) return
-    const measure = () =>
-      setScrollMargin(scroll.scrollTop + list.getBoundingClientRect().top - scroll.getBoundingClientRect().top)
+    const measure = () => {
+      const nextMargin = scroll.scrollTop + list.getBoundingClientRect().top - scroll.getBoundingClientRect().top
+      // Combining scrollTop with viewport coordinates can introduce subpixel
+      // noise while scrolling. Feeding it back into this layout effect on every
+      // render can exceed React's update depth even though the list did not move.
+      setScrollMargin((previous) => (Math.abs(previous - nextMargin) < 1 ? previous : nextMargin))
+    }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(scroll)
