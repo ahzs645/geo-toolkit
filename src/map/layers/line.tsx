@@ -4,8 +4,8 @@ import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_COLOR } from '../map-styles.js'
 import { type MapStyleValue } from './types.js'
-import type MapLibreGL from 'maplibre-gl'
-import MapLibreGLRuntime from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
+import * as MapLibreGLRuntime from 'maplibre-gl'
 
 export type MapLineLayerProps = {
   /** Disable feature hit testing for lines used only as visual context. */

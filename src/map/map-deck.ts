@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { MapboxOverlay } from '@deck.gl/mapbox'
-import type MapLibreGL from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
 import { useMap } from './map-context.js'
 import { attachPointerDismiss } from './map-pointer.js'
 

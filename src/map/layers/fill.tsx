@@ -12,8 +12,8 @@ import {
   type MapFeatureId,
   type MapFeatureModifiers,
 } from './types.js'
-import type MapLibreGL from 'maplibre-gl'
-import MapLibreGLRuntime from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
+import * as MapLibreGLRuntime from 'maplibre-gl'
 
 export type MapFillLayerProps = {
   /**

@@ -1,6 +1,6 @@
 'use client'
 
-import MapLibreGL from 'maplibre-gl'
+import * as MapLibreGL from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useWorkspaceInteractions, useWorkspace, WorkspaceProvider } from '../workspace/workspace-context.js'
 import {

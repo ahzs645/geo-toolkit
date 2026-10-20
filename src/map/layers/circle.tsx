@@ -5,8 +5,8 @@ import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_COLOR } from '../map-styles.js'
 import { type MapStyleExpression, type MapStyleValue, type MapFeatureModifiers } from './types.js'
-import type MapLibreGL from 'maplibre-gl'
-import MapLibreGLRuntime from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
+import * as MapLibreGLRuntime from 'maplibre-gl'
 
 export type MapCircleLayerProps = {
   data: GeoJSON.FeatureCollection | string

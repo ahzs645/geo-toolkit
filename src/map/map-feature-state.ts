@@ -1,4 +1,4 @@
-import type MapLibreGL from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
 
 /** Per-feature values keyed by a feature's id (its promoted id property). */
 export type MapFeatureStateById = Readonly<Record<string, Readonly<Record<string, unknown>>>>

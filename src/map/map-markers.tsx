@@ -1,6 +1,7 @@
 'use client'
 
-import MapLibreGL, { type PopupOptions, type MarkerOptions } from 'maplibre-gl'
+import * as MapLibreGL from 'maplibre-gl'
+import type { PopupOptions, MarkerOptions } from 'maplibre-gl'
 import { createContext, useContext, useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'

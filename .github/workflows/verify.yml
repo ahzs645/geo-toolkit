@@ -36,3 +36,18 @@ jobs:
           path: |
             examples/toolkit-consumer/test-results
             examples/toolkit-consumer/playwright-report
+  maplibre-6:
+    # The default install pins MapLibre 5; consumers on MapLibre 6 build the
+    # same source, so typecheck, test and build it against that major too.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm install --no-save --ignore-scripts maplibre-gl@^6.0.0
+      - run: npm run check
+      - run: npm test
+      - run: npm run build

@@ -14,8 +14,8 @@ import {
   getClusterLeafTitle,
   createSpiderElement,
 } from './pie-cluster-expansion.js'
-import type MapLibreGL from 'maplibre-gl'
-import MapLibreGLRuntime from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
+import * as MapLibreGLRuntime from 'maplibre-gl'
 
 /** Known fields consumed by donut aggregation. Hosts can use this schema when authoring data. */
 export interface PieClusterPointProperties {
