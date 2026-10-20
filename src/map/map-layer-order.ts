@@ -1,4 +1,4 @@
-import type MapLibreGL from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
 
 const groupsByMap = new WeakMap<MapLibreGL.Map, Map<string, { order: number; layers: string[] }>>()
 

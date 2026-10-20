@@ -1,4 +1,4 @@
-import type MapLibreGL from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
 
 /**
  * Reconcile HTML markers after source/view changes, on the next loaded frame.

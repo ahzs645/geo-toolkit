@@ -16,7 +16,7 @@ import {
   showPmtilesTooltip,
   removePmtilesTooltip,
 } from './pmtiles-runtime.js'
-import type MapLibreGL from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
 
 export type MapPmtilesFillLayerProps = {
   url: string
@@ -311,11 +311,11 @@ export function MapPmtilesFillLayer({
     if (!isLoaded || !map) return
     if (map.getLayer(fillLayerId)) {
       map.setPaintProperty(fillLayerId, 'fill-color', fillColor as never)
-      map.setPaintProperty(fillLayerId, 'fill-opacity', fillOpacity)
+      map.setPaintProperty(fillLayerId, 'fill-opacity', fillOpacity as never)
     }
     if (map.getLayer(lineLayerId)) {
       map.setPaintProperty(lineLayerId, 'line-color', lineColor as never)
-      map.setPaintProperty(lineLayerId, 'line-width', lineWidth)
+      map.setPaintProperty(lineLayerId, 'line-width', lineWidth as never)
       map.setPaintProperty(lineLayerId, 'line-opacity', lineOpacity)
     }
     if (map.getLayer(selectedLayerId)) {

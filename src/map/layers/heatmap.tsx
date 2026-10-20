@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo } from 'react'
 import { useMap } from '../map-context.js'
 import { HEATMAP_COLOR_RAMPS, type HeatmapRampName } from '../map-styles.js'
 import { type MapStyleValue } from './types.js'
-import type MapLibreGL from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
 
 export type ZoomStops = ReadonlyArray<readonly [zoom: number, value: number]>
 
@@ -125,7 +125,7 @@ export function MapHeatmapLayer({
   useEffect(() => {
     if (!isLoaded || !map || !map.getLayer(layerId)) return
     for (const [key, value] of Object.entries(paint)) {
-      map.setPaintProperty(layerId, key, value as never)
+      map.setPaintProperty(layerId, key as Parameters<MapLibreGL.Map['setPaintProperty']>[1], value as never)
     }
   }, [paint, isLoaded, map, layerId])
 

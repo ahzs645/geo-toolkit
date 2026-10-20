@@ -1,4 +1,4 @@
-import type MapLibreGL from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
 
 /**
  * Dismiss a hover tooltip on every way the pointer can leave the map without

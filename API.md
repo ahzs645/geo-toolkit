@@ -38,6 +38,12 @@ decoding do not import those peers. Importing `/map` requires a browser-capable
 bundler because MapLibre's stylesheet is imported by the module. Deck.gl modules
 remain separate from the normal map and pure-grid entry points.
 
+The map modules support MapLibre 5 (from 5.15) and 6. They import MapLibre
+through namespace and named imports only, since MapLibre 6 has no default
+export. CI typechecks, tests and builds against both majors; to check MapLibre 6
+locally, run `npm install --no-save maplibre-gl@^6.0.0`, then `npm run check`,
+`npm test` and `npm run build`, and restore with `npm ci`.
+
 Other wildcard subpaths exist so PG Maps' old file paths can reexport the moved
 implementations. They are **compatibility surfaces**, not additional supported
 APIs. In particular, loader internals/workers, source-ordering helpers, mobile

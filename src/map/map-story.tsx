@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
-import type MapLibreGL from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
 import { GripVertical, X } from 'lucide-react'
 
 import { cn } from '../utils.js'

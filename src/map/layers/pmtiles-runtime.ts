@@ -1,5 +1,5 @@
-import type MapLibreGL from 'maplibre-gl'
-import MapLibreGLRuntime from 'maplibre-gl'
+import type * as MapLibreGL from 'maplibre-gl'
+import * as MapLibreGLRuntime from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
 
 let pmtilesProtocolRegistered = false
