@@ -55,6 +55,14 @@
       "types": "./dist/projects/index.d.ts",
       "default": "./dist/projects/index.js"
     },
+    "./export": {
+      "types": "./dist/export/index.d.ts",
+      "default": "./dist/export/index.js"
+    },
+    "./format": {
+      "types": "./dist/format/index.d.ts",
+      "default": "./dist/format/index.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./*.css": "./dist/*.css",
     "./*.mjs": {

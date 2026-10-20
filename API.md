@@ -27,6 +27,8 @@ not a promise that every historical module is stable.
 | `/workspace`                         | `WorkspaceProvider`, `MapSectionLayout`, responsive media hooks and `requestMapSearch`                                                               | React, React DOM                                               |
 | `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`                                                    | React, React DOM                                               |
 | `/projects`                          | Scene/layer types, codecs, repositories and JSON import/export/share ports                                                                           | None                                                           |
+| `/export`                            | `toCsv`, `csvRows`, `csvCell`, `downloadBlob`, `downloadText`; `CsvColumn`, `CsvOptions`                                                             | None; downloads need a browser DOM                             |
+| `/format`                            | `formatMeasure`, `formatNumber`, `formatPercent`, currency/date/byte/length/area formatters                                                          | None                                                           |
 | `/stories/model/types`               | Native editorial document types                                                                                                                      | None; type-only                                                |
 | `/stories/model/validate.mjs`        | `parseEditorialDocument`, `validateEditorialDocument`                                                                                                | None                                                           |
 | `/stories` and `/stories/components` | `EditorialDocumentRenderer`, `SceneStoryRenderer`, editorial components and diagrams                                                                 | React, React DOM                                               |
@@ -449,6 +451,37 @@ layout. `/stories` also exports their functions for React consumers. The
 current extraction provides validated JSON authoring and reusable rendering;
 a visual project editor remains a separate capability. ArcGIS source-graph
 adapters and PG Maps' full catalog orchestration stay host-owned.
+
+## Exports and display formatting
+
+`/export` serializes tables and saves files. `toCsv(columns, rows, options)`
+writes a header and one line per record; a string column reads that field (or
+array position), and `{ header, key }` or `{ header, value(row, index) }`
+relabels or derives a cell. `csvRows` writes rows as given for report layouts
+with blank or ragged lines. Every cell is quoted and lines end in CRLF unless
+`quote: 'needed'`, `delimiter` or `newline` say otherwise. `guardFormulas`
+(default on) prefixes text a spreadsheet would run as a formula with `'`;
+numbers and numeric text such as `-122.7` are left alone. `bom: true` prepends
+a UTF-8 byte order mark for Excel. `downloadBlob` and `downloadText` save
+through a temporary link and release the object URL after
+`DOWNLOAD_URL_LIFETIME_MS`, because WebKit cancels downloads whose URL is
+revoked synchronously. Hosts choose filenames, MIME types and which fields leave
+the application.
+
+```ts
+import { downloadText, toCsv } from '@pgmaps/geo-toolkit/export'
+
+const csv = toCsv(['id', { header: 'Population', key: 'population' }], rows, { bom: true })
+downloadText(csv, 'regions.csv', 'text/csv;charset=utf-8')
+```
+
+`/format` pins `DEFAULT_LOCALE` (`en-CA`) so output does not change with the
+viewer's browser settings; the toolkit's own counts and default chart labels use
+it too. Formatters take a `fallback` for missing values where they have one. `formatMeasure(value,
+unit, options)` attaches `%`/`percent` without a space, formats `CAD`/`$` as
+Canadian dollars, and places any other unit after a space, rounding to one
+decimal unless `Intl.NumberFormatOptions` say otherwise. Hosts own unit
+vocabulary, such as which units are bare counts.
 
 ## Versions and reuse
 

@@ -2,6 +2,7 @@ import { ticks } from 'd3'
 import { ReferenceArea } from 'recharts'
 import type { XYSelection } from './geometry.js'
 import type { CSSProperties } from 'react'
+import { DEFAULT_LOCALE } from '../../format/index.js'
 
 export const axisStyle = { stroke: 'hsl(var(--muted-foreground))', fontSize: 11, tickLine: false, axisLine: false }
 export const tooltipStyle = {
@@ -20,7 +21,7 @@ export const tooltipWrapperStyle = {
   overflowWrap: 'anywhere',
 } satisfies CSSProperties
 export const axisTicks = (min: number, max: number) => ticks(min, max, 5)
-export const numberLabel = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 3 })
+export const numberLabel = (value: number) => value.toLocaleString(DEFAULT_LOCALE, { maximumFractionDigits: 3 })
 export function selectionArea(drag: XYSelection | null) {
   return drag ? (
     <ReferenceArea

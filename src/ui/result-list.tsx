@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react'
 import { cn } from '../utils.js'
 import { InlineAlert } from './map-panels.js'
 import { TextButton } from './text-button.js'
+import { formatNumber } from '../format/index.js'
 
 export type ResultRowAccent = 'sky' | 'green' | 'cyan' | 'amber' | 'violet' | 'orange' | 'rose' | 'teal'
 
@@ -117,8 +118,8 @@ export function ListHeader({ count, noun, shown, aside, sticky = true, className
       aria-live="polite"
     >
       <span>
-        {count.toLocaleString('en-CA')} {count === 1 ? noun[0] : noun[1]}
-        {capped && ` · showing first ${shown.toLocaleString('en-CA')}`}
+        {formatNumber(count)} {count === 1 ? noun[0] : noun[1]}
+        {capped && ` · showing first ${formatNumber(shown)}`}
       </span>
       {aside}
     </div>

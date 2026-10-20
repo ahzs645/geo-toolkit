@@ -1,3 +1,4 @@
+import { downloadText } from '../export/download.js'
 /** Inject validation so a host retains its schema, normalization and metadata rules. */
 export interface ProjectCodec<T> {
   parse(value: unknown): T
@@ -189,13 +190,5 @@ export async function shareProject<T>(
 }
 /** Browser host adapter; servers can inject their own export port instead. */
 export function downloadProjectJson(artifact: ProjectJsonExport): void {
-  const url = URL.createObjectURL(new Blob([artifact.content], { type: artifact.mimeType }))
-  try {
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = artifact.filename
-    anchor.click()
-  } finally {
-    URL.revokeObjectURL(url)
-  }
+  downloadText(artifact.content, artifact.filename, artifact.mimeType)
 }
