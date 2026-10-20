@@ -13,10 +13,10 @@ not a promise that every historical module is stable.
 
 | Entry point                          | Supported capability                                                                                                                                 | Additional runtime peers                                       |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `/calculations`                      | `scoreRecords`, `normalizeValues`, coverage, drivers, sensitivity, geographic and timeline helpers; their configuration/result types                 | None                                                           |
+| `/calculations`                      | `scoreRecords`, `normalizeValues`, coverage, drivers, sensitivity, geographic, timeline and join helpers (`crosswalkResolver`, `groupByJoin`, `groupValue`, `joinDiagnostics`, `canEncodeAsArea`); their configuration/result types | None                                                           |
 | `/index-lab`                         | Index Lab state/results, normalization/coverage and spatial/derived recipes; their types                                                             | None                                                           |
 | `/index-lab/react`                   | `IndexLab`, `useIndexLabController`, controls, result lists/cards and metric library components                                                      | React, React DOM                                               |
-| `/scales`                            | `resolvePaletteScale`, `samplePalette`, `paletteInterpolator`, `paletteContrast`, color helpers, `createScaleLegend`; their options and legend types | None                                                           |
+| `/scales`                            | `resolvePaletteScale`, `samplePalette`, `paletteInterpolator`, `paletteContrast`, color helpers, `createScaleLegend`, `areaRadiusScale`, `cohortRows`; their options and legend types | None                                                           |
 | `/visualizations`                    | `renderDonutSvg`, `DonutOptions`                                                                                                                     | None                                                           |
 | `/visualizations/react` | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, canvas points and typed series/axis contracts | React, React DOM |
 | `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                  | None                                                           |
@@ -192,6 +192,31 @@ Palette ranges never crop the numeric domain.
 Categorical data can use explicit color registries and `colorForKey` for stable
 fallback colors. Generic numeric classification should not be used to invent
 new category thresholds.
+
+### Proportional symbols and joins
+
+`areaRadiusScale(values, { maxRadius, minRadius })` returns `{ maximum, radius }`
+where circle area is proportional to the absolute value: `radius(maximum)` is
+`maxRadius`, zero and missing values get no circle, and `minRadius` only lifts
+nonzero values (it distorts area below that size). Compute `values` from a
+comparison cohort, not from the filtered rows: `cohortRows(all, shown,
+scopeFields)` keeps every row sharing a scope (for example a period and measure
+definition) with a shown row, so hiding comparators never enlarges what remains.
+
+Join helpers keep geographic aggregation explicit. Hosts keep their own
+crosswalk data and decide which metrics are additive.
+
+- `crosswalkResolver({ links, native })` resolves a source key through reviewed
+  links, then native codes; blank or unknown keys are unmatched (`null`).
+- `groupByJoin(rows, joinOf)` groups rows by code in first-seen order.
+- `groupValue(values, { allowsSum })` shows a single finite value, sums several
+  only when `allowsSum`, and withholds (`null`) when any input is missing or
+  nonfinite.
+- `joinDiagnostics(rows, { joinOf, valueOf, available, allowsSum })` counts
+  matched, missing, unmatched (no code, or absent from loaded geometry) and
+  ambiguous (shared code without `allowsSum`) rows.
+- `canEncodeAsArea(values)` is false when any value is negative; circle area
+  cannot show a signed change.
 
 ### Donuts and grids
 
