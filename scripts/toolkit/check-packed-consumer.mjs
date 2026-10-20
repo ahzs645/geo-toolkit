@@ -45,7 +45,7 @@ try {
     [
       '--input-type=module',
       '-e',
-      "await Promise.all(['calculations','index-lab','scales','grids','visualizations','projects'].map(name => import('@pgmaps/geo-toolkit/' + name))); console.log('Pure toolkit imports passed with rendering peers omitted.')",
+      "await Promise.all(['calculations','index-lab','scales','grids','visualizations','projects','export','format'].map(name => import('@pgmaps/geo-toolkit/' + name))); console.log('Pure toolkit imports passed with rendering peers omitted.')",
     ],
     { cwd: pure, stdio: 'inherit' },
   )
@@ -66,7 +66,7 @@ try {
     [
       '--input-type=module',
       '-e',
-      "await Promise.all(['calculations','index-lab','scales','grids','visualizations','projects'].map(name => import('@pgmaps/geo-toolkit/' + name))); console.log('Pure toolkit entry points imported successfully.')",
+      "await Promise.all(['calculations','index-lab','scales','grids','visualizations','projects','export','format'].map(name => import('@pgmaps/geo-toolkit/' + name))); console.log('Pure toolkit entry points imported successfully.')",
     ],
     { cwd: consumer, stdio: 'inherit' },
   )

@@ -16,6 +16,7 @@ import {
 } from './pie-cluster-expansion.js'
 import type MapLibreGL from 'maplibre-gl'
 import MapLibreGLRuntime from 'maplibre-gl'
+import { DEFAULT_LOCALE } from '../../format/index.js'
 
 /** Known fields consumed by donut aggregation. Hosts can use this schema when authoring data. */
 export interface PieClusterPointProperties {
@@ -167,7 +168,7 @@ export function MapPieClusterLayer({
       header.className = 'flex items-center justify-between gap-3 border-b border-border px-3 py-2.5'
       const heading = document.createElement('div')
       heading.className = 'text-sm font-semibold'
-      heading.textContent = `${pointCount.toLocaleString()} overlapping records`
+      heading.textContent = `${pointCount.toLocaleString(DEFAULT_LOCALE)} overlapping records`
       const closeButton = document.createElement('button')
       closeButton.type = 'button'
       closeButton.className =
@@ -237,7 +238,7 @@ export function MapPieClusterLayer({
             footer.remove()
           } else {
             loadMoreButton.disabled = false
-            loadMoreButton.textContent = `Show more (${(pointCount - loaded).toLocaleString()} remaining)`
+            loadMoreButton.textContent = `Show more (${(pointCount - loaded).toLocaleString(DEFAULT_LOCALE)} remaining)`
           }
         } catch {
           loadMoreButton.disabled = true

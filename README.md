@@ -74,6 +74,8 @@ provider automatically. Host a persistent map above the views that share it.
 | `/ui` | Sidebars, legends, dialogs, lists, tooltips, tabs and supporting controls |
 | `/projects` | Serializable scene/layer contracts, validated JSON import/export and injectable repositories/share/export ports |
 | `/projects/react` | Scene story rendering through supplied layer, map and host adapters |
+| `/export` | CSV serialization with spreadsheet-formula guarding, and browser file downloads |
+| `/format` | Pinned-locale number, unit, currency, date, size and area formatters |
 | `/stories` | Complete native editorial presentation through supplied map/comparison adapters, reusable components and diagrams |
 
 Fine-grained subpaths also support application compatibility imports. These are
