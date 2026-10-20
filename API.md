@@ -260,6 +260,27 @@ The example uses a constant polygon fill to keep its layer input minimal. For a
 classified view, supply the layer's property expression or per-feature color
 from the same scale used for its legend. The host owns data loading and units.
 
+A choropleth whose values change (a story step, a filter, a year) should keep
+its shapes and change only its values. Every new `data` object is copied to
+MapLibre's worker and re-tiled; for detailed boundaries that is megabytes of
+work, and it lands just as the camera starts to move. Keep `data` the same
+object, or pass the file's URL so the worker fetches it itself, and give the
+values as `featureState`, keyed by `idProperty`:
+
+```tsx
+<MapFillLayer
+  data={boundariesUrl}
+  idProperty="code"
+  featureState={valuesByCode} // { [code]: { value: 12.5, focused: true } }
+  fillColor={['interpolate', ['linear'], ['coalesce', ['feature-state', 'value'], 0], 0, '#eff6ff', 100, '#1d4ed8']}
+/>
+```
+
+Only features whose values changed are updated, and keys that are no longer
+given are cleared. Feature state can drive paint, not filters or layout, so show
+an outline by opacity rather than by filtering it in. `syncFeatureState` applies
+the same update to a source a host manages itself.
+
 `Map` accepts MapLibre options other than `container`, `style` and `trackResize`,
 plus toolkit `styles`, `theme`, loading, controls and viewport props. `center`
 and `zoom` establish the initial camera. Supply both `viewport` and
@@ -370,6 +391,25 @@ provides scene reading layouts with a host `renderMap` callback and optional
 chrome. Both keep data transports outside the renderer. The host retains its
 tile policies, loading, selection details, catalog and URL/storage integration.
 Supply stable map nodes instead of recreating the map instance at every step.
+
+Starting a map is GPU set-up (a WebGL context, its canvas and shaders) that
+blocks the page for tens to hundreds of milliseconds, and a map that resizes
+draws a blank frame. Network loading is rarely the cost once the style, tiles
+and boundaries are cached. So, for a reader that moves between map views:
+
+- Change values, focus and camera on one map rather than replacing it (see
+  `featureState` above).
+- Keep a view mounted once it has been shown, and when a different kind of view
+  takes over, hide it at full size (`visibility: hidden`, absolutely positioned
+  underneath) rather than unmounting it or using `display: none`. The same holds
+  for tabs that switch between maps.
+- Start the views a step will need before it is reached, one per idle moment
+  (`requestIdleCallback`), after the current step's camera move has finished,
+  nearest step first.
+- Do not animate a map container's size. Move surrounding chrome by scrolling
+  or transforming it so the map keeps its size.
+- In a swipe comparison, raise the hover card above the clipped map and show
+  both sides' values, since the pointer may be over either.
 
 `/stories/storyScene`, `/stories/sceneController` and
 `/stories/diagrams/storyDiagrams` are supported pure helper entry points for

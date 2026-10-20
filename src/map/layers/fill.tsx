@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from 'react'
 import { useMap, dispatchMobileMapFeatureClick } from '../map-context.js'
 import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
+import { syncFeatureState, type MapFeatureStateById } from '../map-feature-state.js'
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_COLOR, SELECTION_WIDTH, BORDER_COLOR } from '../map-styles.js'
 import {
@@ -15,7 +16,12 @@ import type MapLibreGL from 'maplibre-gl'
 import MapLibreGLRuntime from 'maplibre-gl'
 
 export type MapFillLayerProps = {
-  /** GeoJSON FeatureCollection data or a URL MapLibre can fetch */
+  /**
+   * GeoJSON FeatureCollection data or a URL MapLibre can fetch. A new object
+   * re-sends and re-tiles every shape, so keep it the same object (or pass a
+   * URL, which the map's worker fetches itself) while only values change, and
+   * give those values through `featureState`.
+   */
   data: GeoJSON.FeatureCollection | string
   /** Opt-in sharing for layers with identical data and feature identity. */
   sourceKey?: string
@@ -64,6 +70,15 @@ export type MapFillLayerProps = {
   hoverFillOpacity?: number
   /** Optional MapLibre filter applied to the base fill and border layers. */
   filter?: MapStyleExpression | null
+  /**
+   * Per-feature values keyed by `idProperty`, applied as MapLibre feature
+   * state: read them in paint expressions with ['feature-state', key]. Changing
+   * them recolours the existing shapes; only features whose values changed are
+   * touched. Decide at mount whether a layer uses it (it keys the source by
+   * `idProperty`). Feature state cannot drive filters or layout properties.
+   * Layers sharing a `sourceKey` share one state.
+   */
+  featureState?: MapFeatureStateById
 }
 
 export function MapFillLayer({
@@ -88,6 +103,7 @@ export function MapFillLayer({
   hoverHtml,
   hoverFillOpacity,
   filter,
+  featureState,
 }: MapFillLayerProps) {
   const { map, isLoaded } = useMap()
   const uid = useId().replace(/:/g, '')
@@ -108,6 +124,8 @@ export function MapFillLayer({
   const boxZoomWasEnabledRef = useRef(false)
   const doubleClickZoomWasEnabledRef = useRef(false)
   const hoveredIdRef = useRef<string | number | null>(null)
+  const usesFeatureStateRef = useRef(featureState !== undefined)
+  const appliedStateRef = useRef<MapFeatureStateById | undefined>(undefined)
 
   const hoverEnabled = hoverFillOpacity !== undefined
   // Wrapping the caller's opacity in a feature-state case leaves their
@@ -125,7 +143,8 @@ export function MapFillLayer({
   useEffect(() => {
     if (!isLoaded || !map) return
 
-    retainGeoJsonSource(map, sourceId, hoverEnabled ? idPropRef.current : undefined)
+    retainGeoJsonSource(map, sourceId, hoverEnabled || usesFeatureStateRef.current ? idPropRef.current : undefined)
+    appliedStateRef.current = undefined
 
     map.addLayer({
       id: fillLayerId,
@@ -320,6 +339,14 @@ export function MapFillLayer({
     if (!isLoaded || !map) return
     updateGeoJsonSource(map, sourceId, data)
   }, [data, isLoaded, map, sourceId])
+
+  // Update per-feature values without re-sending the shapes. Runs after the
+  // mount effect, which clears the record when the source is rebuilt.
+  useEffect(() => {
+    if (!isLoaded || !map || !featureState || !map.getSource(sourceId)) return
+    syncFeatureState(map, sourceId, appliedStateRef.current, featureState)
+    appliedStateRef.current = featureState
+  }, [featureState, isLoaded, map, sourceId, layerOrder])
 
   // Update the optional base-layer filter without rebuilding the source.
   useEffect(() => {

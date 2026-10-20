@@ -8,6 +8,7 @@ export type {
   MapFeatureClickHandler,
 } from './layers/types.js'
 export { MapFillLayer, type MapFillLayerProps } from './layers/fill.js'
+export { syncFeatureState, type MapFeatureStateById } from './map-feature-state.js'
 export { MapCircleLayer, type MapCircleLayerProps } from './layers/circle.js'
 export { MapLineLayer, type MapLineLayerProps } from './layers/line.js'
 export { MapRasterLayer, type MapRasterLayerProps } from './layers/raster.js'

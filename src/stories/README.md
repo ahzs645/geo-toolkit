@@ -30,7 +30,8 @@ scoped to editorial/story diagram classes and it includes diagram styles.
 
 Create a bounded `.editorial-story` scrolling container, pass its ref as
 `scrollRoot`, and set `--editorial-viewport` to the measured container height.
-Keep map nodes stable across steps. Set `data-theme="dark"` on the container or
+Keep map nodes stable across steps; API.md's
+"Project and story boundaries" lists what keeps step changes from stalling. Set `data-theme="dark"` on the container or
 use an ancestor `.dark` class; override the `--editorial-*` palette variables for
 branding. The host owns its header spacing, navigation buttons and map popup CSS.
 
