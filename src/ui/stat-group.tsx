@@ -18,6 +18,17 @@ export interface StatItem {
   key?: string
   className?: string
   valueClassName?: string
+  /**
+   * Makes the tile an on/off switch, e.g. "highlight these blocks on the map".
+   * A transparent button covers the tile so the `dt`/`dd` pair stays valid.
+   */
+  onToggle?: () => void
+  /** On state for `onToggle`. */
+  pressed?: boolean
+  /** Accessible name for the toggle when `label` is not plain text. */
+  toggleLabel?: string
+  /** Classes while pressed; defaults to a primary ring. */
+  pressedClassName?: string
 }
 
 const toneClasses: Record<NonNullable<StatItem['tone']>, string> = {
@@ -82,16 +93,29 @@ export function StatTileBody({
         'flex min-w-0 flex-col-reverse rounded-lg border border-border',
         size === 'sm' ? 'bg-background p-2' : 'bg-muted/40 px-2 py-2 workspace-sm:px-3',
         align === 'center' && 'items-center text-center',
+        item.onToggle && 'relative transition-colors hover:bg-muted/60',
+        item.onToggle && item.pressed && (item.pressedClassName ?? 'border-primary bg-primary/5 ring-1 ring-primary'),
         item.className,
       )}
     >
+      {item.onToggle && (
+        <button
+          type="button"
+          aria-pressed={!!item.pressed}
+          aria-label={item.toggleLabel ?? (typeof item.label === 'string' ? item.label : undefined)}
+          onClick={item.onToggle}
+          className="absolute inset-0 z-[1] cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        />
+      )}
       {item.note && <div className="text-[11px] leading-snug text-muted-foreground">{item.note}</div>}
       {/* Uppercase only for md tiles from sm up: tracked capitals overflow a quarter-width phone tile. */}
+      {/* The label truncates in narrow tiles; the full text stays a hover away. */}
       <dt
         className={cn(
           'max-w-full truncate text-xs text-muted-foreground',
           size === 'md' && 'workspace-sm:uppercase workspace-sm:tracking-wide',
         )}
+        title={typeof item.label === 'string' ? item.label : undefined}
       >
         <StatLabel item={item} />
       </dt>
