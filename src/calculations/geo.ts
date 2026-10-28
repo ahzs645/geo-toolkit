@@ -76,3 +76,39 @@ export function boundsCenter(geometry: GeoJSON.Geometry | null | undefined): [nu
   if (!bounds) return null
   return [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2]
 }
+
+/**
+ * Points along the shortest great-circle route from `from` to `to` ([lng, lat]),
+ * for flow lines on a map. Longitudes are unwrapped to stay continuous, so a
+ * route across the antimeridian runs past ±180 instead of jumping back across
+ * the map; renderers that clamp longitudes should split it there.
+ */
+export function greatCircleArc(
+  from: [number, number],
+  to: [number, number],
+  { steps = 64 }: { steps?: number } = {},
+): [number, number][] {
+  const rad = Math.PI / 180
+  const [l1, p1] = [from[0] * rad, from[1] * rad]
+  const [l2, p2] = [to[0] * rad, to[1] * rad]
+  const d =
+    2 * Math.asin(Math.sqrt(Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin((l2 - l1) / 2) ** 2))
+  if (!(d > 1e-9)) return [from, to]
+  const n = Math.max(1, Math.round(steps))
+  const out: [number, number][] = []
+  let previous: number | null = null
+  for (let i = 0; i <= n; i++) {
+    const f = i / n
+    const a = Math.sin((1 - f) * d) / Math.sin(d)
+    const b = Math.sin(f * d) / Math.sin(d)
+    const x = a * Math.cos(p1) * Math.cos(l1) + b * Math.cos(p2) * Math.cos(l2)
+    const y = a * Math.cos(p1) * Math.sin(l1) + b * Math.cos(p2) * Math.sin(l2)
+    const z = a * Math.sin(p1) + b * Math.sin(p2)
+    let lng = Math.atan2(y, x) / rad
+    const lat = Math.atan2(z, Math.sqrt(x * x + y * y)) / rad
+    if (previous !== null) lng += 360 * Math.round((previous - lng) / 360)
+    previous = lng
+    out.push([lng, lat])
+  }
+  return out
+}
