@@ -16,3 +16,5 @@ export type {
   LineBandSeries,
   XYChartProps,
 } from './charts/types.js'
+export { DonutRingMap } from './charts/DonutRingMap.js'
+export type { DonutRingItem, DonutRingMapProps } from './charts/DonutRingMap.js'

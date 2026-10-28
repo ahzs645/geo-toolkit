@@ -17,8 +17,8 @@ not a promise that every historical module is stable.
 | `/index-lab`                         | Index Lab state/results, normalization/coverage and spatial/derived recipes; their types                                                             | None                                                           |
 | `/index-lab/react`                   | `IndexLab`, `useIndexLabController`, controls, result lists/cards and metric library components                                                      | React, React DOM                                               |
 | `/scales`                            | `resolvePaletteScale`, `samplePalette`, `paletteInterpolator`, `paletteContrast`, color helpers, `createScaleLegend`, `areaRadiusScale`, `cohortRows`; their options and legend types | None                                                           |
-| `/visualizations`                    | `renderDonutSvg`, `DonutOptions` (count-sized or fixed `radius`, centre `label`, `emphasizedBand`)                                                                                                                    | None                                                           |
-| `/visualizations/react` | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, canvas points and typed series/axis contracts | React, React DOM |
+| `/visualizations`                    | `renderDonutSvg`, `DonutOptions` (count-sized or fixed `radius`, centre `label`, `emphasizedBand`); `layoutDonutRing`, `assignRing`, `ringSlots`                                                                                                                    | None                                                           |
+| `/visualizations/react` | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, `DonutRingMap`, canvas points and typed series/axis contracts | React, React DOM |
 | `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                  | None                                                           |
 | `/grids/map-raster-grid`             | `createRasterGridLayer`, `RasterGridPick`                                                                                                            | `@deck.gl/core`, `@deck.gl/geo-layers`, `@deck.gl/layers`      |
 | `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants               | React, React DOM, MapLibre                                     |
@@ -616,3 +616,14 @@ outside a workspace; theme it with `--gt-scrub-accent`, `--gt-scrub-bg`,
 `--gt-scrub-border`, `--gt-scrub-border-hover`, `--gt-scrub-text`,
 `--gt-scrub-muted`, `--gt-scrub-h`, `--gt-scrub-w`, `--gt-scrub-radius` and
 `--gt-scrub-font`. `onChange` fires per frame; `onCommit` once per gesture.
+
+## Donut ring maps
+
+`DonutRingMap` draws a world map ringed by one donut per place, each joined to
+its place by a leader line, as one d3-drawn SVG (it prints and exports as
+vector art). `layoutDonutRing({ width, land, places })` is its pure layout: the
+largest radius whose ring of slots holds every place, the fitted projection,
+and each place's slot, chosen by `assignRing` so leaders keep the places'
+angular order and do not cross. Values are drawn counter-clockwise from the
+top in legend order; pass `emphasized` for legend hover and `itemProps` for
+host tooltips and data attributes.
