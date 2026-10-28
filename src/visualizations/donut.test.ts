@@ -46,6 +46,27 @@ describe('portable donut renderer', () => {
     expect(transparent.svg).toContain('stroke="#112233"')
   })
 
+  it('draws fixed-size donuts with a caller label and an emphasised band', () => {
+    const donut = renderDonutSvg({
+      counts: [0.2, 0.3],
+      colors,
+      radius: 20,
+      innerRatio: 0.5,
+      label: '12 <µg>',
+      emphasizedBand: 1,
+      title: 'Site "A"',
+    })
+    expect(donut.size).toBe(40)
+    // fractional values still close the ring: each wedge is its share of the sum
+    expect(donut.svg.match(/<path /g)).toHaveLength(2)
+    expect(donut.svg).toContain('r="10"')
+    expect(donut.svg).toContain('>12 &lt;µg&gt;</text>')
+    expect(donut.svg).toContain('opacity="0.18"')
+    expect(donut.svg.match(/opacity="/g)).toHaveLength(1)
+    expect(donut.svg).toContain('aria-label="Site &quot;A&quot;"')
+    expect(donut.svg).toContain('<title>Site &quot;A&quot;</title>')
+  })
+
   it('keeps caller colour strings within SVG attributes', () => {
     const svg = renderDonutSvg({ counts: [1], colors: ['red"/><script>alert(1)</script><path fill="red'] }).svg
     expect(svg).not.toContain('<script>')

@@ -17,15 +17,15 @@ not a promise that every historical module is stable.
 | `/index-lab`                         | Index Lab state/results, normalization/coverage and spatial/derived recipes; their types                                                             | None                                                           |
 | `/index-lab/react`                   | `IndexLab`, `useIndexLabController`, controls, result lists/cards and metric library components                                                      | React, React DOM                                               |
 | `/scales`                            | `resolvePaletteScale`, `samplePalette`, `paletteInterpolator`, `paletteContrast`, color helpers, `createScaleLegend`, `areaRadiusScale`, `cohortRows`; their options and legend types | None                                                           |
-| `/visualizations`                    | `renderDonutSvg`, `DonutOptions`                                                                                                                     | None                                                           |
+| `/visualizations`                    | `renderDonutSvg`, `DonutOptions` (count-sized or fixed `radius`, centre `label`, `emphasizedBand`)                                                                                                                    | None                                                           |
 | `/visualizations/react` | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, canvas points and typed series/axis contracts | React, React DOM |
 | `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                  | None                                                           |
 | `/grids/map-raster-grid`             | `createRasterGridLayer`, `RasterGridPick`                                                                                                            | `@deck.gl/core`, `@deck.gl/geo-layers`, `@deck.gl/layers`      |
-| `/map`                               | `Map`, markers/popups, controls, routes, layer components, `MapStory` composition, camera/scale helpers and shared map style constants               | React, React DOM, MapLibre                                     |
+| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants               | React, React DOM, MapLibre                                     |
 | `/map/persistent-map`                | `PersistentMapProvider`, `PersistentMapHost`, `SharedMap`, `usePersistentMap`, `useMapBasemap`                                                       | React, React DOM, MapLibre                                     |
 | `/map/map-deck`                      | Shared deck.gl overlay integration                                                                                                                   | React, React DOM, MapLibre, `@deck.gl/core`, `@deck.gl/mapbox` |
 | `/workspace`                         | `WorkspaceProvider`, `MapSectionLayout`, responsive media hooks and `requestMapSearch`                                                               | React, React DOM                                               |
-| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`                                                    | React, React DOM                                               |
+| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                    | React, React DOM                                               |
 | `/projects`                          | Scene/layer types, codecs, repositories and JSON import/export/share ports                                                                           | None                                                           |
 | `/export`                            | `toCsv`, `csvRows`, `csvCell`, `downloadBlob`, `downloadText`; `CsvColumn`, `CsvOptions`                                                             | None; downloads need a browser DOM                             |
 | `/format`                            | `formatMeasure`, `formatNumber`, `formatPercent`, currency/date/byte/length/area formatters                                                          | None                                                           |
@@ -231,6 +231,13 @@ summed. It controls the historical count-based marker sizing. `showCount` and
 leaving category colors unchanged. The default colors and shadow reproduce
 existing markers. SVG attributes are escaped; this is a small donut renderer,
 not an arbitrary SVG sanitization or rich-content API.
+
+For a marker whose size or centre text encodes something other than a count,
+pass `radius` (outer px), optional `innerRatio`, `label` and `fontSize`; the
+wedges always divide the drawn bands, so fractional values (concentrations)
+close the ring. `emphasizedBand` fades the other bands to `fadedOpacity` for
+legend hover, and `title` adds an accessible name. `MapDonutMarker` pins the
+same SVG to a coordinate and accepts `MarkerLabel`/`MarkerTooltip` children.
 
 `GRID_NO_DATA` means transparent source evidence; `GRID_UNCERTAIN` means the
 classification was ambiguous or outside its thresholds. `cellPixels` describes
@@ -585,3 +592,26 @@ import { LineBandChart } from '@pgmaps/geo-toolkit/visualizations/react'
 non-water data. Its `/charts` browser suite verifies linked ranges, a missing
 line segment, zero-point tooltip metadata, stable colors, canvas rendering,
 fullscreen/zoom preservation, container resizing and independent workspace state.
+
+## Offline maps and site framing
+
+`geojsonBasemapStyle({ land, water, landColor, borderColor, graticule })`
+returns a complete MapLibre style built from one GeoJSON land layer, with no
+tile server, glyphs or sprites. Pass it as both `styles.light` and
+`styles.dark` (with theme colours) for static sites and exports. Without
+glyphs, label places with markers rather than symbol layers.
+
+`pointBounds(points, { trim, pad, minSpan })` frames finite `[lon, lat]` points;
+`trim` drops a quantile from each end so a few overseas sites do not shrink the
+rest. `fitMapToPoints(map, points, options)` applies it with `fitBounds`.
+
+## Numeric scrub field
+
+`ScrubNumberField` edits one number: drag sideways to scrub (a full-width drag
+spans `min`–`max`; Shift is ×0.1), click or press Enter to type (units and a
+decimal comma are accepted; Escape cancels), arrow keys step (Shift ×10). The
+tinted bar shows the value's place in the range. It is plain CSS, so it works
+outside a workspace; theme it with `--gt-scrub-accent`, `--gt-scrub-bg`,
+`--gt-scrub-border`, `--gt-scrub-border-hover`, `--gt-scrub-text`,
+`--gt-scrub-muted`, `--gt-scrub-h`, `--gt-scrub-w`, `--gt-scrub-radius` and
+`--gt-scrub-font`. `onChange` fires per frame; `onCommit` once per gesture.

@@ -105,3 +105,104 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * ScrubNumberField. Plain CSS rather than utilities so the field also works
+ * outside a .geo-toolkit workspace; hosts theme it with the --gt-scrub-*
+ * properties, which fall back to the workspace tokens, then to neutral greys.
+ */
+.gt-scrub-field {
+  position: relative;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  width: var(--gt-scrub-w, 100%);
+  min-width: 3.5rem;
+  height: var(--gt-scrub-h, 1.5rem);
+  overflow: hidden;
+  border: 1px solid var(--gt-scrub-border, hsl(var(--border, 0 0% 80%) / 0.6));
+  border-radius: var(--gt-scrub-radius, 6px);
+  background: var(--gt-scrub-bg, hsl(var(--muted, 0 0% 96%)));
+  color: var(--gt-scrub-muted, hsl(var(--muted-foreground, 0 0% 40%)));
+  font-size: var(--gt-scrub-font, 0.8125rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: border-color 0.15s;
+}
+.gt-scrub-field:hover,
+.gt-scrub-field[data-scrubbing],
+.gt-scrub-field[data-editing] {
+  border-color: var(--gt-scrub-border-hover, hsl(var(--border, 0 0% 60%)));
+  color: var(--gt-scrub-text, hsl(var(--foreground, 0 0% 10%)));
+}
+.gt-scrub-field[data-editing] {
+  cursor: text;
+}
+.gt-scrub-field:focus-visible {
+  outline: 2px solid var(--gt-scrub-accent, hsl(var(--ring, 0 0% 20%)));
+  outline-offset: 1px;
+}
+.gt-scrub-field[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.gt-scrub-fill {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  background: var(--gt-scrub-accent, hsl(var(--primary, 0 0% 9%)));
+  opacity: 0.15;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.gt-scrub-field:hover .gt-scrub-fill,
+.gt-scrub-field[data-scrubbing] .gt-scrub-fill {
+  opacity: 0.4;
+}
+.gt-scrub-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 0.5rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.gt-scrub-field .gt-scrub-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--gt-scrub-text, hsl(var(--foreground, 0 0% 10%)));
+  font: inherit;
+  text-align: right;
+}
+.gt-scrub-field:has(.gt-scrub-unit) .gt-scrub-value,
+.gt-scrub-field:has(.gt-scrub-unit) .gt-scrub-input {
+  padding-right: 1.6rem;
+}
+.gt-scrub-unit {
+  position: absolute;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  opacity: 0.6;
+  pointer-events: none;
+}
