@@ -237,7 +237,8 @@ pass `radius` (outer px), optional `innerRatio`, `label` and `fontSize`; the
 wedges always divide the drawn bands, so fractional values (concentrations)
 close the ring. `emphasizedBand` fades the other bands to `fadedOpacity` for
 legend hover, and `title` adds an accessible name. `MapDonutMarker` pins the
-same SVG to a coordinate and accepts `MarkerLabel`/`MarkerTooltip` children.
+same SVG to a coordinate; put a `MarkerLabel` in `content` (inside the marker
+element) and `MarkerTooltip`/`MarkerPopup` in `children`.
 
 `GRID_NO_DATA` means transparent source evidence; `GRID_UNCERTAIN` means the
 classification was ambiguous or outside its thresholds. `cellPixels` describes
