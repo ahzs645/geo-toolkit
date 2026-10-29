@@ -107,6 +107,50 @@
 }
 
 /*
+ * MapLoader's completion bloom: a ring that widens past the map's edges as
+ * the loader exits. Plain CSS (an animated SVG radius) and absolutely
+ * positioned, so it never takes space in the loader's centred row.
+ */
+@keyframes map-loader-bloom-out {
+  0% {
+    opacity: 0;
+    r: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.85;
+    r: 3.5rem;
+  }
+  100% {
+    opacity: 0;
+    r: 110vmax;
+  }
+}
+.map-loader-bloom {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.map-loader-bloom circle {
+  r: 0;
+  fill: none;
+  stroke: rgb(56 189 248 / 0.82);
+  stroke-width: 4;
+  vector-effect: non-scaling-stroke;
+  animation: map-loader-bloom-out 1700ms linear forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-loader-bloom circle {
+    animation: none;
+  }
+}
+
+/*
  * ScrubNumberField. Plain CSS rather than utilities so the field also works
  * outside a .geo-toolkit workspace; hosts theme it with the --gt-scrub-*
  * properties, which fall back to the workspace tokens, then to neutral greys.

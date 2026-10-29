@@ -228,9 +228,11 @@ export function MapLoader({
           <AsciiGlobe exiting={exiting} theme={theme} />
         </div>
       ) : (
+        // Sized to the ping ring at full scale (h-20 at 2x), so the pulse stays
+        // inside its box instead of reporting scrollable overflow to the host.
         <div
           className={cn(
-            'relative flex h-28 w-28 items-center justify-center transition-[opacity,transform] duration-700',
+            'relative flex h-40 w-40 items-center justify-center transition-[opacity,transform] duration-700',
             exiting && 'scale-125 opacity-0',
           )}
         >
