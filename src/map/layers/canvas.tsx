@@ -53,7 +53,6 @@ export type MapCanvasLayerProps = MapRasterQuadStyle & {
 }
 
 function useRasterQuadLayer(
-  sourceId: string,
   layerId: string,
   { opacity = 0.75, resampling = 'linear', visible = true }: MapRasterQuadStyle,
 ) {
@@ -110,7 +109,7 @@ export function MapCanvasLayer({ canvas, coordinates, revision, animate = false,
   const uid = useId().replace(/:/g, '')
   const sourceId = `canvas-src-${uid}`
   const layerId = `canvas-layer-${uid}`
-  const { map, isLoaded } = useRasterQuadLayer(sourceId, layerId, style)
+  const { map, isLoaded } = useRasterQuadLayer(layerId, style)
   const coordinatesKey = JSON.stringify(coordinates)
   const coordinatesRef = useRef(coordinates)
   const styleRef = useRef(style)
@@ -162,7 +161,7 @@ export function MapImageLayer({ url, coordinates, ...style }: MapImageLayerProps
   const uid = useId().replace(/:/g, '')
   const sourceId = `image-src-${uid}`
   const layerId = `image-layer-${uid}`
-  const { map, isLoaded } = useRasterQuadLayer(sourceId, layerId, style)
+  const { map, isLoaded } = useRasterQuadLayer(layerId, style)
   const coordinatesKey = JSON.stringify(coordinates)
   const latestRef = useRef({ url, coordinates, style })
   useEffect(() => {
