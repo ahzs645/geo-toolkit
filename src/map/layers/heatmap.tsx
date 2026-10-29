@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo } from 'react'
 import { useMap } from '../map-context.js'
+import { registerMapLayerOrder } from '../map-layer-order.js'
 import { HEATMAP_COLOR_RAMPS, type HeatmapRampName } from '../map-styles.js'
 import { type MapStyleValue } from './types.js'
 import type * as MapLibreGL from 'maplibre-gl'
@@ -28,6 +29,8 @@ export type MapHeatmapLayerProps = {
   colorRamp?: ColorStops | HeatmapRampName
   /** Insert this layer before the given existing layer id (z-order). */
   beforeLayerId?: string
+  /** Draw-order slot shared with the vector layers; higher draws on top. Overrides beforeLayerId. */
+  layerOrder?: number
 }
 
 function stopsToInterpolate(stops: ZoomStops): unknown {
@@ -53,6 +56,7 @@ export function MapHeatmapLayer({
   opacity = 0.7,
   colorRamp = 'air',
   beforeLayerId,
+  layerOrder,
 }: MapHeatmapLayerProps) {
   const { map, isLoaded } = useMap()
   const uid = useId().replace(/:/g, '')
@@ -95,8 +99,10 @@ export function MapHeatmapLayer({
       },
       beforeLayerId,
     )
+    const releaseOrder = registerMapLayerOrder(map, [layerId], layerOrder)
 
     return () => {
+      releaseOrder()
       try {
         if (!map.getStyle()) return
         if (map.getLayer(layerId)) map.removeLayer(layerId)
@@ -106,14 +112,15 @@ export function MapHeatmapLayer({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, map])
+  }, [isLoaded, map, layerOrder])
 
   // Update source data
   useEffect(() => {
     if (!isLoaded || !map) return
     const source = map.getSource(sourceId) as MapLibreGL.GeoJSONSource | undefined
     source?.setData(data)
-  }, [data, isLoaded, map, sourceId])
+    // layerOrder rebuilds the source, which then needs the data again.
+  }, [data, isLoaded, map, sourceId, layerOrder])
 
   // Update visibility
   useEffect(() => {

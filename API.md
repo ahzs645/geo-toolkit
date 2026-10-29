@@ -13,7 +13,7 @@ not a promise that every historical module is stable.
 
 | Entry point                          | Supported capability                                                                                                                                 | Additional runtime peers                                       |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `/calculations`                      | `scoreRecords`, `normalizeValues`, coverage, drivers, sensitivity, geographic (`haversineKm`, `greatCircleArc`), timeline and join helpers (`crosswalkResolver`, `groupByJoin`, `groupValue`, `joinDiagnostics`, `canEncodeAsArea`); their configuration/result types | None                                                           |
+| `/calculations`                      | `scoreRecords`, `normalizeValues`, coverage, drivers, sensitivity, geographic (`haversineKm`, `greatCircleArc`, `geometryBounds`, `featureCollectionBounds`), timeline and join helpers (`crosswalkResolver`, `groupByJoin`, `groupValue`, `joinDiagnostics`, `canEncodeAsArea`); their configuration/result types | None                                                           |
 | `/index-lab`                         | Index Lab state/results, normalization/coverage and spatial/derived recipes; their types                                                             | None                                                           |
 | `/index-lab/react`                   | `IndexLab`, `useIndexLabController`, controls, result lists/cards and metric library components                                                      | React, React DOM                                               |
 | `/scales`                            | `resolvePaletteScale`, `samplePalette`, `paletteInterpolator`, `paletteContrast`, color helpers, `createScaleLegend`, `areaRadiusScale`, `cohortRows`; their options and legend types | None                                                           |
@@ -21,11 +21,11 @@ not a promise that every historical module is stable.
 | `/visualizations/react` | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, `DonutRingMap`, canvas points and typed series/axis contracts | React, React DOM |
 | `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                  | None                                                           |
 | `/grids/map-raster-grid`             | `createRasterGridLayer`, `RasterGridPick`                                                                                                            | `@deck.gl/core`, `@deck.gl/geo-layers`, `@deck.gl/layers`      |
-| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants               | React, React DOM, MapLibre                                     |
+| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), `captureMapImage`, offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants               | React, React DOM, MapLibre                                     |
 | `/map/persistent-map`                | `PersistentMapProvider`, `PersistentMapHost`, `SharedMap`, `usePersistentMap`, `useMapBasemap`                                                       | React, React DOM, MapLibre                                     |
 | `/map/map-deck`                      | Shared deck.gl overlay integration                                                                                                                   | React, React DOM, MapLibre, `@deck.gl/core`, `@deck.gl/mapbox` |
 | `/workspace`                         | `WorkspaceProvider`, `MapSectionLayout`, responsive media hooks and `requestMapSearch`                                                               | React, React DOM                                               |
-| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                    | React, React DOM                                               |
+| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `PlaybackControls`; `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                    | React, React DOM                                               |
 | `/projects`                          | Scene/layer types, codecs, repositories and JSON import/export/share ports                                                                           | None                                                           |
 | `/export`                            | `toCsv`, `csvRows`, `csvCell`, `downloadBlob`, `downloadText`; `CsvColumn`, `CsvOptions`                                                             | None; downloads need a browser DOM                             |
 | `/format`                            | `formatMeasure`, `formatNumber`, `formatPercent`, currency/date/byte/length/area formatters                                                          | None                                                           |
@@ -354,7 +354,7 @@ Typed layers use `MapStyleValue<T>` for literals or MapLibre expressions,
 `MapFeatureId` for string/numeric selection IDs and `MapFeatureClickHandler` for
 typed selection callbacks. `selectedIds` accepts readonly lists; `filter={null}`
 clears a layer filter. Focused supported layer subpaths under `/map/layers/`
-are `fill`, `circle`, `line`, `raster`, `heatmap`, `pie-cluster` and `pmtiles-fill`.
+are `fill`, `circle`, `line`, `geojson`, `canvas`, `raster`, `heatmap`, `pie-cluster` and `pmtiles-fill`.
 Use `PieClusterPointProperties` to describe category counts in point GeoJSON.
 `MapCircleLayer` accepts `hoverEnabled={false}` to dismiss hover cards during
 external interactions such as marker dragging; cards also dismiss while the
@@ -593,6 +593,56 @@ import { LineBandChart } from '@pgmaps/geo-toolkit/visualizations/react'
 non-water data. Its `/charts` browser suite verifies linked ranges, a missing
 line segment, zero-point tooltip metadata, stable colors, canvas rendering,
 fullscreen/zoom preservation, container resizing and independent workspace state.
+
+## Clicks, draw order and host-painted rasters
+
+`onFeatureClick` on `MapFillLayer`, `MapCircleLayer` and `MapLineLayer`
+receives the feature id, a `MapFeatureClickEvent` (modifier keys plus the
+clicked `lngLat`, null for synthetic clicks) and the feature's properties. For a
+plain HTML popup at the click, pass `clickHtml` instead; it mirrors `hoverHtml`
+and, like it, inserts the returned string as HTML, so escape interpolated data
+(`escapeHtml` or `mapTooltipHtml` from `/ui`).
+
+`layerOrder` places a layer's group among the other ordered layers (higher draws
+on top) whatever order their data arrives in. Fill, circle, line, raster,
+heatmap, canvas and image layers all accept it; layers without it draw where
+they were added. `MapLineLayer` also takes a `filter` and a URL for `data`.
+
+`MapGeoJsonLayer` draws an arbitrary FeatureCollection — an uploaded overlay,
+say — in one colour: polygons filled and outlined, lines stroked, points as
+circles, all sharing `layerOrder`, `clickHtml` and `hoverHtml`.
+
+`MapCanvasLayer` pins a canvas the host paints (an interpolated surface from a
+worker) to four corners; build them with `boundsToQuad({ west, south, east,
+north })`. Change `revision` after repainting so MapLibre uploads the new
+pixels, or set `animate` for a canvas that changes every frame.
+`MapImageLayer` does the same for an image URL.
+
+```tsx
+<MapCanvasLayer canvas={canvas} coordinates={boundsToQuad(grid.bounds)} revision={grid} layerOrder={1} />
+<MapCircleLayer data={sensors} color={['get', 'color']} layerOrder={2} clickHtml={sensorPopupHtml} />
+```
+
+## Map lifecycle helpers
+
+`onMoveEnd` reports the settled camera with its visible `bounds` after load,
+every pan or zoom, and container resizes. `onViewportChange` fires on every
+frame instead; use `onMoveEnd` for work such as recomputing a viewport grid.
+
+`fallbackStyles` (light/dark, like `styles`) replaces a basemap that fails to
+load or has not loaded within `styleTimeoutMs` (8 s by default), so data layers
+still draw offline; `onStyleFallback` reports the switch. A theme change tries
+the requested style again.
+
+`captureMapImage(map)` renders a fresh frame and encodes it (PNG by default)
+without needing `preserveDrawingBuffer`; download the blob with `downloadBlob`
+from `/export`. Only the WebGL canvas is captured, not HTML markers or panels.
+
+`MapControls` `trackLocation` turns the locate button into a toggle that follows
+the user's position with a marker.
+
+`PlaybackControls` steps a host-owned frame index with play/pause,
+previous/next and a scrubber, for time-lapse maps.
 
 ## Offline maps and site framing
 

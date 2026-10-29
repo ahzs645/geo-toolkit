@@ -70,6 +70,22 @@ export function geometryBounds(geometry: GeoJSON.Geometry | null | undefined): B
   return [minLng, minLat, maxLng, maxLat]
 }
 
+/**
+ * Bounding box of every feature in a collection, or null when none carries
+ * usable coordinates. Features without geometry are skipped.
+ */
+export function featureCollectionBounds(collection: GeoJSON.FeatureCollection | null | undefined): BBox | null {
+  let box: BBox | null = null
+  for (const feature of collection?.features ?? []) {
+    const next = geometryBounds(feature.geometry)
+    if (!next) continue
+    box = box
+      ? [Math.min(box[0], next[0]), Math.min(box[1], next[1]), Math.max(box[2], next[2]), Math.max(box[3], next[3])]
+      : next
+  }
+  return box
+}
+
 /** Centre of a geometry's bounding box, or null when it has no coordinates. */
 export function boundsCenter(geometry: GeoJSON.Geometry | null | undefined): [number, number] | null {
   const bounds = geometryBounds(geometry)

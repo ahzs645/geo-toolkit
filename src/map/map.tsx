@@ -45,6 +45,11 @@ type MapViewport = {
 
 type MapStyleOption = string | MapLibreGL.StyleSpecification
 
+/** The settled camera plus the visible west/south/east/north box. */
+type MapViewState = MapViewport & {
+  bounds: { west: number; south: number; east: number; north: number }
+}
+
 type MapProps = {
   children?: ReactNode
   /** Additional CSS classes for the map container */
@@ -58,6 +63,19 @@ type MapProps = {
     light?: MapStyleOption
     dark?: MapStyleOption
   }
+  /**
+   * Styles to switch to when the requested basemap fails or has not loaded
+   * within `styleTimeoutMs` — for offline or locked-down networks. A
+   * tile-free style such as `geojsonBasemapStyle` or a plain background works.
+   */
+  fallbackStyles?: {
+    light?: MapStyleOption
+    dark?: MapStyleOption
+  }
+  /** How long to wait for the requested style before using `fallbackStyles` (default: 8000 ms). */
+  styleTimeoutMs?: number
+  /** Called when the map switched to a fallback style. */
+  onStyleFallback?: () => void
   /** Map projection type. Use `{ type: "globe" }` for 3D globe view. */
   projection?: MapLibreGL.ProjectionSpecification
   /**
@@ -71,6 +89,12 @@ type MapProps = {
    * to enable controlled mode where the map viewport is driven by your state.
    */
   onViewportChange?: (viewport: MapViewport) => void
+  /**
+   * Called once the camera settles (after load and after every pan, zoom or
+   * resize) with the viewport and visible bounds. Debounce in the host when
+   * the work it triggers is expensive.
+   */
+  onMoveEnd?: (view: MapViewState) => void
   /**
    * Map controls. Omit for the standard set (see DEFAULT_MAP_CONTROLS); pass
    * your own `<MapControls>` to change them, or `null` for a bare map.
@@ -90,6 +114,14 @@ type MapProps = {
 
 type MapRef = MapLibreGL.Map
 
+function getViewState(map: MapLibreGL.Map): MapViewState {
+  const bounds = map.getBounds()
+  return {
+    ...getViewport(map),
+    bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() },
+  }
+}
+
 function getViewport(map: MapLibreGL.Map): MapViewport {
   const center = map.getCenter()
   return {
@@ -106,9 +138,13 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     className,
     theme: themeProp,
     styles,
+    fallbackStyles,
+    styleTimeoutMs = 8000,
+    onStyleFallback,
     projection,
     viewport,
     onViewportChange,
+    onMoveEnd,
     controls,
     loading = false,
     loader,
@@ -138,6 +174,12 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
 
   const onViewportChangeRef = useRef(onViewportChange)
   onViewportChangeRef.current = onViewportChange
+  const onMoveEndRef = useRef(onMoveEnd)
+  onMoveEndRef.current = onMoveEnd
+  const fallbackRef = useRef({ fallbackStyles, styleTimeoutMs, onStyleFallback, theme: resolvedTheme })
+  fallbackRef.current = { fallbackStyles, styleTimeoutMs, onStyleFallback, theme: resolvedTheme }
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const awaitingStyleRef = useRef(false)
 
   const mapStyles = useMemo(
     () => ({
@@ -156,6 +198,39 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
       styleTimeoutRef.current = null
     }
   }, [])
+
+  const clearFallbackTimer = useCallback(() => {
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current)
+      fallbackTimerRef.current = null
+    }
+  }, [])
+
+  // Swap in the fallback basemap once; layers re-attach on its style.load.
+  const applyFallbackStyle = useCallback(
+    (map: MapLibreGL.Map) => {
+      clearFallbackTimer()
+      if (!awaitingStyleRef.current) return
+      const { fallbackStyles: fallbacks, theme, onStyleFallback: notify } = fallbackRef.current
+      const fallback = theme === 'dark' ? (fallbacks?.dark ?? fallbacks?.light) : (fallbacks?.light ?? fallbacks?.dark)
+      if (!fallback) return
+      awaitingStyleRef.current = false
+      map.setStyle(fallback)
+      notify?.()
+    },
+    [clearFallbackTimer],
+  )
+
+  const armStyleFallback = useCallback(
+    (map: MapLibreGL.Map) => {
+      clearFallbackTimer()
+      const { fallbackStyles: fallbacks, styleTimeoutMs: timeout } = fallbackRef.current
+      if (!fallbacks?.light && !fallbacks?.dark) return
+      awaitingStyleRef.current = true
+      fallbackTimerRef.current = setTimeout(() => applyFallbackStyle(map), timeout)
+    },
+    [clearFallbackTimer, applyFallbackStyle],
+  )
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -180,6 +255,8 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     const unregisterInteractions = registerMapInteractions(map, interactionTarget)
 
     const styleLoadHandler = () => {
+      clearFallbackTimer()
+      awaitingStyleRef.current = false
       clearStyleTimeout()
       // Delay to ensure style is fully processed before allowing layer operations
       // This is a workaround to avoid race conditions with the style loading
@@ -190,7 +267,15 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
         }
       }, 150)
     }
-    const loadHandler = () => setIsLoaded(true)
+    const loadHandler = () => {
+      setIsLoaded(true)
+      onMoveEndRef.current?.(getViewState(map))
+    }
+    const handleMoveEnd = () => onMoveEndRef.current?.(getViewState(map))
+    // A style or sprite that cannot be fetched fails before style.load.
+    const handleError = () => {
+      if (awaitingStyleRef.current && !map.isStyleLoaded()) applyFallbackStyle(map)
+    }
     const handleMove = () => {
       if (internalUpdateRef.current) return
       onViewportChangeRef.current?.(getViewport(map))
@@ -216,6 +301,8 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     // is downloading. Only the new style's load event can restore child layers.
     map.on('style.load', styleLoadHandler)
     map.on('move', handleMove)
+    map.on('moveend', handleMoveEnd)
+    map.on('error', handleError)
     map.on('click', handleUserMapInteraction)
     map.on('movestart', handleUserMapInteraction)
     map.on('dragstart', handleUserMapInteraction)
@@ -223,13 +310,17 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     map.on('pitchstart', handleUserMapInteraction)
     map.on('zoomstart', handleUserMapInteraction)
     interactionTarget.addEventListener(MOBILE_MAP_FEATURE_CLICK_EVENT, handleFeatureClick)
+    armStyleFallback(map)
     setMapInstance(map)
 
     return () => {
       clearStyleTimeout()
+      clearFallbackTimer()
       map.off('load', loadHandler)
       map.off('style.load', styleLoadHandler)
       map.off('move', handleMove)
+      map.off('moveend', handleMoveEnd)
+      map.off('error', handleError)
       map.off('click', handleUserMapInteraction)
       map.off('movestart', handleUserMapInteraction)
       map.off('dragstart', handleUserMapInteraction)
@@ -268,10 +359,14 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
       frame = requestAnimationFrame(() => mapInstance.resize())
     })
     observer.observe(container)
+    // MapLibre does not emit moveend for a resize, but the visible bounds change.
+    const handleResize = () => onMoveEndRef.current?.(getViewState(mapInstance))
+    mapInstance.on('resize', handleResize)
 
     return () => {
       cancelAnimationFrame(frame)
       observer.disconnect()
+      mapInstance.off('resize', handleResize)
     }
   }, [mapInstance])
 
@@ -318,12 +413,15 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     setIsStyleLoaded(false)
 
     let cancelled = false
+    armStyleFallback(mapInstance)
     mapInstance.setStyle(newStyle, {
       diff: true,
       transformStyle: (previous, next) => {
         if (currentStyleRef.current !== newStyle) return previous ?? next
         // A structurally identical style diff emits no style.load. This runs
         // after the requested JSON arrives, including that no-op case.
+        clearFallbackTimer()
+        awaitingStyleRef.current = false
         queueMicrotask(() => {
           // Preserve style.load's projection setup when it already fired.
           if (cancelled || currentStyleRef.current !== newStyle || styleTimeoutRef.current) return
@@ -335,7 +433,7 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     return () => {
       cancelled = true
     }
-  }, [mapInstance, requestedStyle, clearStyleTimeout])
+  }, [mapInstance, requestedStyle, clearStyleTimeout, armStyleFallback, clearFallbackTimer])
 
   const isLoading = !isLoaded || (showStyleLoadingOverlay && !isStyleLoaded) || loading
 
@@ -403,4 +501,4 @@ export { MapControls, MapScaleBar, DEFAULT_MAP_CONTROLS } from './map-controls.j
 
 export { MapRoute, MapClusterLayer } from './map-routes.js'
 
-export type { MapRef, MapProps, MapViewport, MapStyleOption, Theme }
+export type { MapRef, MapProps, MapViewport, MapViewState, MapStyleOption, Theme }

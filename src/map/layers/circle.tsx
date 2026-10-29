@@ -4,7 +4,13 @@ import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_COLOR } from '../map-styles.js'
-import { type MapStyleExpression, type MapStyleValue, type MapFeatureModifiers } from './types.js'
+import { createClickPopup, featureClickEvent } from './feature-click.js'
+import {
+  type MapStyleExpression,
+  type MapStyleValue,
+  type MapFeatureClickHandler,
+  type MapFeatureHtml,
+} from './types.js'
 import type * as MapLibreGL from 'maplibre-gl'
 import * as MapLibreGLRuntime from 'maplibre-gl'
 
@@ -22,8 +28,11 @@ export type MapCircleLayerProps = {
   selectedId?: string | number | null
   selectionColor?: string
   visible?: boolean
-  onFeatureClick?: (id: string, event: MapFeatureModifiers, properties: Record<string, unknown>) => void
+  /** Receives the feature id, modifier keys with the clicked `lngLat`, and its properties. */
+  onFeatureClick?: MapFeatureClickHandler
   hoverHtml?: (properties: Record<string, unknown>) => string | null
+  /** Popup HTML opened at the clicked position. Escape any data you interpolate. */
+  clickHtml?: MapFeatureHtml
   /** Disable and dismiss hover cards while an external interaction is active. */
   hoverEnabled?: boolean
   filter?: MapStyleExpression | null
@@ -44,6 +53,7 @@ export function MapCircleLayer({
   visible = true,
   onFeatureClick,
   hoverHtml,
+  clickHtml,
   hoverEnabled = true,
   filter,
 }: MapCircleLayerProps) {
@@ -54,6 +64,7 @@ export function MapCircleLayer({
   const selectedLayerId = `circle-sel-${uid}`
   const onClickRef = useRef(onFeatureClick)
   const hoverHtmlRef = useRef(hoverHtml)
+  const clickHtmlRef = useRef(clickHtml)
   const idPropRef = useRef(idProperty)
   const filterRef = useRef(filter)
   const tooltipRef = useRef<MapLibreGLRuntime.Popup | null>(null)
@@ -66,6 +77,7 @@ export function MapCircleLayer({
 
   onClickRef.current = onFeatureClick
   hoverHtmlRef.current = hoverHtml
+  clickHtmlRef.current = clickHtml
   idPropRef.current = idProperty
   filterRef.current = filter
 
@@ -99,29 +111,20 @@ export function MapCircleLayer({
     })
 
     const removeTooltip = () => tooltipRef.current?.remove()
+    const clickPopup = createClickPopup(map, () => clickHtmlRef.current)
     const handleClick = (event: unknown) => {
-      const e = event as {
-        features?: Array<{ properties?: Record<string, unknown> }>
-        originalEvent?: Event & { shiftKey?: boolean; altKey?: boolean; ctrlKey?: boolean; metaKey?: boolean }
-        preventDefault?: () => void
-      }
+      const e = event as Parameters<typeof featureClickEvent>[0] & { preventDefault?: () => void }
       const properties = e.features?.[0]?.properties
+      if (clickHtmlRef.current) {
+        removeTooltip()
+        clickPopup.open(e)
+      }
       const id = properties?.[idPropRef.current]
       if (id == null) return
       e.preventDefault?.()
       e.originalEvent?.preventDefault()
       dispatchMobileMapFeatureClick(map)
-      const originalEvent = e.originalEvent
-      onClickRef.current?.(
-        String(id),
-        {
-          shiftKey: originalEvent?.shiftKey === true,
-          altKey: originalEvent?.altKey === true,
-          ctrlKey: originalEvent?.ctrlKey === true,
-          metaKey: originalEvent?.metaKey === true,
-        },
-        properties ?? {},
-      )
+      onClickRef.current?.(String(id), featureClickEvent(e), properties ?? {})
     }
     const handleMouseEnter = () => {
       if (!hoverEnabledRef.current || map.isMoving()) return
@@ -177,6 +180,7 @@ export function MapCircleLayer({
         map.off('movestart', removeTooltip)
         detachPointerDismiss()
         removeTooltip()
+        clickPopup.dispose()
         tooltipRef.current = null
         if (!map.getStyle()) return
         if (map.getLayer(selectedLayerId)) map.removeLayer(selectedLayerId)
@@ -192,7 +196,8 @@ export function MapCircleLayer({
   useEffect(() => {
     if (!isLoaded || !map) return
     updateGeoJsonSource(map, sourceId, data)
-  }, [data, isLoaded, map, sourceId])
+    // A layerOrder change rebuilds the source, which then needs the data again.
+  }, [data, isLoaded, map, sourceId, layerOrder])
 
   useEffect(() => {
     if (!isLoaded || !map) return

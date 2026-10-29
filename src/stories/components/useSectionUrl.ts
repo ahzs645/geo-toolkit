@@ -1,7 +1,8 @@
-import { useEffect, type RefObject } from 'react'
+import { useEffect } from 'react'
+import type { DomRef } from '../domRef.js'
 
 /** Opt-in reading links. Replace history entries so scrolling never fills Back. */
-export function useSectionUrl(scrollRoot: RefObject<HTMLDivElement>, enabled: boolean, chapterIds: string[]) {
+export function useSectionUrl(scrollRoot: DomRef<HTMLDivElement>, enabled: boolean, chapterIds: string[]) {
   const chapterKey = JSON.stringify(chapterIds)
   useEffect(() => {
     const root = scrollRoot.current

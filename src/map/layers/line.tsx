@@ -1,22 +1,35 @@
 import { useEffect, useId, useRef } from 'react'
 import { useMap, dispatchMobileMapFeatureClick } from '../map-context.js'
+import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_COLOR } from '../map-styles.js'
-import { type MapStyleValue } from './types.js'
+import { createClickPopup, featureClickEvent } from './feature-click.js'
+import {
+  type MapFeatureClickHandler,
+  type MapFeatureHtml,
+  type MapStyleExpression,
+  type MapStyleValue,
+} from './types.js'
 import type * as MapLibreGL from 'maplibre-gl'
 import * as MapLibreGLRuntime from 'maplibre-gl'
 
 export type MapLineLayerProps = {
   /** Disable feature hit testing for lines used only as visual context. */
   interactive?: boolean
-  /** GeoJSON FeatureCollection data */
-  data: GeoJSON.FeatureCollection
+  /** GeoJSON FeatureCollection data or a URL MapLibre can fetch */
+  data: GeoJSON.FeatureCollection | string
   /** Stable map-local shared source key. */
   sourceKey?: string
   /** Optional GeoJSON tiling simplification tolerance; 0 preserves source vertices. */
   sourceTolerance?: number
   hoverHtml?: (properties: Record<string, unknown>) => string | null
+  /** Popup HTML opened at the clicked position. Escape any data you interpolate. */
+  clickHtml?: MapFeatureHtml
+  /** Draw-order slot shared with the other vector layers; higher draws on top. */
+  layerOrder?: number
+  /** Optional MapLibre filter, e.g. to draw only the line features of a mixed collection. */
+  filter?: MapStyleExpression | null
   /** Line color — static string or MapLibre expression */
   color: MapStyleValue<string>
   /** Line width (default: 2.2) — number or MapLibre expression (e.g. zoom interpolation) */
@@ -41,8 +54,8 @@ export type MapLineLayerProps = {
   selectionWidth?: number
   /** Whether the layer is visible (default: true) */
   visible?: boolean
-  /** Callback when a feature is clicked */
-  onFeatureClick?: (id: string) => void
+  /** Callback when a feature is clicked — receives its ID, modifier keys with the clicked `lngLat`, and properties */
+  onFeatureClick?: MapFeatureClickHandler
 }
 
 export function MapLineLayer({
@@ -51,6 +64,9 @@ export function MapLineLayer({
   sourceKey,
   sourceTolerance,
   hoverHtml,
+  clickHtml,
+  layerOrder,
+  filter,
   color,
   width = 2.2,
   offset = 0,
@@ -77,6 +93,10 @@ export function MapLineLayer({
   idPropRef.current = idProperty
   const hoverHtmlRef = useRef(hoverHtml)
   hoverHtmlRef.current = hoverHtml
+  const clickHtmlRef = useRef(clickHtml)
+  clickHtmlRef.current = clickHtml
+  const filterRef = useRef(filter)
+  filterRef.current = filter
 
   const resolvedSelectionWidth =
     selectionWidth ?? (typeof width === 'number' ? Math.max(width + 2, width * 1.8) : width)
@@ -91,6 +111,7 @@ export function MapLineLayer({
       id: layerId,
       type: 'line',
       source: sourceId,
+      ...(filterRef.current && { filter: filterRef.current as never }),
       layout: {
         'line-join': lineJoin,
         'line-cap': lineCap,
@@ -122,18 +143,20 @@ export function MapLineLayer({
       },
     })
 
+    const clickPopup = createClickPopup(map, () => clickHtmlRef.current)
     const handleClick = (event: unknown) => {
-      const e = event as {
-        features?: Array<{ properties?: Record<string, unknown> }>
-        originalEvent?: Event
-        preventDefault?: () => void
+      const e = event as Parameters<typeof featureClickEvent>[0] & { preventDefault?: () => void }
+      const properties = e.features?.[0]?.properties
+      if (clickHtmlRef.current) {
+        popup?.remove()
+        clickPopup.open(e)
       }
-      const id = e.features?.[0]?.properties?.[idPropRef.current]
+      const id = properties?.[idPropRef.current]
       if (id != null) {
         e.preventDefault?.()
         e.originalEvent?.preventDefault()
         dispatchMobileMapFeatureClick(map)
-        onClickRef.current?.(String(id))
+        onClickRef.current?.(String(id), featureClickEvent(e), properties ?? {})
       }
     }
 
@@ -171,7 +194,10 @@ export function MapLineLayer({
       if (popup) map.on('mousemove', layerId, handleHover)
     }
 
+    const releaseOrder = registerMapLayerOrder(map, [layerId, selectedLayerId], layerOrder)
+
     return () => {
+      releaseOrder()
       try {
         map.off('click', layerId, handleClick as never)
         map.off('mouseenter', layerId, handleMouseEnter)
@@ -179,6 +205,7 @@ export function MapLineLayer({
         if (popup) map.off('mousemove', layerId, handleHover)
         detachDismiss?.()
         popup?.remove()
+        clickPopup.dispose()
 
         if (!map.getStyle()) return
         if (map.getLayer(selectedLayerId)) map.removeLayer(selectedLayerId)
@@ -189,13 +216,28 @@ export function MapLineLayer({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, map, interactive])
+  }, [isLoaded, map, interactive, sourceId, layerOrder])
 
   // Update source data
   useEffect(() => {
     if (!isLoaded || !map) return
     updateGeoJsonSource(map, sourceId, data)
-  }, [data, isLoaded, map, sourceId])
+    // A layerOrder change rebuilds the source, which then needs the data again.
+  }, [data, isLoaded, map, sourceId, layerOrder])
+
+  // Update the optional filter without rebuilding the source.
+  useEffect(() => {
+    if (!isLoaded || !map) return
+    if (map.getLayer(layerId)) map.setFilter(layerId, filter as never)
+  }, [filter, isLoaded, layerId, map])
+
+  // Update paint when the caller restyles the line.
+  useEffect(() => {
+    if (!isLoaded || !map || !map.getLayer(layerId)) return
+    map.setPaintProperty(layerId, 'line-color', color as never)
+    map.setPaintProperty(layerId, 'line-width', width as never)
+    map.setPaintProperty(layerId, 'line-opacity', opacity as never)
+  }, [color, isLoaded, layerId, map, opacity, width])
 
   // Update visibility
   useEffect(() => {

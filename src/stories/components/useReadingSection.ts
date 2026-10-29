@@ -1,8 +1,9 @@
 import { useEffect, useState, type RefObject } from 'react'
+import type { DomRef } from '../domRef.js'
 import { useWorkspace } from '../../workspace/workspace-context.js'
 
 export function useReadingSection(
-  scrollRoot: RefObject<HTMLDivElement>,
+  scrollRoot: DomRef<HTMLDivElement>,
   refs: RefObject<Array<HTMLElement | null>>,
   count: number,
 ) {

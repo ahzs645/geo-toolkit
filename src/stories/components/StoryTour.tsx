@@ -1,4 +1,5 @@
-import { useRef, type ReactNode, type RefObject } from 'react'
+import { useRef, type ReactNode } from 'react'
+import type { DomRef } from '../domRef.js'
 import { ExpandableMedia } from './StoryMedia.js'
 import { useReadingSection } from './useReadingSection.js'
 
@@ -16,7 +17,7 @@ export function StoryTour({
 }: {
   id: string
   stops: StoryTourStop[]
-  scrollRoot: RefObject<HTMLDivElement>
+  scrollRoot: DomRef<HTMLDivElement>
   renderMap: (active: number, select: (index: number) => void) => ReactNode
 }) {
   const refs = useRef<Array<HTMLElement | null>>([])

@@ -1,5 +1,6 @@
 import { useEffect, useId } from 'react'
 import { useMap } from '../map-context.js'
+import { registerMapLayerOrder } from '../map-layer-order.js'
 
 export type MapRasterLayerProps = {
   /** Array of tile URL templates — use {z}/{x}/{y} placeholders */
@@ -20,6 +21,8 @@ export type MapRasterLayerProps = {
   attribution?: string
   /** Insert this layer before another layer ID (default: added on top) */
   beforeId?: string
+  /** Draw-order slot shared with the vector layers; higher draws on top. Overrides beforeId. */
+  layerOrder?: number
 }
 
 export function MapRasterLayer({
@@ -32,6 +35,7 @@ export function MapRasterLayer({
   resampling = 'linear',
   attribution,
   beforeId,
+  layerOrder,
 }: MapRasterLayerProps) {
   const { map, isLoaded } = useMap()
   const uid = useId().replace(/:/g, '')
@@ -63,8 +67,10 @@ export function MapRasterLayer({
       },
       beforeId,
     )
+    const releaseOrder = registerMapLayerOrder(map, [layerId], layerOrder)
 
     return () => {
+      releaseOrder()
       try {
         if (map.getLayer(layerId)) map.removeLayer(layerId)
         if (map.getSource(sourceId)) map.removeSource(sourceId)
@@ -73,7 +79,7 @@ export function MapRasterLayer({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, map])
+  }, [isLoaded, map, layerOrder])
 
   // Update opacity
   useEffect(() => {

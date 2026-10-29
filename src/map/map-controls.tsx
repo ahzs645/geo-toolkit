@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Minus, Plus, Locate, Maximize, Loader2 } from 'lucide-react'
+import * as MapLibreGL from 'maplibre-gl'
+import { Minus, Plus, Locate, LocateFixed, Maximize, Loader2 } from 'lucide-react'
 
 import { cn } from '../utils.js'
 import { MAP_OVERLAY_Z } from '../ui/map-overlay.js'
@@ -23,8 +24,13 @@ type MapControlsProps = {
   showFullscreen?: boolean
   /** Additional CSS classes for the controls container */
   className?: string
-  /** Callback with user coordinates when located */
+  /** Callback with user coordinates when located (on every position update while tracking) */
   onLocate?: (coords: { longitude: number; latitude: number }) => void
+  /**
+   * Make the locate button a toggle that keeps following the user's position
+   * and marks it on the map, instead of flying there once (default: false).
+   */
+  trackLocation?: boolean
 }
 
 const positionClasses = {
@@ -65,16 +71,19 @@ function ControlButton({
   label,
   children,
   disabled = false,
+  pressed,
 }: {
   onClick: () => void
   label: string
   children: React.ReactNode
   disabled?: boolean
+  pressed?: boolean
 }) {
   return (
     <button
       onClick={onClick}
       aria-label={label}
+      aria-pressed={pressed}
       type="button"
       className={cn(
         'flex size-11 items-center justify-center transition-colors hover:bg-accent dark:hover:bg-accent/40 workspace-desktop:size-8',
@@ -96,9 +105,48 @@ function MapControls({
   showFullscreen = false,
   className,
   onLocate,
+  trackLocation = false,
 }: MapControlsProps) {
   const { map, isLoaded } = useMap()
   const [waitingForLocation, setWaitingForLocation] = useState(false)
+  const [tracking, setTracking] = useState(false)
+  const onLocateRef = useRef(onLocate)
+  useEffect(() => {
+    onLocateRef.current = onLocate
+  })
+
+  // Follow the position while tracking: fly on the first fix, then only move the dot.
+  useEffect(() => {
+    if (!tracking || !map || !('geolocation' in navigator)) return
+    const dot = document.createElement('div')
+    dot.setAttribute('aria-label', 'Your location')
+    dot.style.cssText =
+      'width:14px;height:14px;border-radius:50%;background:#2563eb;border:2px solid #fff;box-shadow:0 0 0 4px rgba(37,99,235,0.25)'
+    const marker = new MapLibreGL.Marker({ element: dot })
+    let first = true
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const coords = { longitude: pos.coords.longitude, latitude: pos.coords.latitude }
+        marker.setLngLat([coords.longitude, coords.latitude]).addTo(map)
+        if (first) {
+          first = false
+          setWaitingForLocation(false)
+          map.flyTo({ center: [coords.longitude, coords.latitude], zoom: Math.max(map.getZoom(), 14), duration: 1500 })
+        }
+        onLocateRef.current?.(coords)
+      },
+      () => {
+        setWaitingForLocation(false)
+        setTracking(false)
+      },
+      { enableHighAccuracy: true },
+    )
+    return () => {
+      navigator.geolocation.clearWatch(watchId)
+      marker.remove()
+      setWaitingForLocation(false)
+    }
+  }, [map, tracking])
 
   const handleZoomIn = useCallback(() => {
     map?.zoomTo(map.getZoom() + 1, { duration: 300 })
@@ -113,6 +161,11 @@ function MapControls({
   }, [map])
 
   const handleLocate = useCallback(() => {
+    if (trackLocation) {
+      setTracking(!tracking)
+      setWaitingForLocation(!tracking)
+      return
+    }
     setWaitingForLocation(true)
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -134,7 +187,7 @@ function MapControls({
         },
       )
     }
-  }, [map, onLocate])
+  }, [map, onLocate, trackLocation, tracking])
 
   const handleFullscreen = useCallback(() => {
     const container = map?.getContainer()
@@ -180,8 +233,21 @@ function MapControls({
       )}
       {showLocate && (
         <ControlGroup>
-          <ControlButton onClick={handleLocate} label="Find my location" disabled={waitingForLocation}>
-            {waitingForLocation ? <Loader2 className="size-4 animate-spin" /> : <Locate className="size-4" />}
+          <ControlButton
+            onClick={handleLocate}
+            label={
+              trackLocation ? (tracking ? 'Stop following my location' : 'Follow my location') : 'Find my location'
+            }
+            disabled={waitingForLocation && !trackLocation}
+            pressed={trackLocation ? tracking : undefined}
+          >
+            {waitingForLocation ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : tracking ? (
+              <LocateFixed className="size-4 text-sky-500" />
+            ) : (
+              <Locate className="size-4" />
+            )}
           </ControlButton>
         </ControlGroup>
       )}

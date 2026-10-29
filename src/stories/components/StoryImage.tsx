@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ImgHTMLAttributes, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ImgHTMLAttributes } from 'react'
+import type { DomRef } from '../domRef.js'
 
 /** Keep the last decoded image on screen until its replacement can paint. */
 export function StoryImage({ src, alt, ...props }: ImgHTMLAttributes<HTMLImageElement>) {
@@ -49,8 +50,8 @@ export function StoryImage({ src, alt, ...props }: ImgHTMLAttributes<HTMLImageEl
 
 /** Warm only adjacent image media in nearby sidecars, never all story maps. */
 export function useAdjacentImages(
-  host: RefObject<HTMLElement>,
-  scrollRoot: RefObject<HTMLDivElement>,
+  host: DomRef<HTMLElement>,
+  scrollRoot: DomRef<HTMLDivElement>,
   urls: Array<string | undefined>,
   active: number,
   preload?: () => void,

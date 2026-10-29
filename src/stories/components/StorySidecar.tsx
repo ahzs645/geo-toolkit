@@ -1,4 +1,5 @@
-import { useRef, type ReactNode, type RefObject } from 'react'
+import { useRef, type ReactNode } from 'react'
+import type { DomRef } from '../domRef.js'
 import { ExpandableMedia } from './StoryMedia.js'
 import { useReadingSection } from './useReadingSection.js'
 import { useAdjacentImages } from './StoryImage.js'
@@ -21,7 +22,7 @@ export function StorySidecar({
 }: {
   id: string
   slides: StorySidecarSlide[]
-  scrollRoot: RefObject<HTMLDivElement>
+  scrollRoot: DomRef<HTMLDivElement>
   variant?: 'docked' | 'floating'
   side?: 'left' | 'right' | 'center'
   width?: 'medium' | 'large'

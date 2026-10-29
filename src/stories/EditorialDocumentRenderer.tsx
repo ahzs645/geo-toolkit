@@ -1,5 +1,6 @@
 import { WorkspaceProvider, useWorkspace } from '../workspace/workspace-context.js'
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type RefObject, type ReactNode } from 'react'
+import type { DomRef } from './domRef.js'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { RadialHierarchy } from './diagrams/RadialHierarchy.js'
 import { CategoryDotDiagram } from './diagrams/CategoryDotDiagram.js'
 import {
@@ -45,7 +46,7 @@ export interface EditorialComparisonRenderProps {
   onSelect: (id: string | null) => void
 }
 export interface EditorialShellRenderProps {
-  scrollRoot: RefObject<HTMLDivElement>
+  scrollRoot: DomRef<HTMLDivElement>
   chapters: { id: string; label: string }[]
   cover?: ReactNode
   children: ReactNode
@@ -58,7 +59,7 @@ interface Runtime {
   select: (id: string | null) => void
   overrides: Record<string, string>
   action: (id: string) => void
-  root: RefObject<HTMLDivElement>
+  root: DomRef<HTMLDivElement>
   cameras: Map<string, { center: [number, number]; zoom: number; bearing: number; pitch: number }>
 }
 const Context = createContext<Runtime | null>(null)

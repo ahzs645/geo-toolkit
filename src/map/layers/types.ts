@@ -11,7 +11,13 @@ export interface MapFeatureModifiers {
   ctrlKey: boolean
   metaKey: boolean
 }
+/** Modifier keys plus the clicked position, `[longitude, latitude]` (null for synthetic events). */
+export interface MapFeatureClickEvent extends MapFeatureModifiers {
+  lngLat: [number, number] | null
+}
 export type MapFeatureProperties = Record<string, unknown>
-export type MapFeatureClickHandler = (id: string, event: MapFeatureModifiers, properties: MapFeatureProperties) => void
+export type MapFeatureClickHandler = (id: string, event: MapFeatureClickEvent, properties: MapFeatureProperties) => void
+/** Popup HTML for a clicked feature; return null to open nothing. Escape any data you interpolate. */
+export type MapFeatureHtml = (properties: MapFeatureProperties) => string | null
 
 export const EMPTY_SELECTED_IDS: readonly MapFeatureId[] = []

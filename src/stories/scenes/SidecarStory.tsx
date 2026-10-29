@@ -1,12 +1,5 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type MutableRefObject,
-  type ReactNode,
-  type RefObject,
-} from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react'
+import type { DomRef } from '../domRef.js'
 import { ArrowDown, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'
 import { Button } from '../../ui/button.js'
 import type { ProjectSceneDef, ProjectStoryOptionsDef } from '../../projects/storyTypes.js'
@@ -25,7 +18,7 @@ export interface SidecarStoryProps {
   back?: ReactNode
   onSelectScene: (index: number) => void
   onStepScene: (direction: number) => void
-  scrollRef: RefObject<HTMLDivElement>
+  scrollRef: DomRef<HTMLDivElement>
   cardRefs: MutableRefObject<Array<HTMLElement | null>>
   exploringMap: boolean
   onExploreMap: (exploring: boolean) => void

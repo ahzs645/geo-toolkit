@@ -5,12 +5,14 @@ import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '
 import { syncFeatureState, type MapFeatureStateById } from '../map-feature-state.js'
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_COLOR, SELECTION_WIDTH, BORDER_COLOR } from '../map-styles.js'
+import { createClickPopup, featureClickEvent } from './feature-click.js'
 import {
   EMPTY_SELECTED_IDS,
   type MapStyleExpression,
   type MapStyleValue,
   type MapFeatureId,
-  type MapFeatureModifiers,
+  type MapFeatureClickHandler,
+  type MapFeatureHtml,
 } from './types.js'
 import type * as MapLibreGL from 'maplibre-gl'
 import * as MapLibreGLRuntime from 'maplibre-gl'
@@ -58,10 +60,12 @@ export type MapFillLayerProps = {
    * fades back in — instead of the instant on/off pop.
    */
   fadeMs?: number
-  /** Callback when a feature is clicked — receives its ID, modifier keys, and properties */
-  onFeatureClick?: (id: string, event: MapFeatureModifiers, properties: Record<string, unknown>) => void
+  /** Callback when a feature is clicked — receives its ID, modifier keys with the clicked `lngLat`, and properties */
+  onFeatureClick?: MapFeatureClickHandler
   /** Optional HTML tooltip for hoverable feature properties. Return null to hide. */
   hoverHtml?: (properties: Record<string, unknown>) => string | null
+  /** Popup HTML opened at the clicked position. Escape any data you interpolate. */
+  clickHtml?: MapFeatureHtml
   /**
    * Fill opacity applied to the feature under the pointer. Off by default;
    * setting it enables MapLibre feature-state hover highlighting, which needs
@@ -101,6 +105,7 @@ export function MapFillLayer({
   fadeMs,
   onFeatureClick,
   hoverHtml,
+  clickHtml,
   hoverFillOpacity,
   filter,
   featureState,
@@ -116,6 +121,8 @@ export function MapFillLayer({
   onClickRef.current = onFeatureClick
   const hoverHtmlRef = useRef(hoverHtml)
   hoverHtmlRef.current = hoverHtml
+  const clickHtmlRef = useRef(clickHtml)
+  clickHtmlRef.current = clickHtml
   const idPropRef = useRef(idProperty)
   idPropRef.current = idProperty
   const filterRef = useRef(filter)
@@ -196,34 +203,20 @@ export function MapFillLayer({
       })
     }
 
+    const clickPopup = createClickPopup(map, () => clickHtmlRef.current)
     const handleClick = (event: unknown) => {
-      const e = event as {
-        features?: Array<{ properties?: Record<string, unknown> }>
-        originalEvent?: Event & {
-          shiftKey?: boolean
-          altKey?: boolean
-          ctrlKey?: boolean
-          metaKey?: boolean
-        }
-        preventDefault?: () => void
-      }
+      const e = event as Parameters<typeof featureClickEvent>[0] & { preventDefault?: () => void }
       const properties = e.features?.[0]?.properties
+      if (clickHtmlRef.current) {
+        tooltipRef.current?.remove()
+        clickPopup.open(e)
+      }
       const id = properties?.[idPropRef.current]
       if (id != null) {
         e.preventDefault?.()
         e.originalEvent?.preventDefault()
         dispatchMobileMapFeatureClick(map)
-        const originalEvent = e.originalEvent
-        onClickRef.current?.(
-          String(id),
-          {
-            shiftKey: originalEvent?.shiftKey === true,
-            altKey: originalEvent?.altKey === true,
-            ctrlKey: originalEvent?.ctrlKey === true,
-            metaKey: originalEvent?.metaKey === true,
-          },
-          properties ?? {},
-        )
+        onClickRef.current?.(String(id), featureClickEvent(e), properties ?? {})
       }
     }
 
@@ -320,6 +313,7 @@ export function MapFillLayer({
           doubleClickZoomWasEnabledRef.current = false
         }
         removeTooltip()
+        clickPopup.dispose()
         tooltipRef.current = null
 
         if (!map.getStyle()) return
@@ -338,7 +332,8 @@ export function MapFillLayer({
   useEffect(() => {
     if (!isLoaded || !map) return
     updateGeoJsonSource(map, sourceId, data)
-  }, [data, isLoaded, map, sourceId])
+    // A layerOrder change rebuilds the source, which then needs the data again.
+  }, [data, isLoaded, map, sourceId, layerOrder])
 
   // Update per-feature values without re-sending the shapes. Runs after the
   // mount effect, which clears the record when the source is rebuilt.
