@@ -21,11 +21,11 @@ not a promise that every historical module is stable.
 | `/visualizations/react` | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, `DonutRingMap`, canvas points and typed series/axis contracts | React, React DOM |
 | `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                  | None                                                           |
 | `/grids/map-raster-grid`             | `createRasterGridLayer`, `RasterGridPick`                                                                                                            | `@deck.gl/core`, `@deck.gl/geo-layers`, `@deck.gl/layers`      |
-| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), `captureMapImage`, offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants               | React, React DOM, MapLibre                                     |
+| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), settled viewport observation and screen-point clustering, `captureMapImage`, offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants               | React, React DOM, MapLibre                                     |
 | `/map/persistent-map`                | `PersistentMapProvider`, `PersistentMapHost`, `SharedMap`, `usePersistentMap`, `useMapBasemap`                                                       | React, React DOM, MapLibre                                     |
 | `/map/map-deck`                      | Shared deck.gl overlay integration                                                                                                                   | React, React DOM, MapLibre, `@deck.gl/core`, `@deck.gl/mapbox` |
 | `/workspace`                         | `WorkspaceProvider`, `MapSectionLayout`, responsive media hooks and `requestMapSearch`                                                               | React, React DOM                                               |
-| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `PlaybackControls`; `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                    | React, React DOM                                               |
+| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `PlaybackControls`; form and numeric-range fields; clipboard controls/state; `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                    | React, React DOM                                               |
 | `/projects`                          | Scene/layer types, codecs, repositories and JSON import/export/share ports                                                                           | None                                                           |
 | `/export`                            | `toCsv`, `csvRows`, `csvCell`, `downloadBlob`, `downloadText`; `CsvColumn`, `CsvOptions`                                                             | None; downloads need a browser DOM                             |
 | `/format`                            | `formatMeasure`, `formatNumber`, `formatPercent`, currency/date/byte/length/area formatters                                                          | None                                                           |
@@ -681,6 +681,46 @@ the user's position with a marker.
 `PlaybackControls` steps a host-owned frame index with play/pause,
 previous/next and a scrubber, for time-lapse maps.
 
+### Settled viewport observation
+
+`/map` exports `MapViewportSnapshot`, `readMapViewport`, `observeMapViewport`,
+`useObserveMapViewport` and `useMapViewport`. A snapshot contains
+`bounds: [west, south, east, north]`, `zoom`, and canvas `width` / `height`.
+
+```ts
+const unsubscribe = observeMapViewport(map, ({ bounds, zoom }) => {
+  updateVisibleArea(bounds, zoom)
+}, { events: ['moveend', 'resize'], initial: 'loaded' })
+// On teardown:
+unsubscribe()
+```
+
+`events` defaults to `['load', 'moveend', 'zoomend', 'resize']`; duplicate event
+names are subscribed once. `initial` is `'loaded'` by default, or `'always'` /
+`'none'` when the host needs a different initial-publication policy.
+`useObserveMapViewport(map, callback, options)` keeps callback changes separate
+from event subscriptions. `useMapViewport(map, options)` returns the latest
+snapshot or `null` before one is published for that map. Both hooks accept
+`enabled` and `refreshKey`; changing the key republishes according to `initial`
+even without a map gesture. These are settled-event helpers, not per-frame
+camera or drawing controllers.
+
+### Screen-point clustering
+
+`clusterScreenPoints<T>(items, options)` clusters HTML-marker records in projected
+screen pixels. Required options are `getId`, `getCoordinates` and `radius`.
+`project` supplies the screen projection and optional `viewport: { width, height }`
+plus `padding` rejects offscreen points. Optional `priority` sorts stably in
+ascending order; each item joins the first cluster within the inclusive radius.
+Cluster positions are incremental means. Results retain the original records as
+`{ id, longitude, latitude, items }`; `idPrefix` defaults to `'cluster'`.
+Without `project`, each input is a singleton in its original order.
+
+`useScreenPointClusters(map, items, options)` supplies MapLibre projection and
+settled viewport observation. A null map uses singleton fallback. The host owns
+marker rendering, priority meaning, and cluster-click behavior. This API does not
+replace the map-source clustering used by `MapClusterLayer`.
+
 ## Offline maps and site framing
 
 `geojsonBasemapStyle({ land, water, landColor, borderColor, graticule })`
@@ -692,6 +732,88 @@ glyphs, label places with markers rather than symbol layers.
 `pointBounds(points, { trim, pad, minSpan })` frames finite `[lon, lat]` points;
 `trim` drops a quantile from each end so a few overseas sites do not shrink the
 rest. `fitMapToPoints(map, points, options)` applies it with `fitBounds`.
+
+## Form fields and numeric ranges
+
+`/ui` exports `FormField`, `NativeSelect`, `SelectField`, `NumberField`,
+`NullableNumberField`, `FORM_INPUT_CLASS` and their props.
+
+- `FormField` takes a `label`, children, optional `hint` / `description` / `error`,
+  and label/content/wrapper classes. It associates direct native inputs and
+  `NativeSelect` with their label and help text, preserving existing
+  `aria-describedby` IDs. Compound controls can supply `htmlFor` and
+  `descriptionId`. `group` names multiple controls; `hintAction` sits outside
+  the label and `hideLabel` retains an accessible label.
+- `NativeSelect` forwards native `SelectHTMLAttributes` and its ref. It supports
+  multiple selection, option groups, native keyboard operation and all native
+  change/focus events. If `className` is supplied it is used unchanged; only an
+  omitted class gets `FORM_INPUT_CLASS`. `SelectField` combines it with a field
+  wrapper: `className` styles the select and `fieldClassName` styles the wrapper.
+- `NumberField` takes a finite numeric `value` / `onValueChange`;
+  `NullableNumberField` also accepts/emits `null`. Both retain editing drafts,
+  expose `min` / `max` / `step`, units (`unit` or `suffix`), help/error text and
+  `onCommit`. `updateOn` defaults to `'change'`, with `'commit'` for blur/Enter
+  updates. `clampOn` defaults to `'commit'`; `'change'` clamps immediately and
+  `'never'` leaves typed bounds advisory. Required blank input restores by
+  default; `blankValue="zero"` is explicit. Nullable blank input is `null`;
+  `invalidValue="null"` also clears invalid nullable input when requested.
+- Numeric source precision is retained by default. An untouched blur emits no
+  change. Optional `precision` controls edit-display and keyboard-step rounding;
+  a caller can request `precision={6}` for an existing dense editor. Typed
+  measurements are not globally snapped to `step`. `stepMode="native"` is the
+  default and retains browser arrow-key alignment to the native step grid.
+  `stepMode="increment"` uses `stepNumberFieldValue` (default rounding precision
+  6) to step a raw draft and then bound the result, preserving custom road
+  editors. `resolveNumberFieldInput` and
+  `stepNumberFieldValue` are also exported as pure helpers with their policy and
+  result types.
+
+```tsx
+import { NumberField, NullableNumberField, SelectField } from '@pgmaps/geo-toolkit/ui'
+
+<NumberField label="Distance" value={distance} onValueChange={setDistance}
+  min={0} max={10000} step={0.5} unit="m" updateOn="commit" />
+<NullableNumberField label="Observed height" value={height} onValueChange={setHeight}
+  min={0} unit="m" placeholder="Not measured" />
+<SelectField label="Basemap" value={basemap} onChange={event => setBasemap(event.target.value)}>
+  <option value="vector">Vector</option>
+  <option value="satellite">Satellite</option>
+</SelectField>
+```
+
+`NumericRangeField` shares a controlled range's label, value/unit display and
+optional description. It takes numeric `value` / `onChange`, `min` / `max` / `step`
+(defaults 0 / 100 / 1), optional formatted `display`, `hideValue`, and
+`layout="split" | "inline"`. Native input props and refs are forwarded, with
+label/help/value-text associations. `renderControl(controlProps)` adapts a custom
+slider while retaining the same numeric, disabled and accessibility contract.
+The host decides when a change triggers expensive work. Its props and
+`NumericRangeControlProps` are exported from `/ui`.
+
+## Clipboard feedback and transports
+
+`/ui` exports `useClipboardText`, `CopyButton`, `createClipboardController`,
+`writeClipboardText`, `copyTextWithSelection`, and their contracts.
+
+`useClipboardText(options)` returns `{ status, error, text, copy, reset }`.
+`status` is `'idle' | 'pending' | 'copied' | 'failed'`; `copy` accepts a string
+or an async string producer and returns `Promise<boolean>`. Feedback resets after
+`resetAfterMs` (default 1800) or `failureResetAfterMs` (default 2400); zero retains
+feedback until reset. Each instance is independent. Unmount/reset clears timers
+and supersedes pending producers/writes, and an older attempt cannot overwrite a
+newer snapshot. `createClipboardController` exposes the same state via
+`getSnapshot` / `subscribe` for a host without React.
+
+The default transport uses `navigator.clipboard.writeText`; absent support is a
+failure. `writeText` can inject a host transport. Optional `fallback(text, error)`
+can copy using a host mechanism; `false` or a throw indicates continued failure.
+`copyTextWithSelection` is an opt-in browser fallback that restores the previous
+focus and selection. No fallback is silently enabled.
+
+`CopyButton` takes `text`, optional state labels or `renderLabel(snapshot)`, and
+`options`. It disables itself while pending, reports busy/live state, and calls
+`onResult({ copied, text })` for host-owned manual-copy UI. Preserve URL
+serialization, validation and domain-specific error messages in the host.
 
 ## Numeric scrub field
 

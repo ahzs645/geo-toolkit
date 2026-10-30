@@ -1,4 +1,5 @@
 import { ChartExperience } from './ChartExperience'
+import { ControlExperience } from './ControlExperience'
 import { StrictMode, useCallback, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Map, MapFillLayer, MapPieClusterLayer } from '@pgmaps/geo-toolkit/map'
@@ -397,5 +398,13 @@ function App() {
 }
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>{window.location.pathname === '/charts' ? <ChartExperience /> : <App />}</StrictMode>,
+  <StrictMode>
+    {window.location.pathname === '/controls' ? (
+      <ControlExperience />
+    ) : window.location.pathname === '/charts' ? (
+      <ChartExperience />
+    ) : (
+      <App />
+    )}
+  </StrictMode>,
 )
