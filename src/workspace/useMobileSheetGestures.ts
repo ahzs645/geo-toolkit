@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { getSnapPositions, resolveSnap, stateFromTranslate, type MobileSheetState } from './sheet-math.js'
+import { readTranslateY } from '../ui/motion.js'
 
 interface SheetGestureOptions {
   sheetRef: RefObject<HTMLDivElement | null>
@@ -82,7 +83,7 @@ export function useMobileSheetGestures({
 
       startY.current = t.clientY
       startX.current = t.clientX
-      startTranslate.current = translateRef.current
+      startTranslate.current = readTranslateY(sheet!)
       prevTouchY.current = t.clientY
       prevTouchTime.current = performance.now()
       vel.current = 0
@@ -92,7 +93,7 @@ export function useMobileSheetGestures({
       if (isHandle) {
         draggingRef.current = true
         decided.current = true
-        sheet!.style.transition = 'none'
+        applyTransform(startTranslate.current, false)
         sheet!.style.willChange = 'transform'
         e.preventDefault()
       }
@@ -130,7 +131,7 @@ export function useMobileSheetGestures({
         if (dx > dy) return // horizontal — let browser handle
 
         const state = stateFromTranslate(
-          translateRef.current,
+          readTranslateY(sheet!),
           getSheetHeight(),
           getFullSnapOffset(),
           mobileCollapsedVisibleHeight,
@@ -141,8 +142,8 @@ export function useMobileSheetGestures({
           // Sheet not fully open — vertical always drags
           draggingRef.current = true
           startY.current = t.clientY
-          startTranslate.current = translateRef.current
-          sheet!.style.transition = 'none'
+          startTranslate.current = readTranslateY(sheet!)
+          applyTransform(startTranslate.current, false)
           sheet!.style.willChange = 'transform'
           e.preventDefault()
           return
@@ -154,8 +155,8 @@ export function useMobileSheetGestures({
           if (!sc || sc.scrollTop <= 0) {
             draggingRef.current = true
             startY.current = t.clientY
-            startTranslate.current = translateRef.current
-            sheet!.style.transition = 'none'
+            startTranslate.current = readTranslateY(sheet!)
+            applyTransform(startTranslate.current, false)
             sheet!.style.willChange = 'transform'
             e.preventDefault()
           }
@@ -172,7 +173,7 @@ export function useMobileSheetGestures({
       draggingRef.current = false
 
       // Tap on handle (< 10 px total movement) → cycle state
-      if (fromHandle.current && e.changedTouches.length > 0) {
+      if (e.type !== 'touchcancel' && fromHandle.current && e.changedTouches.length > 0) {
         const ct = e.changedTouches[0]
         const moved = Math.abs(ct.clientY - startY.current) + Math.abs(ct.clientX - startX.current)
         if (moved < 10) {
@@ -245,16 +246,25 @@ export function useMobileSheetGestures({
       decided.current = true
       startY.current = event.clientY
       startX.current = event.clientX
-      startTranslate.current = translateRef.current
+      startTranslate.current = sheetRef.current ? readTranslateY(sheetRef.current) : translateRef.current
       prevTouchY.current = event.clientY
       prevTouchTime.current = performance.now()
       vel.current = 0
-      sheetRef.current?.style.setProperty('transition', 'none')
+      applyTransform(startTranslate.current, false)
       sheetRef.current?.style.setProperty('will-change', 'transform')
       event.currentTarget.setPointerCapture(event.pointerId)
       event.preventDefault()
     },
-    [bringControlsToFront, mobileControlsInFront, mobileFeatureCardOpen, draggingRef, isMobile, sheetRef, translateRef],
+    [
+      applyTransform,
+      bringControlsToFront,
+      mobileControlsInFront,
+      mobileFeatureCardOpen,
+      draggingRef,
+      isMobile,
+      sheetRef,
+      translateRef,
+    ],
   )
 
   const moveHandlePointerDrag = useCallback(
@@ -288,7 +298,7 @@ export function useMobileSheetGestures({
       draggingRef.current = false
 
       const moved = Math.abs(event.clientY - startY.current) + Math.abs(event.clientX - startX.current)
-      if (moved < 10) {
+      if (event.type !== 'pointercancel' && moved < 10) {
         const state = stateFromTranslate(
           translateRef.current,
           getSheetHeight(),

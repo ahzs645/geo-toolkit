@@ -256,6 +256,43 @@ or zooming never creates additional source detail.
 
 ## Embed a responsive workspace
 
+### Interface motion and selection framing
+
+`/ui` exports `MOTION_DURATION`, `MOTION_EASING`, `useReducedMotion`, and
+`useMotionPresence`. Programmatic sheet/panel changes use 350 ms; small feedback
+uses 150 ms. Direct pointer movement has no easing. Presence keeps closing
+content mounted while its transition finishes and cancels stale work when
+reopened; callers must make closed content inert immediately. Reduced-motion
+presentation reaches the same final state without spatial travel or an exit
+delay. Import the stylesheet for the actual animations; no animation plugin is
+required.
+
+`useFlyToSelection` (`/map`) accepts `mode: 'fly' | 'ease'`, extra `padding`,
+and `keepVisible` (default true), in addition to target, zoom, duration, and
+`focusKey`. Its default duration is now 350 ms. It frames selections in the
+visible part of the owning workspace, accounting for mobile controls and
+feature cards without leaving persistent MapLibre padding behind. Discrete
+sheet targets start one native camera movement; direct panel manipulation
+defers reframing until release. User map gestures stop following until a new
+selection or `focusKey` requests it again. Desktop layout resizes are batched
+into a settled correction rather than restarting a flight on each frame.
+
+Controls and feature-card handles support pointer/touch dragging, velocity
+settling, interruption at the current rendered position, and keyboard detents.
+Hidden bodies are inert; exposed stack controls remain operable. Desktop
+sidebars retain their state while hidden. `MapSectionLayout.bottomPane` retains
+its last content only through a desktop closing transition; set
+`bottomPaneResizing` during direct divider dragging to avoid eased resizing.
+
+These are observable behavior changes at the existing private 0.1.0 extraction
+boundary; no registry release or new peer dependency is introduced.
+
+`DialogShell` starts its visual close immediately, then invokes `onClose` and
+`onOpenChange(false)` after exit (immediately with reduced motion). Opening
+`onOpenChange(true)` remains immediate. Controlled reopening cancels pending
+closure. `RecordDialog`'s footer uses the same close lifecycle. Keep this callback
+timing in mind when a host conditionally mounts dialogs.
+
 Import the toolkit stylesheet once. Give the workspace a definite height and
 one provider per independent map experience. Supply initial camera coordinates
 and your tile styles; the toolkit does not infer an application's region.

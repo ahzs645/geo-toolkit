@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getSnapPositions, resolveSnap, stateFromTranslate } from './sheet-math.js'
+import { getSnapPositions, resolveSnap, sheetOpenProgress, stateFromTranslate } from './sheet-math.js'
 
 describe('mobile sheet geometry', () => {
   it('preserves the peek and safe toolbar offset across container heights', () => {
@@ -23,5 +23,13 @@ describe('mobile sheet geometry', () => {
     expect(snaps.full).toBeLessThanOrEqual(snaps.half)
     expect(snaps.half).toBeLessThanOrEqual(snaps.collapsed)
     expect(snaps.collapsed).toBeLessThan(300)
+  })
+  it('keeps the scrim finite when the toolbar leaves only one available snap', () => {
+    const snaps = getSnapPositions(160, 250)
+    expect(snaps.full).toBe(snaps.collapsed)
+    expect(sheetOpenProgress(snaps.full, snaps.full, snaps.collapsed)).toBe(0)
+    expect(sheetOpenProgress(200, 100, 500)).toBe(0.75)
+    expect(sheetOpenProgress(0, 100, 500)).toBe(1)
+    expect(sheetOpenProgress(600, 100, 500)).toBe(0)
   })
 })

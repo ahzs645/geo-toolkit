@@ -250,7 +250,7 @@ function MarkerPopup({ children, className, closeButton = false, ...popupOptions
   return createPortal(
     <div
       className={cn(
-        'relative rounded-md border bg-popover p-3 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95',
+        'geo-motion-map-popup relative rounded-md border bg-popover p-3 text-popover-foreground shadow-md',
         className,
       )}
     >
@@ -331,9 +331,7 @@ function MarkerTooltip({ children, className, ...popupOptions }: MarkerTooltipPr
   }
 
   return createPortal(
-    <MapTooltipCard className={cn('px-2 py-1 shadow-md animate-in fade-in-0 zoom-in-95', className)}>
-      {children}
-    </MapTooltipCard>,
+    <MapTooltipCard className={cn('geo-motion-map-tooltip px-2 py-1 shadow-md', className)}>{children}</MapTooltipCard>,
     container,
   )
 }
@@ -453,7 +451,7 @@ function MapPopup({
   return createPortal(
     <div
       className={cn(
-        'relative rounded-md border bg-popover p-3 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95',
+        'geo-motion-map-popup relative rounded-md border bg-popover p-3 text-popover-foreground shadow-md',
         className,
       )}
     >

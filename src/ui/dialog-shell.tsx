@@ -1,8 +1,9 @@
-import type { HTMLAttributes, ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '../utils.js'
 import { useWorkspace } from '../workspace/workspace-context.js'
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from './dialog.js'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from './dialog.js'
+import { useMotionPresence } from './motion.js'
 
 const sizeClasses = {
   md: 'workspace-sm:max-w-2xl',
@@ -34,8 +35,9 @@ export interface DialogShellProps {
   size?: keyof typeof sizeClasses
   /** Controlled open state. Defaults to open, for dialogs mounted only while shown. */
   open?: boolean
+  /** Opening is reported immediately; closing is reported after the exit completes. */
   onOpenChange?: (open: boolean) => void
-  /** Called on Escape, overlay click and both close buttons. */
+  /** Called once after an Escape, overlay or close-button exit completes. */
   onClose?: () => void
   /**
    * The button that opens the dialog. Passing it here lets focus return to it
@@ -84,17 +86,49 @@ export function DialogShell({
 }: DialogShellProps) {
   const embedded = useWorkspace()?.placement === 'container'
   const hasExtras = Boolean(toolbar || summary || headerExtra)
-  const close = () => {
-    onClose?.()
-    onOpenChange?.(false)
+  const [closeRequest, setCloseRequest] = useState({ open, closing: false })
+  // A controlled reopen cancels a pending user close before anything commits.
+  if (closeRequest.open !== open) setCloseRequest({ open, closing: open ? false : closeRequest.closing })
+  const effectiveOpen = open && !closeRequest.closing
+  const { present } = useMotionPresence(effectiveOpen)
+  const pendingClose = useRef(false)
+  const previousOpen = useRef(open)
+  const returnFocus = useRef<HTMLElement | null>(null)
+  const callbacks = useRef({ onClose, onOpenChange })
+  useLayoutEffect(() => {
+    callbacks.current = { onClose, onOpenChange }
+  }, [onClose, onOpenChange])
+
+  useLayoutEffect(() => {
+    if (open && !previousOpen.current) {
+      pendingClose.current = false
+    }
+    previousOpen.current = open
+  }, [open])
+
+  useEffect(() => {
+    if (present || !closeRequest.closing || !pendingClose.current) return
+    pendingClose.current = false
+    callbacks.current.onClose?.()
+    callbacks.current.onOpenChange?.(false)
+  }, [present, closeRequest.closing])
+
+  const requestClose = () => {
+    if (!effectiveOpen || pendingClose.current) return
+    pendingClose.current = true
+    setCloseRequest({ open, closing: true })
   }
 
   return (
     <Dialog
-      open={open}
+      open={effectiveOpen}
       onOpenChange={(next) => {
-        if (!next) close()
-        else onOpenChange?.(true)
+        if (!next) requestClose()
+        else {
+          pendingClose.current = false
+          setCloseRequest({ open, closing: false })
+          onOpenChange?.(true)
+        }
       }}
     >
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
@@ -111,6 +145,16 @@ export function DialogShell({
           className,
         )}
         {...contentProps}
+        aria-hidden={!effectiveOpen || undefined}
+        {...(!effectiveOpen ? { inert: '' } : {})}
+        onOpenAutoFocus={() => {
+          returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        }}
+        onCloseAutoFocus={(event) => {
+          if (trigger || !returnFocus.current?.isConnected) return
+          event.preventDefault()
+          returnFocus.current.focus()
+        }}
       >
         {/* Title row: pinned at every width. */}
         <header
@@ -138,14 +182,15 @@ export function DialogShell({
             )}
             {context && <p className="mt-1 text-xs font-medium text-sky-700 dark:text-sky-400">{context}</p>}
           </div>
-          <button
-            type="button"
-            onClick={close}
-            aria-label={closeLabel}
-            className="-m-1 shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground touch:p-2.5"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
+          <DialogClose asChild>
+            <button
+              type="button"
+              aria-label={closeLabel}
+              className="-m-1 shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground touch:p-2.5"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </DialogClose>
         </header>
 
         {/*
