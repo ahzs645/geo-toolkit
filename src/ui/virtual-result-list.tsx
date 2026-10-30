@@ -11,6 +11,8 @@ interface VirtualResultListProps<T> {
 
 /** Variable-height results inside MapSidebarShell's existing scroll container. */
 export function VirtualResultList<T>({ items, getKey, estimateSize, label, children }: VirtualResultListProps<T>) {
+  'use no memo'
+  // TanStack Virtual exposes a mutable virtualizer; compiler memoization would freeze visible rows.
   const listRef = useRef<HTMLDivElement>(null)
   const [scrollMargin, setScrollMargin] = useState(0)
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
@@ -20,6 +22,8 @@ export function VirtualResultList<T>({ items, getKey, estimateSize, label, child
     [],
   )
   const focusedIndex = focusedKey === null ? -1 : items.findIndex((item) => getKey(item) === focusedKey)
+  // The component opts out of compiler memoization above; this mutable API must remain live.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement,
