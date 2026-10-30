@@ -17,17 +17,20 @@ import {
 import { useIsMobile } from './useIsMobile.js'
 import { MAP_SEARCH_REQUEST } from './map-search.js'
 import { useWorkspace, useWorkspaceInteractions } from './workspace-context.js'
+import { MOTION_DURATION, MOTION_EASING, useReducedMotion } from '../ui/motion.js'
 
 import { useMobileSheetGestures } from './useMobileSheetGestures.js'
+import { moveSheet } from './sheet-motion.js'
+import { useVisibleMapPanel } from './visible-map-panels.js'
 import type { MapSectionLayoutProps } from './MapSectionLayout.js'
 import {
   DEFAULT_FULL_SNAP_OFFSET,
   MOBILE_TOOLBAR_GAP,
-  SPRING,
   MOBILE_STACK_REAR_SHEET_VISIBLE_GAP,
   MOBILE_FEATURE_CARD_FRONT_OFFSET,
   getSnapPositions,
   stateFromTranslate,
+  sheetOpenProgress,
   type MobileSheetState,
 } from './sheet-math.js'
 
@@ -82,10 +85,21 @@ export function useMobileSheetController({
   const interactions = useWorkspaceInteractions()
   const setWorkspaceRoot = workspace?.setRoot
   const isMobile = useIsMobile()
+  const reducedMotion = useReducedMotion()
   const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>(mobileInitialSheetState)
   const mobileSheetStateRef = useRef<MobileSheetState>(mobileInitialSheetState)
-  const [mobileFeatureCardOpen, setMobileFeatureCardOpen] = useState(false)
-  const [mobileControlsInFront, setMobileControlsInFront] = useState(false)
+  const [mobileFeatureCardOpen, setMobileFeatureCardOpenState] = useState(false)
+  const [mobileControlsInFront, setMobileControlsInFrontState] = useState(false)
+  const featureCardOpenRef = useRef(false)
+  const controlsInFrontRef = useRef(false)
+  const setMobileFeatureCardOpen = useCallback((open: boolean) => {
+    featureCardOpenRef.current = open
+    setMobileFeatureCardOpenState(open)
+  }, [])
+  const setMobileControlsInFront = useCallback((front: boolean) => {
+    controlsInFrontRef.current = front
+    setMobileControlsInFrontState(front)
+  }, [])
   const [mobileFeaturePeek, setMobileFeaturePeek] = useState<{ title?: string; subtitle?: string }>({})
 
   // DOM refs
@@ -95,6 +109,7 @@ export function useMobileSheetController({
     return () => setWorkspaceRoot?.(null)
   }, [setWorkspaceRoot])
   const sheetRef = useRef<HTMLDivElement>(null)
+  useVisibleMapPanel(sheetRef, isMobile && !disableSidebar && !suppressMobileSheet)
   const handleRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const scrimRef = useRef<HTMLDivElement>(null)
@@ -106,6 +121,8 @@ export function useMobileSheetController({
   const draggingRef = useRef(false)
   const translateRef = useRef(0)
   const suppressScrim = useRef(false)
+  const cancelMotionRef = useRef<(() => void) | null>(null)
+  const motionTargetRef = useRef<number | null>(null)
   /** Geometry the sheet was last snapped for; see the resize effect. */
   const lastSnapLayoutRef = useRef<string | null>(null)
 
@@ -126,33 +143,29 @@ export function useMobileSheetController({
     return toolbarBottom > 0 ? toolbarBottom + MOBILE_TOOLBAR_GAP : DEFAULT_FULL_SNAP_OFFSET
   }, [workspace?.toolbar, workspace?.placement, isMobile])
 
-  const applyTransform = useCallback(
-    (y: number, animate: boolean) => {
-      const sheet = sheetRef.current
-      if (!sheet) return
+  const publishTransform = useCallback(
+    (y: number) => {
       const sheetHeight = getSheetHeight()
-      sheet.style.transition = animate ? SPRING : 'none'
-      sheet.style.transform = `translateY(${y}px)`
       translateRef.current = y
       const visibleHeight = Math.max(0, sheetHeight - y)
       rootRef.current?.style.setProperty('--map-mobile-sheet-visible-height', `${visibleHeight}px`)
-      if (mobileControlsInFront && mobileFeatureCardOpen) {
+      if (controlsInFrontRef.current && featureCardOpenRef.current) {
         interactions.dispatchEvent(
           new CustomEvent(MOBILE_MAP_CONTROLS_VISIBLE_HEIGHT_EVENT, {
-            detail: { visibleHeight },
+            detail: { visibleHeight, direct: true },
           }),
         )
       }
 
       // Scrim opacity (0 at collapsed → 0.4 at full)
       const snaps = getSnapPositions(sheetHeight, getFullSnapOffset(), mobileCollapsedVisibleHeight)
-      const range = snaps.collapsed - snaps.full
-      const t = Math.max(0, Math.min(1, 1 - (y - snaps.full) / range))
+      const t = sheetOpenProgress(y, snaps.full, snaps.collapsed)
       if (scrimRef.current) {
         const showScrim = mobileSheetInteractive && mobileScrimEnabled && !suppressScrim.current
         scrimRef.current.style.opacity = showScrim ? String(t * 0.4) : '0'
         scrimRef.current.style.pointerEvents = showScrim && t > 0.05 ? 'auto' : 'none'
-        scrimRef.current.style.transition = animate ? 'opacity 0.35s ease' : 'none'
+        // This opacity already follows the rendered sheet on every frame.
+        scrimRef.current.style.transition = 'none'
       }
     },
     [
@@ -160,15 +173,44 @@ export function useMobileSheetController({
       getSheetHeight,
       interactions,
       mobileCollapsedVisibleHeight,
-      mobileControlsInFront,
-      mobileFeatureCardOpen,
       mobileScrimEnabled,
       mobileSheetInteractive,
     ],
   )
+  const publishTransformRef = useRef(publishTransform)
+  useLayoutEffect(() => {
+    publishTransformRef.current = publishTransform
+  }, [publishTransform])
+
+  const applyTransform = useCallback(
+    (y: number, animate: boolean) => {
+      cancelMotionRef.current?.()
+      cancelMotionRef.current = null
+      const sheet = sheetRef.current
+      if (!sheet) return
+      motionTargetRef.current = y
+      sheet.dataset.mapTargetVisibleHeight = String(Math.max(0, getSheetHeight() - y))
+      cancelMotionRef.current = moveSheet(sheet, y, {
+        durationMs: animate && !reducedMotion ? MOTION_DURATION.panel : 0,
+        easing: MOTION_EASING,
+        onFrame: (renderedY) => publishTransformRef.current(renderedY),
+      })
+      if (draggingRef.current) sheet.style.willChange = 'transform'
+    },
+    [getSheetHeight, reducedMotion],
+  )
+
+  useLayoutEffect(() => () => cancelMotionRef.current?.(), [])
+
+  useLayoutEffect(() => {
+    if (isMobile && reducedMotion && motionTargetRef.current !== null) {
+      applyTransform(motionTargetRef.current, false)
+    }
+  }, [applyTransform, isMobile, reducedMotion])
 
   const updateMobileSheetState = useCallback(
     (state: MobileSheetState) => {
+      if (mobileSheetStateRef.current === state) return
       mobileSheetStateRef.current = state
       setMobileSheetState(state)
       onMobileSheetStateChange?.(state)
@@ -177,29 +219,31 @@ export function useMobileSheetController({
   )
 
   const snapTo = useCallback(
-    (state: MobileSheetState) => {
+    (state: MobileSheetState, animate = true) => {
       suppressScrim.current = false
       updateMobileSheetState(state)
-      applyTransform(getSnapPositions(getSheetHeight(), getFullSnapOffset(), mobileCollapsedVisibleHeight)[state], true)
+      applyTransform(
+        getSnapPositions(getSheetHeight(), getFullSnapOffset(), mobileCollapsedVisibleHeight)[state],
+        animate,
+      )
     },
     [applyTransform, getFullSnapOffset, getSheetHeight, mobileCollapsedVisibleHeight, updateMobileSheetState],
   )
 
   const stackBehindFeatureCard = useCallback(
-    (collapsedFeature = false, visibleFeatureHeight?: number) => {
+    (collapsedFeature = false, visibleFeatureHeight?: number, animate = true) => {
       if (!isMobile) return
       const sheetHeight = getSheetHeight()
-      const featureHeight = collapsedFeature
-        ? MOBILE_FEATURE_CARD_COLLAPSED_HEIGHT
-        : Math.min(
-            visibleFeatureHeight ?? MOBILE_FEATURE_CARD_COMPACT_HEIGHT,
-            Math.max(
-              160,
-              (workspace?.placement === 'container'
-                ? (rootRef.current?.clientHeight ?? window.innerHeight)
-                : window.innerHeight) - 104,
-            ),
-          )
+      const featureHeight = Math.min(
+        visibleFeatureHeight ??
+          (collapsedFeature ? MOBILE_FEATURE_CARD_COLLAPSED_HEIGHT : MOBILE_FEATURE_CARD_COMPACT_HEIGHT),
+        Math.max(
+          160,
+          (workspace?.placement === 'container'
+            ? (rootRef.current?.clientHeight ?? window.innerHeight)
+            : window.innerHeight) - 104,
+        ),
+      )
       const visibleHeight = collapsedFeature
         ? featureHeight + MOBILE_STACK_REAR_SHEET_VISIBLE_GAP
         : featureHeight + MOBILE_STACK_REAR_SHEET_VISIBLE_GAP - MOBILE_FEATURE_CARD_FRONT_OFFSET
@@ -207,7 +251,7 @@ export function useMobileSheetController({
       const y = Math.max(snaps.full, Math.min(snaps.collapsed, sheetHeight - visibleHeight))
       suppressScrim.current = true
       updateMobileSheetState(stateFromTranslate(y, sheetHeight, getFullSnapOffset(), mobileCollapsedVisibleHeight))
-      applyTransform(y, true)
+      applyTransform(y, animate)
       if (scrimRef.current) {
         scrimRef.current.style.opacity = '0'
         scrimRef.current.style.pointerEvents = 'none'
@@ -225,25 +269,24 @@ export function useMobileSheetController({
   )
 
   const stackControlsOverFeatureCard = useCallback(
-    (collapsedFeature = false, visibleFeatureHeight?: number) => {
+    (collapsedFeature = false, visibleFeatureHeight?: number, animate = true) => {
       if (!isMobile) return
       const sheetHeight = getSheetHeight()
-      const featureHeight = collapsedFeature
-        ? MOBILE_FEATURE_CARD_COLLAPSED_HEIGHT
-        : Math.min(
-            visibleFeatureHeight ?? MOBILE_FEATURE_CARD_COMPACT_HEIGHT,
-            Math.max(
-              160,
-              (workspace?.placement === 'container'
-                ? (rootRef.current?.clientHeight ?? window.innerHeight)
-                : window.innerHeight) - 104,
-            ),
-          )
+      const featureHeight = Math.min(
+        visibleFeatureHeight ??
+          (collapsedFeature ? MOBILE_FEATURE_CARD_COLLAPSED_HEIGHT : MOBILE_FEATURE_CARD_COMPACT_HEIGHT),
+        Math.max(
+          160,
+          (workspace?.placement === 'container'
+            ? (rootRef.current?.clientHeight ?? window.innerHeight)
+            : window.innerHeight) - 104,
+        ),
+      )
       const snaps = getSnapPositions(sheetHeight, getFullSnapOffset(), mobileCollapsedVisibleHeight)
       const y = Math.max(snaps.full, Math.min(snaps.collapsed, sheetHeight - featureHeight))
       suppressScrim.current = true
       updateMobileSheetState(stateFromTranslate(y, sheetHeight, getFullSnapOffset(), mobileCollapsedVisibleHeight))
-      applyTransform(y, true)
+      applyTransform(y, animate)
       if (scrimRef.current) {
         scrimRef.current.style.opacity = '0'
         scrimRef.current.style.pointerEvents = 'none'
@@ -266,14 +309,14 @@ export function useMobileSheetController({
     suppressScrim.current = true
     interactions.dispatchEvent(new CustomEvent(MOBILE_MAP_CONTROLS_FRONT_EVENT))
     stackControlsOverFeatureCard(false)
-  }, [interactions, stackControlsOverFeatureCard, isMobile])
+  }, [interactions, setMobileControlsInFront, stackControlsOverFeatureCard, isMobile])
 
   const bringFeatureCardToFront = useCallback(() => {
     if (!isMobile) return
     setMobileControlsInFront(false)
     interactions.dispatchEvent(new CustomEvent(MOBILE_FEATURE_CARD_FRONT_EVENT))
     stackBehindFeatureCard(false)
-  }, [interactions, stackBehindFeatureCard, isMobile])
+  }, [interactions, setMobileControlsInFront, stackBehindFeatureCard, isMobile])
 
   useEffect(() => {
     const root = rootRef.current
@@ -312,6 +355,7 @@ export function useMobileSheetController({
     showDesktopRightSidebar,
     showDesktopSidebar,
     suppressMobileSheet,
+    setMobileControlsInFront,
     updateMobileSheetState,
     isMobile,
   ])
@@ -353,7 +397,7 @@ export function useMobileSheetController({
       if (mobileSnapFromVisibleHeight != null && sheetRef.current) {
         const fromY = Math.max(snaps.full, Math.min(snaps.collapsed, sheetHeight - mobileSnapFromVisibleHeight))
         applyTransform(fromY, false)
-        requestAnimationFrame(() => applyTransform(y, true))
+        applyTransform(y, true)
         updateMobileSheetState(stateFromTranslate(y, sheetHeight, getFullSnapOffset(), mobileCollapsedVisibleHeight))
         return
       }
@@ -389,14 +433,19 @@ export function useMobileSheetController({
       return
     }
     if (isMobile) {
-      const y = getSnapPositions(getSheetHeight(), getFullSnapOffset(), mobileCollapsedVisibleHeight)[
-        mobileInitialSheetState
-      ]
+      const sheetHeight = getSheetHeight()
+      const fullSnapOffset = getFullSnapOffset()
+      const y = getSnapPositions(sheetHeight, fullSnapOffset, mobileCollapsedVisibleHeight)[mobileInitialSheetState]
+      lastSnapLayoutRef.current = `${Math.round(sheetHeight)}:${Math.round(fullSnapOffset)}:${mobileCollapsedVisibleHeight}`
       if (sheetRef.current) {
         sheetRef.current.style.transform = `translateY(${y}px)`
         sheetRef.current.style.transition = 'none'
       }
       translateRef.current = y
+      motionTargetRef.current = y
+      if (sheetRef.current) {
+        sheetRef.current.dataset.mapTargetVisibleHeight = String(Math.max(0, getSheetHeight() - y))
+      }
       rootRef.current?.style.setProperty('--map-mobile-sheet-visible-height', `${Math.max(0, getSheetHeight() - y)}px`)
       if (scrimRef.current) {
         scrimRef.current.style.opacity = '0'
@@ -410,10 +459,15 @@ export function useMobileSheetController({
   useEffect(() => {
     const onResize = () => {
       if (!isMobile) {
+        cancelMotionRef.current?.()
+        cancelMotionRef.current = null
+        motionTargetRef.current = null
+        draggingRef.current = false
         // Desktop — clear mobile transforms
         if (sheetRef.current) {
           sheetRef.current.style.transform = ''
           sheetRef.current.style.transition = ''
+          delete sheetRef.current.dataset.mapTargetVisibleHeight
         }
         rootRef.current?.style.removeProperty('--map-mobile-sheet-visible-height')
         if (scrimRef.current) {
@@ -421,7 +475,7 @@ export function useMobileSheetController({
           scrimRef.current.style.pointerEvents = 'none'
         }
         lastSnapLayoutRef.current = null
-      } else if (!draggingRef.current) {
+      } else {
         const sheetHeight = getSheetHeight()
         const fullSnapOffset = getFullSnapOffset()
         // This effect also re-runs when its callbacks change identity, e.g. when a
@@ -431,6 +485,7 @@ export function useMobileSheetController({
         const layout = `${Math.round(sheetHeight)}:${Math.round(fullSnapOffset)}:${mobileCollapsedVisibleHeight}`
         if (layout === lastSnapLayoutRef.current) return
         lastSnapLayoutRef.current = layout
+        draggingRef.current = false
         // Desktop has no translateY. Preserve the logical mobile snap when
         // crossing a breakpoint rather than interpreting that zero as "full".
         applyTransform(
@@ -440,7 +495,11 @@ export function useMobileSheetController({
       }
     }
     onResize()
-    const onOrientationChange = () => setTimeout(onResize, 150)
+    let orientationTimer: ReturnType<typeof setTimeout> | undefined
+    const onOrientationChange = () => {
+      clearTimeout(orientationTimer)
+      orientationTimer = setTimeout(onResize, 150)
+    }
 
     window.addEventListener('resize', onResize)
     window.addEventListener('orientationchange', onOrientationChange)
@@ -449,6 +508,7 @@ export function useMobileSheetController({
     const observer = new ResizeObserver(onResize)
     if (rootRef.current) observer.observe(rootRef.current)
     return () => {
+      clearTimeout(orientationTimer)
       observer.disconnect()
       window.removeEventListener('resize', onResize)
       window.removeEventListener('orientationchange', onOrientationChange)
@@ -512,16 +572,17 @@ export function useMobileSheetController({
     const handleFeatureCollapseState = (event: Event) => {
       if (!isMobile || !(event instanceof CustomEvent)) return
       const collapsed = Boolean(event.detail?.collapsed)
+      const direct = event.detail?.direct === true
       const visibleHeight = typeof event.detail?.visibleHeight === 'number' ? event.detail.visibleHeight : undefined
       if (mobileControlsInFront) {
-        stackControlsOverFeatureCard(collapsed, visibleHeight)
+        stackControlsOverFeatureCard(collapsed, visibleHeight, !direct)
         return
       }
       if (collapsed) {
-        snapTo('collapsed')
+        snapTo('collapsed', !direct)
         return
       }
-      stackBehindFeatureCard(collapsed, visibleHeight)
+      stackBehindFeatureCard(collapsed, visibleHeight, !direct)
     }
     const handleFeatureDock = () => {
       setMobileFeatureCardOpen(true)
@@ -552,6 +613,8 @@ export function useMobileSheetController({
     snapTo,
     stackBehindFeatureCard,
     stackControlsOverFeatureCard,
+    setMobileControlsInFront,
+    setMobileFeatureCardOpen,
     isMobile,
   ])
 

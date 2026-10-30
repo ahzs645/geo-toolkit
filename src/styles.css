@@ -2,6 +2,9 @@
 @tailwind utilities;
 
 .geo-toolkit {
+  --geo-motion-feedback: 150ms;
+  --geo-motion-panel: 350ms;
+  --geo-motion-easing: cubic-bezier(0.16, 1, 0.3, 1);
   --background: 0 0% 100%;
   --foreground: 0 0% 3.9%;
   --card: 0 0% 100%;
@@ -27,6 +30,217 @@
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
   --radius: 0.5rem;
+}
+
+/* Shared chrome motion is defined here, rather than relying on optional
+ * Tailwind animation plugins. Keep transforms independent of map positioning. */
+.geo-motion-popover {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  transition:
+    opacity var(--geo-motion-feedback, 150ms) var(--geo-motion-easing, ease-out),
+    transform var(--geo-motion-feedback, 150ms) var(--geo-motion-easing, ease-out);
+}
+.geo-motion-popover[data-side='top'] {
+  transform: translateY(4px) scale(0.98);
+}
+.geo-motion-popover[data-motion-state='open'] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.geo-motion-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--geo-motion-feedback, 150ms) var(--geo-motion-easing, ease-out),
+    opacity var(--geo-motion-feedback, 150ms) var(--geo-motion-easing, ease-out);
+}
+.geo-motion-disclosure[data-motion-state='open'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.geo-motion-disclosure > * {
+  min-height: 0;
+  overflow: hidden;
+}
+@keyframes geo-motion-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes geo-motion-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes geo-motion-surface-in {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes geo-motion-surface-out {
+  from {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+@keyframes geo-motion-sheet-in {
+  from {
+    translate: 0 100%;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+@keyframes geo-motion-sheet-out {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 0 100%;
+  }
+}
+@keyframes geo-motion-presence-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Radix Portal observes this wrapper; let its children's exits finish first. */
+.geo-motion-dialog-root:has(> .geo-motion-dialog-content[data-state='closed']) {
+  animation: geo-motion-presence-out var(--geo-motion-panel, 350ms) linear;
+}
+.geo-map-layout-bottom-pane {
+  display: contents;
+}
+.geo-motion-dialog-overlay[data-state='open'] {
+  animation: geo-motion-fade-in var(--geo-motion-feedback, 150ms) ease-out both;
+}
+.geo-motion-dialog-overlay[data-state='closed'] {
+  animation: geo-motion-fade-out var(--geo-motion-feedback, 150ms) ease-out both;
+  /* Radix supplies inline pointer-events:auto while its Presence is mounted. */
+  pointer-events: none !important;
+}
+.geo-motion-dialog-content[data-dialog-variant='center'] {
+  /* Explicit positioning also works without a host's Tailwind base variables. */
+  transform: translate(-50%, -50%);
+}
+@scope (.geo-toolkit[data-workspace-sm='true']) to (.geo-toolkit) {
+  .geo-motion-dialog-content[data-dialog-variant='sheet'] {
+    transform: translate(-50%, -50%);
+  }
+}
+.geo-motion-dialog-content[data-state='open'] {
+  animation: geo-motion-surface-in var(--geo-motion-panel, 350ms) var(--geo-motion-easing, ease-out) both;
+}
+.geo-motion-dialog-content[data-state='closed'] {
+  animation: geo-motion-surface-out var(--geo-motion-panel, 350ms) var(--geo-motion-easing, ease-out) both;
+  pointer-events: none !important;
+}
+.geo-motion-map-popup,
+.geo-motion-map-tooltip {
+  animation: geo-motion-surface-in var(--geo-motion-feedback, 150ms) var(--geo-motion-easing, ease-out) both;
+}
+@scope (.geo-toolkit[data-workspace-max-sm='true']) to (.geo-toolkit) {
+  .geo-motion-dialog-content[data-dialog-variant='sheet'][data-state='open'] {
+    animation-name: geo-motion-sheet-in;
+  }
+  .geo-motion-dialog-content[data-dialog-variant='sheet'][data-state='closed'] {
+    animation-name: geo-motion-sheet-out;
+  }
+}
+@scope (.geo-toolkit[data-workspace-desktop='true']) to (.geo-toolkit) {
+  .geo-map-layout {
+    transition: padding-bottom var(--map-layout-motion-duration, 350ms) var(--geo-motion-easing, ease-out);
+  }
+  .geo-map-layout-left {
+    width: clamp(17.5rem, 34vw, var(--desktop-sidebar-width));
+    overflow: clip;
+    transition: width var(--map-layout-motion-duration, 350ms) var(--geo-motion-easing, ease-out);
+  }
+  .geo-map-layout-left-sheet {
+    width: clamp(17.5rem, 34vw, var(--desktop-sidebar-width));
+  }
+  .geo-map-layout[data-desktop-left-open='false'] .geo-map-layout-left {
+    width: 0;
+  }
+  .geo-map-layout-right {
+    width: var(--desktop-right-sidebar-width);
+    overflow: clip;
+    transition: width var(--map-layout-motion-duration, 350ms) var(--geo-motion-easing, ease-out);
+  }
+  .geo-map-layout-right-body {
+    width: var(--desktop-right-sidebar-width);
+  }
+  .geo-map-layout[data-desktop-right-open='false'] .geo-map-layout-right {
+    width: 0;
+  }
+  .geo-map-layout-bottom-pane {
+    display: block;
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 20;
+    height: var(--map-bottom-pane-content-height);
+    overflow: hidden;
+    transition:
+      height var(--map-layout-motion-duration, 350ms) var(--geo-motion-easing, ease-out),
+      transform var(--map-layout-motion-duration, 350ms) var(--geo-motion-easing, ease-out);
+    transform: translateY(100%);
+  }
+  .geo-map-layout-bottom-pane[data-motion-visible='true'] {
+    transform: translateY(0);
+  }
+  .geo-map-layout[data-panel-resizing='true'],
+  .geo-map-layout[data-panel-resizing='true'] .geo-map-layout-left,
+  .geo-map-layout[data-panel-resizing='true'] .geo-map-layout-right,
+  .geo-map-layout[data-panel-resizing='true'] .geo-map-layout-toggle,
+  .geo-map-layout[data-panel-resizing='true'] .geo-map-layout-bottom-pane {
+    transition: none;
+  }
+}
+@scope (.geo-toolkit[data-workspace-wide='true']) to (.geo-toolkit) {
+  .geo-map-layout-left,
+  .geo-map-layout-left-sheet {
+    width: var(--desktop-sidebar-width);
+  }
+  .geo-map-layout[data-desktop-left-open='false'] .geo-map-layout-left {
+    width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .geo-motion-popover,
+  .geo-motion-disclosure {
+    transition: none;
+  }
+  .geo-motion-dialog-overlay,
+  .geo-motion-dialog-content {
+    animation: none !important;
+  }
+  .geo-motion-map-popup,
+  .geo-motion-map-tooltip {
+    animation-duration: 0.01ms !important;
+  }
+  .geo-motion-dialog-root:has(> .geo-motion-dialog-content[data-state='closed']) {
+    animation: none;
+  }
 }
 
 .geo-toolkit.dark,

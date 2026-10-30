@@ -1,4 +1,4 @@
-import { useCallback, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ChevronDown, ChevronUp, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { cn } from '../utils.js'
 import { MAP_OVERLAY_ROOT_STYLE } from '../ui/map-overlay.js'
@@ -7,6 +7,7 @@ import { useMobileSheetController } from './useMobileSheetController.js'
 import { useIsMobile } from './useIsMobile.js'
 import { SidebarResizeHandle } from './SidebarResizeHandle.js'
 import { MOBILE_COLLAPSED_VISIBLE_HEIGHT, type MobileSheetState } from './sheet-math.js'
+import { MOTION_DURATION, useMotionPresence, useReducedMotion } from '../ui/motion.js'
 export { DESKTOP_SIDEBAR_MIN_WIDTH, DESKTOP_SIDEBAR_MAX_WIDTH } from './SidebarResizeHandle.js'
 
 /**
@@ -73,6 +74,8 @@ export interface MapSectionLayoutProps {
    * Must be px, not a percentage — percentage padding resolves against width.
    */
   bottomPaneHeight?: number
+  /** Keep direct divider dragging immediate while programmatic pane changes animate. */
+  bottomPaneResizing?: boolean
   children: ReactNode
   className?: string
 }
@@ -110,6 +113,7 @@ function MapSectionLayoutInner({
   disableSidebar = false,
   bottomPane,
   bottomPaneHeight = 0,
+  bottomPaneResizing = false,
   children,
   className,
 }: MapSectionLayoutProps) {
@@ -120,6 +124,20 @@ function MapSectionLayoutInner({
   const toggleUncontrolledSidebar = useCallback(() => setUncontrolledSidebarOpen((open) => !open), [])
   const onToggleDesktopSidebar = onToggleDesktopSidebarProp ?? toggleUncontrolledSidebar
   const isMobile = useIsMobile()
+  const isWide = useWorkspace()?.isWide
+  const reducedMotion = useReducedMotion()
+  const [sidebarResizing, setSidebarResizing] = useState(false)
+  const sidebarWrapperRef = useRef<HTMLDivElement>(null)
+  const leftToggleRef = useRef<HTMLButtonElement>(null)
+  const rightToggleRef = useRef<HTMLButtonElement>(null)
+  const bottomPaneRef = useRef<HTMLDivElement>(null)
+  const panePresence = useMotionPresence(Boolean(bottomPane) && !isMobile)
+  // Retain the last live pane during a desktop exit. Updating only when supplied
+  // keeps its controls/data mounted while the host has already cleared selection.
+  const [retainedPane, setRetainedPane] = useState({ node: bottomPane, height: bottomPaneHeight })
+  if (bottomPane && (retainedPane.node !== bottomPane || retainedPane.height !== bottomPaneHeight)) {
+    setRetainedPane({ node: bottomPane, height: bottomPaneHeight })
+  }
 
   const {
     rootRef,
@@ -157,6 +175,37 @@ function MapSectionLayoutInner({
     showDesktopSidebar,
     onToggleDesktopSidebar,
   })
+
+  const leftHidden = isMobile ? suppressMobileSheet : !showDesktopSidebar
+  const controlsHidden =
+    leftHidden || (isMobile && (mobileSheetState === 'collapsed' || (mobileFeatureCardOpen && !mobileControlsInFront)))
+  const rightHidden = isMobile || !showDesktopRightSidebar
+  useLayoutEffect(() => {
+    const wrapper = sidebarWrapperRef.current
+    const content = contentRef.current
+    if (wrapper) {
+      if (leftHidden && wrapper.contains(document.activeElement)) leftToggleRef.current?.focus({ preventScroll: true })
+      wrapper.inert = leftHidden
+    }
+    if (content) {
+      if (controlsHidden && content.contains(document.activeElement)) {
+        ;(isMobile ? handleRef.current : leftToggleRef.current)?.focus({ preventScroll: true })
+      }
+      content.inert = controlsHidden
+    }
+    const right = rightSidebarRef.current
+    if (right) {
+      if (rightHidden && right.contains(document.activeElement)) rightToggleRef.current?.focus({ preventScroll: true })
+      right.inert = rightHidden
+    }
+    const pane = bottomPaneRef.current
+    if (pane) {
+      if (!bottomPane && pane.contains(document.activeElement)) {
+        ;(document.activeElement as HTMLElement).blur()
+      }
+      pane.inert = !bottomPane
+    }
+  }, [bottomPane, contentRef, controlsHidden, handleRef, isMobile, leftHidden, rightHidden, rightSidebarRef])
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
@@ -196,31 +245,38 @@ function MapSectionLayoutInner({
     <div
       ref={rootRef}
       data-map-layout-root="true"
+      data-desktop-left-open={showDesktopSidebar}
+      data-desktop-right-open={showDesktopRightSidebar}
+      data-panel-resizing={sidebarResizing || bottomPaneResizing}
       className={cn(
-        'relative flex h-full w-full overflow-clip bg-slate-100 dark:bg-slate-950',
+        'geo-map-layout relative flex h-full w-full overflow-clip bg-slate-100 dark:bg-slate-950',
         // Padding (not a wrapper element) keeps the existing flex row untouched
         // for every page that does not use a bottom pane. Desktop only — the
         // mobile table renders as a sheet instead.
-        bottomPane && 'workspace-desktop:pb-[var(--map-bottom-pane-height)]',
+        'workspace-desktop:pb-[var(--map-bottom-pane-height)]',
         className,
       )}
       style={
         {
           ...MAP_OVERLAY_ROOT_STYLE,
-          ...(bottomPane ? { '--map-bottom-pane-height': `${bottomPaneHeight}px` } : {}),
+          '--desktop-sidebar-width': `${desktopSidebarWidth}px`,
+          '--desktop-right-sidebar-width': `${desktopRightSidebarWidth}px`,
+          '--map-bottom-pane-height': `${panePresence.visible && bottomPane ? bottomPaneHeight : 0}px`,
+          '--map-bottom-pane-content-height': `${retainedPane.height}px`,
+          '--map-layout-motion-duration': `${reducedMotion ? 0 : MOTION_DURATION.panel}ms`,
         } as CSSProperties
       }
     >
       {/* Sidebar wrapper */}
       {!disableSidebar && (
         <div
+          ref={sidebarWrapperRef}
+          aria-hidden={leftHidden || undefined}
           className={cn(
-            'pointer-events-none absolute inset-0 workspace-desktop:pointer-events-auto workspace-desktop:relative workspace-desktop:inset-auto workspace-desktop:z-10 workspace-desktop:h-full workspace-desktop:shrink-0',
+            'geo-map-layout-left pointer-events-none absolute inset-0 workspace-desktop:pointer-events-auto workspace-desktop:relative workspace-desktop:inset-auto workspace-desktop:z-10 workspace-desktop:h-full workspace-desktop:shrink-0',
             mobileControlsInFront ? 'z-[60]' : 'z-30',
             suppressMobileSheet && 'hidden workspace-desktop:block',
-            showDesktopSidebar
-              ? 'workspace-desktop:block workspace-desktop:w-[clamp(17.5rem,34vw,var(--desktop-sidebar-width))] workspace-wide:w-[var(--desktop-sidebar-width)]'
-              : 'workspace-desktop:hidden',
+            'workspace-desktop:block',
           )}
           style={{ '--desktop-sidebar-width': `${desktopSidebarWidth}px` } as CSSProperties}
           data-map-sidebar-wrapper="true"
@@ -249,7 +305,7 @@ function MapSectionLayoutInner({
               mobileSheetInteractive || mobileControlsInFront || mobileFeatureCardOpen
                 ? 'pointer-events-auto'
                 : 'pointer-events-none',
-              'workspace-desktop:relative workspace-desktop:inset-auto workspace-desktop:h-full workspace-desktop:rounded-none workspace-desktop:border-0 workspace-desktop:bg-transparent workspace-desktop:shadow-none workspace-desktop:backdrop-blur-none',
+              'geo-map-layout-left-sheet workspace-desktop:relative workspace-desktop:inset-auto workspace-desktop:h-full workspace-desktop:rounded-none workspace-desktop:border-0 workspace-desktop:bg-transparent workspace-desktop:shadow-none workspace-desktop:backdrop-blur-none',
             )}
             data-map-mobile-sheet="true"
             onClickCapture={(event) => {
@@ -326,6 +382,7 @@ function MapSectionLayoutInner({
               stacks beside its shell here is clipped rather than scrolled. */}
             <div
               ref={contentRef}
+              aria-hidden={controlsHidden || undefined}
               className={cn(
                 'min-h-0 flex-1 overflow-hidden overscroll-y-contain pb-[calc(env(safe-area-inset-bottom)+4rem)] transition-opacity duration-200 workspace-desktop:h-full workspace-desktop:!touch-auto workspace-desktop:pb-0 workspace-desktop:opacity-100',
                 mobileSheetContentClassName,
@@ -347,7 +404,12 @@ function MapSectionLayoutInner({
           </div>
 
           {onDesktopSidebarWidthChange && showDesktopSidebar && (
-            <SidebarResizeHandle side="left" width={desktopSidebarWidth} onWidthChange={onDesktopSidebarWidthChange} />
+            <SidebarResizeHandle
+              side="left"
+              width={desktopSidebarWidth}
+              onWidthChange={onDesktopSidebarWidthChange}
+              onResizeStateChange={setSidebarResizing}
+            />
           )}
         </div>
       )}
@@ -355,11 +417,19 @@ function MapSectionLayoutInner({
       {/* Desktop left-sidebar toggle */}
       {!disableSidebar && (
         <button
+          ref={leftToggleRef}
           type="button"
           onClick={onToggleDesktopSidebar}
           aria-label={showDesktopSidebar ? 'Hide sidebar' : 'Show sidebar'}
-          style={{ left: showDesktopSidebar ? `clamp(17.5rem, 34vw, ${desktopSidebarWidth}px)` : 0 }}
-          className="absolute top-1/2 z-20 hidden h-16 w-8 -translate-y-1/2 items-center justify-center rounded-r-xl border border-l-0 border-slate-300/80 bg-background/95 text-slate-600 shadow-sm backdrop-blur transition-[left,background-color,color,border-color] hover:bg-muted dark:border-slate-700 dark:text-slate-200 workspace-desktop:flex"
+          style={{
+            left: showDesktopSidebar
+              ? isWide
+                ? `${desktopSidebarWidth}px`
+                : `clamp(17.5rem, 34vw, ${desktopSidebarWidth}px)`
+              : 0,
+            transitionDuration: 'var(--map-layout-motion-duration)',
+          }}
+          className="geo-map-layout-toggle absolute top-1/2 z-20 hidden h-16 w-8 -translate-y-1/2 items-center justify-center rounded-r-xl border border-l-0 border-slate-300/80 bg-background/95 text-slate-600 shadow-sm backdrop-blur transition-[left,background-color,color,border-color] hover:bg-muted dark:border-slate-700 dark:text-slate-200 workspace-desktop:flex"
         >
           {showDesktopSidebar ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
         </button>
@@ -375,57 +445,55 @@ function MapSectionLayoutInner({
         <>
           <div
             ref={rightSidebarRef}
+            aria-hidden={rightHidden || undefined}
             className={cn(
-              'hidden workspace-desktop:block workspace-desktop:absolute workspace-desktop:right-0 workspace-desktop:top-0 workspace-desktop:z-30 workspace-desktop:h-full workspace-desktop:shrink-0 workspace-desktop:overflow-visible workspace-large:relative workspace-large:z-10',
-              showDesktopRightSidebar
-                ? 'workspace-desktop:w-[var(--desktop-right-sidebar-width)]'
-                : 'workspace-desktop:w-0',
+              'geo-map-layout-right hidden workspace-desktop:block workspace-desktop:absolute workspace-desktop:right-0 workspace-desktop:top-0 workspace-desktop:z-30 workspace-desktop:h-full workspace-desktop:shrink-0 workspace-large:relative workspace-large:z-10',
             )}
             style={{ '--desktop-right-sidebar-width': `${desktopRightSidebarWidth}px` } as CSSProperties}
             data-map-right-sidebar="true"
           >
-            <div className={cn('relative h-full overflow-visible', showDesktopRightSidebar ? 'w-full' : 'w-0')}>
-              {showDesktopRightSidebar && (
-                <>
-                  {onToggleDesktopRightSidebar && (
-                    <button
-                      type="button"
-                      onClick={onToggleDesktopRightSidebar}
-                      aria-label="Hide right sidebar"
-                      className="absolute left-0 top-1/2 z-20 hidden h-16 w-8 -translate-x-full -translate-y-1/2 items-center justify-center rounded-l-xl border border-r-0 border-slate-300/80 bg-background/95 text-slate-600 shadow-sm backdrop-blur transition-colors hover:bg-muted dark:border-slate-700 dark:text-slate-200 workspace-desktop:flex"
-                    >
-                      <ChevronsRight className="h-4 w-4" />
-                    </button>
-                  )}
-                  <div className="h-full w-full">{rightSidebar}</div>
-                  {onDesktopRightSidebarWidthChange && (
-                    <SidebarResizeHandle
-                      side="right"
-                      width={desktopRightSidebarWidth}
-                      onWidthChange={onDesktopRightSidebarWidthChange}
-                    />
-                  )}
-                </>
+            <div className="geo-map-layout-right-body relative h-full">
+              <div className="h-full w-full">{rightSidebar}</div>
+              {onDesktopRightSidebarWidthChange && showDesktopRightSidebar && (
+                <SidebarResizeHandle
+                  side="right"
+                  width={desktopRightSidebarWidth}
+                  onWidthChange={onDesktopRightSidebarWidthChange}
+                  onResizeStateChange={setSidebarResizing}
+                />
               )}
             </div>
           </div>
 
-          {onToggleDesktopRightSidebar && !showDesktopRightSidebar && (
+          {onToggleDesktopRightSidebar && (
             <button
+              ref={rightToggleRef}
               type="button"
               onClick={onToggleDesktopRightSidebar}
-              aria-label="Show right sidebar"
-              style={{ right: 0 }}
-              className="absolute top-1/2 z-20 hidden h-16 w-8 -translate-y-1/2 items-center justify-center rounded-l-xl border border-r-0 border-slate-300/80 bg-background/95 text-slate-600 shadow-sm backdrop-blur transition-[right,background-color,color,border-color] hover:bg-muted dark:border-slate-700 dark:text-slate-200 workspace-desktop:flex"
+              aria-label={showDesktopRightSidebar ? 'Hide right sidebar' : 'Show right sidebar'}
+              style={{
+                right: showDesktopRightSidebar ? desktopRightSidebarWidth : 0,
+                transitionDuration: 'var(--map-layout-motion-duration)',
+              }}
+              className="geo-map-layout-toggle absolute top-1/2 z-20 hidden h-16 w-8 -translate-y-1/2 items-center justify-center rounded-l-xl border border-r-0 border-slate-300/80 bg-background/95 text-slate-600 shadow-sm backdrop-blur transition-[right,background-color,color,border-color] hover:bg-muted dark:border-slate-700 dark:text-slate-200 workspace-desktop:flex"
             >
-              <ChevronsLeft className="h-4 w-4" />
+              {showDesktopRightSidebar ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
             </button>
           )}
         </>
       )}
 
       {/* Docked bottom pane — spans the full root width, under the sidebars too. */}
-      {bottomPane}
+      {(bottomPane || (!isMobile && panePresence.present)) && (
+        <div
+          ref={bottomPaneRef}
+          className="geo-map-layout-bottom-pane"
+          data-motion-visible={isMobile || panePresence.visible}
+          aria-hidden={!bottomPane || undefined}
+        >
+          {bottomPane ?? retainedPane.node}
+        </div>
+      )}
     </div>
   )
 }

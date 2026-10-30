@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { cn } from '../utils.js'
 
 export const DESKTOP_SIDEBAR_MIN_WIDTH = 240
@@ -9,12 +9,20 @@ export function SidebarResizeHandle({
   side,
   width,
   onWidthChange,
+  onResizeStateChange,
 }: {
   side: 'left' | 'right'
   width: number
   onWidthChange: (width: number) => void
+  onResizeStateChange?: (resizing: boolean) => void
 }) {
   const dragState = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null)
+  useEffect(() => () => onResizeStateChange?.(false), [onResizeStateChange])
+  const finishDrag = () => {
+    if (!dragState.current) return
+    dragState.current = null
+    onResizeStateChange?.(false)
+  }
   return (
     <div
       role="separator"
@@ -45,7 +53,9 @@ export function SidebarResizeHandle({
         }
       }}
       onPointerDown={(event) => {
+        if (event.button !== 0) return
         dragState.current = { pointerId: event.pointerId, startX: event.clientX, startWidth: width }
+        onResizeStateChange?.(true)
         event.currentTarget.setPointerCapture(event.pointerId)
         event.preventDefault()
       }}
@@ -56,12 +66,9 @@ export function SidebarResizeHandle({
         const raw = side === 'left' ? drag.startWidth + delta : drag.startWidth - delta
         onWidthChange(Math.round(Math.min(DESKTOP_SIDEBAR_MAX_WIDTH, Math.max(DESKTOP_SIDEBAR_MIN_WIDTH, raw))))
       }}
-      onPointerUp={() => {
-        dragState.current = null
-      }}
-      onPointerCancel={() => {
-        dragState.current = null
-      }}
+      onPointerUp={finishDrag}
+      onPointerCancel={finishDrag}
+      onLostPointerCapture={finishDrag}
     />
   )
 }

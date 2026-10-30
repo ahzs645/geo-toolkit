@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '../utils.js'
 import { DialogShell, type DialogShellProps } from './dialog-shell.js'
+import { DialogClose } from './dialog.js'
 
 type RecordDialogProps = Omit<DialogShellProps, 'footer' | 'onClose'> & {
   onClose: () => void
@@ -57,13 +58,12 @@ export function RecordDialog({
                 )}
               </div>
             )}
-            <button
+            <DialogClose
               type="button"
-              onClick={onClose}
               className="inline-flex items-center justify-center rounded-lg border border-input bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent"
             >
               Close
-            </button>
+            </DialogClose>
           </div>
         </div>
       }
