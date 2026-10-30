@@ -57,3 +57,45 @@ test('fast scrolling, header changes, keyboard navigation and filtering keep res
   await expect(list.getByRole('button', { name: 'Result 19', exact: true })).toBeFocused()
   expect(errors).toEqual([])
 })
+
+test('filtering cancels a pending keyboard scroll to a removed result', async ({ page }) => {
+  await page.goto('/tests/fixtures/virtual-result-list.html')
+  const list = page.getByRole('list', { name: 'Results', exact: true })
+  const scroll = page.locator('[data-map-sidebar-scroll]')
+  await list.getByRole('button', { name: 'Result 0', exact: true }).focus()
+
+  // Hold the virtualizer's reconciliation frame so filtering always happens
+  // between keyboard focus and the completion of its scroll-to-index intent.
+  await page.evaluate(() => {
+    const requestFrame = window.requestAnimationFrame.bind(window)
+    const pending: FrameRequestCallback[] = []
+    window.requestAnimationFrame = (callback) => {
+      pending.push(callback)
+      return -pending.length
+    }
+    Object.assign(window, {
+      releaseVirtualNavigationFrames: () => {
+        window.requestAnimationFrame = requestFrame
+        pending.splice(0).forEach((callback) => callback(performance.now()))
+      },
+    })
+  })
+
+  await page.keyboard.press('End')
+  await expect(list.getByRole('button', { name: 'Result 999', exact: true })).toBeFocused()
+  await page.getByRole('button', { name: 'Filter results' }).evaluate((button: HTMLButtonElement) => button.click())
+  await scroll.evaluate((node) => {
+    node.scrollTop = 0
+  })
+  const afterNavigation = await page.evaluate(() => {
+    const navigationWindow = window as typeof window & { releaseVirtualNavigationFrames: () => void }
+    navigationWindow.releaseVirtualNavigationFrames()
+    return document.querySelector<HTMLElement>('[data-map-sidebar-scroll]')!.scrollTop
+  })
+
+  expect(afterNavigation).toBe(0)
+  await expect(list.getByRole('button', { name: 'Result 0', exact: true })).toBeVisible()
+  await list.getByRole('button', { name: 'Result 0', exact: true }).focus()
+  await page.keyboard.press('End')
+  await expect(list.getByRole('button', { name: 'Result 19', exact: true })).toBeFocused()
+})

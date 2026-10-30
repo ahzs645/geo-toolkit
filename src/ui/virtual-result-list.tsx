@@ -42,6 +42,16 @@ export function VirtualResultList<T>({ items, getKey, estimateSize, label, child
     },
   })
 
+  useLayoutEffect(() => {
+    if (focusedKey === null || focusedIndex >= 0) return
+    // Filtering can remove the focused row before scrollToIndex's next frame.
+    // Replace that navigation intent: its old index would otherwise be clamped
+    // into the new results and scroll them back down after the filter resets.
+    pendingFocus.current = null
+    setFocusedKey(null)
+    virtualizer.scrollToOffset(0)
+  }, [focusedIndex, focusedKey, virtualizer])
+
   // Filters/detail cards above the list can change its offset without resizing
   // the scroll viewport. Recompute after each render as well as viewport resize.
   useLayoutEffect(() => {

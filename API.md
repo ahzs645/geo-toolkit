@@ -293,6 +293,11 @@ boundary; no registry release or new peer dependency is introduced.
 closure. `RecordDialog`'s footer uses the same close lifecycle. Keep this callback
 timing in mind when a host conditionally mounts dialogs.
 
+When filtering removes the keyboard-focused item in `VirtualResultList`, it
+cancels the previous keyboard scroll target and resets the results viewport to
+the top. An older virtualizer reconciliation cannot scroll the filtered list
+back to the former end. Retained focused items preserve their position.
+
 Import the toolkit stylesheet once. Give the workspace a definite height and
 one provider per independent map experience. Supply initial camera coordinates
 and your tile styles; the toolkit does not infer an application's region.
