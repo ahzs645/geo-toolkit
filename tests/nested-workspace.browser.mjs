@@ -71,6 +71,11 @@ try {
   await page.getByRole('button', { name: 'Open scoped dialog', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.waitFor()
+  // Entry is now animated; measure the settled pane rather than its initial
+  // translated position outside the workspace during the slide.
+  await dialog.evaluate((element) =>
+    Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => undefined))),
+  )
   const dialogBounds = await dialog.boundingBox()
   assert.ok(bounds && dialogBounds)
   assert.ok(
