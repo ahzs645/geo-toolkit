@@ -90,6 +90,7 @@ test('reduced motion closes without retaining an animated modal', async ({ page 
   await trigger.click()
   const dialog = page.getByRole('dialog', { name: 'Map settings' })
   await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('textbox')).toBeFocused()
   expect(await dialog.evaluate((node) => node.getAnimations().length)).toBe(0)
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
@@ -98,7 +99,11 @@ test('reduced motion closes without retaining an animated modal', async ({ page 
 
   const recordTrigger = page.getByRole('button', { name: 'Open conditional record' })
   await recordTrigger.click()
-  await expect(page.getByRole('dialog', { name: 'Conditional record' })).toBeVisible()
+  const recordDialog = page.getByRole('dialog', { name: 'Conditional record' })
+  await expect(recordDialog).toBeVisible()
+  // Radix installs modal keyboard handlers with its autofocus effects. Reduced
+  // motion makes the surface visible before those effects necessarily run.
+  await expect(recordDialog.getByRole('button', { name: 'Dismiss record' })).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(page.locator('[role="dialog"]')).toHaveCount(0)
   await expect(page.getByTestId('close-count')).toHaveText('1')

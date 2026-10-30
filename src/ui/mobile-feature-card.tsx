@@ -226,7 +226,9 @@ export function MobileFeatureCard({
 
   const publishVisibleHeight = useCallback(
     (visibleHeight: number, direct = false) => {
-      reportVisibleHeight(visibleHeight)
+      // With one card, sampled gesture frames only need the imperative sheet
+      // event below. Commit the store at the snap target, not on every frame.
+      if (!direct || hasCardsBehind) reportVisibleHeight(visibleHeight)
       if (!isFront || controlsInFront) return
       interactions.dispatchEvent(
         new CustomEvent(MOBILE_FEATURE_CARD_COLLAPSE_STATE_EVENT, {
@@ -234,7 +236,7 @@ export function MobileFeatureCard({
         }),
       )
     },
-    [controlsInFront, heights.collapsed, interactions, isFront, reportVisibleHeight],
+    [controlsInFront, hasCardsBehind, heights.collapsed, interactions, isFront, reportVisibleHeight],
   )
 
   const trackRenderedHeight = useCallback(() => {
