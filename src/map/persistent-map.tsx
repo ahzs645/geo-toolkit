@@ -21,6 +21,7 @@ import { MapLoader, type MapLoaderVariant } from './map-loader.js'
 import { MAP_STYLES } from './map-styles.js'
 import { DEFAULT_MAP_CONTROLS, MapContext } from './map.js'
 import { MapOverlayRoot } from '../ui/map-overlays.js'
+import { resizeMap } from './map-resize.js'
 import { MOBILE_MAP_BLANK_CLICK_EVENT, MOBILE_MAP_INTERACTION_EVENT } from '../workspace/workspace-events.js'
 
 type MapStyleOption = string | MapLibreGL.StyleSpecification
@@ -238,10 +239,12 @@ export function PersistentMapHost({ className, loading = false, loadingLabel, lo
     if (!host || !container) return
 
     host.appendChild(container)
-    map?.resize()
-    const raf = requestAnimationFrame(() => map?.resize())
+    // Same-frame redraws: a bare resize() leaves the cleared canvas on screen
+    // until MapLibre's next animation frame.
+    if (map) resizeMap(map)
+    const raf = requestAnimationFrame(() => map && resizeMap(map))
 
-    const observer = new ResizeObserver(() => map?.resize())
+    const observer = new ResizeObserver(() => map && resizeMap(map))
     observer.observe(host)
 
     return () => {
