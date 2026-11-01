@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  MAP_COVERED_INSETS_CHANGE,
   mapCoveredBottom,
+  onMapCoveredBottomChange,
   resizeMap,
   setMapCoveredBottom,
   visibleMapBounds,
@@ -27,7 +27,6 @@ describe('resizeMap', () => {
 /** A flat, unrotated camera: screen pixels map linearly to degrees. */
 function fakeMap(height = 600) {
   const state = { center: { lng: 0, lat: 0 }, padding: { top: 0, right: 0, bottom: 0, left: 24 } }
-  const fired: string[] = []
   const paddedCentre = () => ({
     x: (800 + state.padding.left - state.padding.right) / 2,
     y: (height + state.padding.top - state.padding.bottom) / 2,
@@ -57,9 +56,11 @@ function fakeMap(height = 600) {
       state.center = center
       state.padding = padding
     },
-    fire: (type: string) => fired.push(type),
   }
-  return { map: map as unknown as Parameters<typeof setMapCoveredBottom>[0] & typeof map, state, fired, unproject }
+  const typed = map as unknown as Parameters<typeof setMapCoveredBottom>[0] & typeof map
+  const fired: string[] = []
+  onMapCoveredBottomChange(typed, () => fired.push('covered'))
+  return { map: typed, state, fired, unproject }
 }
 
 describe('setMapCoveredBottom', () => {
@@ -74,7 +75,7 @@ describe('setMapCoveredBottom', () => {
       expect(point.lat).toBeCloseTo(before[index].lat, 9)
     })
     expect(mapCoveredBottom(map)).toBe(320)
-    expect(fired).toEqual([MAP_COVERED_INSETS_CHANGE])
+    expect(fired).toEqual(['covered'])
   })
 
   it('returns exactly to the original camera when the pane closes', () => {

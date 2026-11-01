@@ -21,20 +21,30 @@ export function resizeMap(map: ResizableMap): void {
   map.redraw()
 }
 
-/**
- * Fired on the map after a layout pane changes how much of the canvas it
- * covers. The canvas itself did not resize, so no `resize` event follows.
- */
-export const MAP_COVERED_INSETS_CHANGE = 'geo-toolkit:covered-insets'
-
 const coveredBottom = new WeakMap<object, number>()
+const coverListeners = new WeakMap<object, Set<() => void>>()
+
+/**
+ * Call `listener` after a layout pane changes how much of `map`'s canvas it
+ * covers. The canvas itself does not resize, so no `resize` event follows.
+ * Kept outside MapLibre's events, whose names MapLibre 6 restricts to its own.
+ */
+export function onMapCoveredBottomChange(map: object, listener: () => void): () => void {
+  let listeners = coverListeners.get(map)
+  if (!listeners) {
+    listeners = new Set()
+    coverListeners.set(map, listeners)
+  }
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
 
 /** Canvas pixels hidden under a docked layout pane at the bottom of the map. */
 export function mapCoveredBottom(map: object): number {
   return coveredBottom.get(map) ?? 0
 }
 
-type InsetMap = Pick<MapLibreGL.Map, 'getPadding' | 'project' | 'unproject' | 'getCenter' | 'jumpTo' | 'fire'> & {
+type InsetMap = Pick<MapLibreGL.Map, 'getPadding' | 'project' | 'unproject' | 'getCenter' | 'jumpTo'> & {
   getContainer(): { clientHeight: number }
 }
 
@@ -60,7 +70,7 @@ export function setMapCoveredBottom(map: InsetMap, next: number): void {
     center: map.unproject([centre.x, centre.y - delta / 2]),
     padding: { ...padding, bottom: Math.max(0, (padding.bottom ?? 0) + delta) },
   })
-  map.fire(MAP_COVERED_INSETS_CHANGE)
+  for (const listener of [...(coverListeners.get(map) ?? [])]) listener()
 }
 
 export interface VisibleMapBounds {
