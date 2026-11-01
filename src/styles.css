@@ -131,6 +131,47 @@
 .geo-map-layout-bottom-pane {
   display: contents;
 }
+/* Registered so the pane height itself transitions. The layout's padding, the
+ * main map's extension under the pane and its lifted chrome all derive from the
+ * same animated value, so they stay in step and the canvas never changes size. */
+@property --map-bottom-pane-height {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+.geo-map-layout-content {
+  overflow: hidden;
+}
+/* clip, unlike hidden, cannot be scrolled programmatically to reveal the canvas
+ * that extends under a docked pane. */
+@supports (overflow: clip) {
+  .geo-map-layout-content {
+    overflow: clip;
+  }
+}
+/* Map chrome sits in a box-less wrapper unless the map extends under a pane. */
+.geo-map-chrome {
+  display: contents;
+}
+/* Doubled to outrank the scoped preflight's `.geo-toolkit *` border-box. */
+.geo-map-under-pane.geo-map-under-pane {
+  box-sizing: content-box;
+  padding-bottom: var(--map-bottom-pane-height, 0px);
+}
+.geo-map-under-pane > .geo-map-chrome {
+  display: block;
+  position: absolute;
+  inset: 0 0 var(--map-bottom-pane-height, 0px);
+  pointer-events: none;
+}
+/* Zero specificity: a child's own pointer-events class still wins. */
+:where(.geo-map-under-pane > .geo-map-chrome) > :where(*) {
+  pointer-events: auto;
+}
+.geo-map-under-pane > .maplibregl-control-container > .maplibregl-ctrl-bottom-left,
+.geo-map-under-pane > .maplibregl-control-container > .maplibregl-ctrl-bottom-right {
+  bottom: var(--map-bottom-pane-height, 0px);
+}
 .geo-motion-dialog-overlay[data-state='open'] {
   animation: geo-motion-fade-in var(--geo-motion-feedback, 150ms) ease-out both;
 }
@@ -169,7 +210,7 @@
 }
 @scope (.geo-toolkit[data-workspace-desktop='true']) to (.geo-toolkit) {
   .geo-map-layout {
-    transition: padding-bottom var(--map-layout-motion-duration, 350ms) var(--geo-motion-easing, ease-out);
+    transition: --map-bottom-pane-height var(--map-layout-motion-duration, 350ms) var(--geo-motion-easing, ease-out);
   }
   .geo-map-layout-left {
     width: clamp(17.5rem, 34vw, var(--desktop-sidebar-width));

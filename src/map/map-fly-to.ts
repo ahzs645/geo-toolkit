@@ -5,6 +5,7 @@ import { VISIBLE_MAP_PANELS_CHANGE, workspaceMapPanels } from '../workspace/visi
 import { MOBILE_MAP_INTERACTION_EVENT } from '../workspace/workspace-events.js'
 import { MOTION_DURATION, useReducedMotion } from '../ui/motion.js'
 import { cameraOffset, visibleMapInsets, type CameraInsets, type ScreenRect } from './camera-framing.js'
+import { MAP_COVERED_INSETS_CHANGE } from './map-resize.js'
 
 export interface FlyToTarget {
   longitude: number
@@ -108,7 +109,19 @@ export function useFlyToSelection(
     const reframe = () => {
       frame = 0
       if (!following) return
-      const bounds = container.getBoundingClientRect()
+      // Camera offsets are relative to the padded centre, so measure panels
+      // against the padded area. A docked layout pane is already part of that
+      // padding (see setMapCoveredBottom) and is not counted twice.
+      const rect = container.getBoundingClientRect()
+      const { top: padTop = 0, right: padRight = 0, bottom: padBottom = 0, left: padLeft = 0 } = map.getPadding()
+      const bounds = {
+        left: rect.left + padLeft,
+        right: rect.right - padRight,
+        top: rect.top + padTop,
+        bottom: rect.bottom - padBottom,
+        width: Math.max(0, rect.width - padLeft - padRight),
+        height: Math.max(0, rect.height - padTop - padBottom),
+      }
       if (!bounds.width || !bounds.height) return
       const panels: ScreenRect[] = []
       if (keepVisible)
@@ -227,6 +240,8 @@ export function useFlyToSelection(
     map.on('movestart', onGesture)
     map.on('dragstart', onGesture)
     map.on('zoomstart', onGesture)
+    // A pane sliding over the map changes the visible area without a resize.
+    map.on(MAP_COVERED_INSETS_CHANGE, schedule)
     discover()
     return () => {
       following = false
@@ -244,6 +259,7 @@ export function useFlyToSelection(
       map.off('movestart', onGesture)
       map.off('dragstart', onGesture)
       map.off('zoomstart', onGesture)
+      map.off(MAP_COVERED_INSETS_CHANGE, schedule)
     }
   }, [
     map,

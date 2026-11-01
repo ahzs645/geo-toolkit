@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ChevronDown, ChevronUp, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { cn } from '../utils.js'
 import { MAP_OVERLAY_ROOT_STYLE } from '../ui/map-overlay.js'
@@ -8,6 +8,7 @@ import { useIsMobile } from './useIsMobile.js'
 import { SidebarResizeHandle } from './SidebarResizeHandle.js'
 import { MOBILE_COLLAPSED_VISIBLE_HEIGHT, type MobileSheetState } from './sheet-math.js'
 import { MOTION_DURATION, useMotionPresence, useReducedMotion } from '../ui/motion.js'
+import { MapLayoutCoversContext } from './map-layout-covers.js'
 export { DESKTOP_SIDEBAR_MIN_WIDTH, DESKTOP_SIDEBAR_MAX_WIDTH } from './SidebarResizeHandle.js'
 
 /**
@@ -138,6 +139,8 @@ function MapSectionLayoutInner({
   if (bottomPane && (retainedPane.node !== bottomPane || retainedPane.height !== bottomPaneHeight)) {
     setRetainedPane({ node: bottomPane, height: bottomPaneHeight })
   }
+  const coveredBottom = panePresence.visible && bottomPane ? bottomPaneHeight : 0
+  const covers = useMemo(() => ({ bottom: coveredBottom }), [coveredBottom])
 
   const {
     rootRef,
@@ -261,7 +264,7 @@ function MapSectionLayoutInner({
           ...MAP_OVERLAY_ROOT_STYLE,
           '--desktop-sidebar-width': `${desktopSidebarWidth}px`,
           '--desktop-right-sidebar-width': `${desktopRightSidebarWidth}px`,
-          '--map-bottom-pane-height': `${panePresence.visible && bottomPane ? bottomPaneHeight : 0}px`,
+          '--map-bottom-pane-height': `${coveredBottom}px`,
           '--map-bottom-pane-content-height': `${retainedPane.height}px`,
           '--map-layout-motion-duration': `${reducedMotion ? 0 : MOTION_DURATION.panel}ms`,
         } as CSSProperties
@@ -436,8 +439,10 @@ function MapSectionLayoutInner({
       )}
 
       {/* Map content */}
-      <div className="relative min-w-0 flex-1 overflow-hidden" data-map-content="true">
-        {children}
+      {/* The docked pane covers the bottom of this area rather than shrinking the
+          map: see the main map's extension under it in Map and styles.css. */}
+      <div className="geo-map-layout-content relative min-w-0 flex-1" data-map-content="true">
+        <MapLayoutCoversContext.Provider value={covers}>{children}</MapLayoutCoversContext.Provider>
       </div>
 
       {/* Right sidebar (desktop only) */}

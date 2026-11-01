@@ -20,6 +20,8 @@ import { MapLoader, type MapLoaderVariant } from './map-loader.js'
 import { MAP_STYLES } from './map-styles.js'
 import { DEFAULT_MAP_CONTROLS } from './map-controls.js'
 import { MOBILE_MAP_FEATURE_CLICK_EVENT } from '../workspace/workspace-events.js'
+import { useMapLayoutCovers } from '../workspace/map-layout-covers.js'
+import { resizeMap, setMapCoveredBottom, visibleMapBounds } from './map-resize.js'
 import {
   MapContext,
   registerMapInteractions,
@@ -115,11 +117,8 @@ type MapProps = {
 type MapRef = MapLibreGL.Map
 
 function getViewState(map: MapLibreGL.Map): MapViewState {
-  const bounds = map.getBounds()
-  return {
-    ...getViewport(map),
-    bounds: { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() },
-  }
+  // Exclude canvas a docked layout pane covers: it is drawn but not visible.
+  return { ...getViewport(map), bounds: visibleMapBounds(map) }
 }
 
 function getViewport(map: MapLibreGL.Map): MapViewport {
@@ -169,6 +168,11 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
   const lastFeatureClickAtRef = useRef(0)
   const deferResizeRef = useRef(deferResize)
   deferResizeRef.current = deferResize
+  const layoutCovers = useMapLayoutCovers()
+  const coveredTarget = layoutCovers?.bottom ?? 0
+  // Whether this map fills the layout's content area down to its bottom edge,
+  // and so may extend its canvas under a docked pane instead of resizing.
+  const [extendsUnderPane, setExtendsUnderPane] = useState(false)
 
   const isControlled = viewport !== undefined && onViewportChange !== undefined
 
@@ -343,20 +347,20 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     const container = containerRef.current
     if (!mapInstance || !container || typeof ResizeObserver === 'undefined') return
 
-    let frame = 0
     const observer = new ResizeObserver(([entry]) => {
       if (deferResizeRef.current) {
         // Changing the canvas width/height attributes reallocates and clears its
         // WebGL drawing buffer. During a divider drag, scale the existing frame
         // with CSS and perform one real MapLibre resize when the drag finishes.
-        cancelAnimationFrame(frame)
         const canvas = mapInstance.getCanvas()
         canvas.style.width = `${entry.contentRect.width}px`
         canvas.style.height = `${entry.contentRect.height}px`
         return
       }
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => mapInstance.resize())
+      // Observer callbacks run after layout and before paint. Resizing and
+      // redrawing here presents the new size in this frame; a frame later the
+      // browser would already have shown the cleared canvas.
+      resizeMap(mapInstance)
     })
     observer.observe(container)
     // MapLibre does not emit moveend for a resize, but the visible bounds change.
@@ -364,7 +368,6 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     mapInstance.on('resize', handleResize)
 
     return () => {
-      cancelAnimationFrame(frame)
       observer.disconnect()
       mapInstance.off('resize', handleResize)
     }
@@ -372,8 +375,50 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
 
   useLayoutEffect(() => {
     if (!mapInstance || deferResize) return
-    mapInstance.resize()
+    resizeMap(mapInstance)
   }, [deferResize, mapInstance])
+
+  // A docked layout pane (a feature table) covers the bottom of the content
+  // area, like Felt's data table over its map. Rather than shrinking — which
+  // reallocates the canvas on every frame of the pane's transition — the main
+  // map pads its container by the pane's animated height so the canvas keeps
+  // its size, and the overlay chrome stays in the visible part. Decide once per
+  // opening; the decision is kept through the closing transition.
+  useLayoutEffect(() => {
+    if (coveredTarget <= 0) return
+    const container = containerRef.current
+    const content = container?.closest<HTMLElement>('[data-map-content="true"]')
+    if (!container || !content) return setExtendsUnderPane(false)
+    // Reopened mid-close, the container still extends by the pane's current height.
+    const extension = container.classList.contains('geo-map-under-pane')
+      ? parseFloat(getComputedStyle(container).paddingBottom) || 0
+      : 0
+    const bottom = container.getBoundingClientRect().bottom - extension
+    setExtendsUnderPane(Math.abs(content.getBoundingClientRect().bottom - bottom) < 1.5)
+  }, [coveredTarget])
+
+  // Move the camera padding with the pane's settled target, keeping the picture
+  // still, so selections and fitBounds land above the pane.
+  const coveredRef = useRef(0)
+  coveredRef.current = extendsUnderPane ? coveredTarget : 0
+  useLayoutEffect(() => {
+    if (!mapInstance) return
+    let waiting = false
+    const apply = () => {
+      waiting = false
+      // Jumping would cancel a flight already heading for the old centre.
+      if (mapInstance.isMoving()) {
+        waiting = true
+        mapInstance.once('moveend', apply)
+        return
+      }
+      setMapCoveredBottom(mapInstance, coveredRef.current)
+    }
+    apply()
+    return () => {
+      if (waiting) mapInstance.off('moveend', apply)
+    }
+  }, [mapInstance, extendsUnderPane, coveredTarget])
 
   useEffect(() => {
     if (!mapInstance || !isControlled || !viewport) return
@@ -450,7 +495,8 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
       <div
         ref={containerRef}
         data-map-layout-root="true"
-        className={cn('relative h-full w-full', className)}
+        data-map-extends-under-pane={extendsUnderPane || undefined}
+        className={cn('relative h-full w-full', className, extendsUnderPane && 'geo-map-under-pane')}
         onPointerDownCapture={(event) => {
           if (!(event.target instanceof Element)) return
           if (!event.target.closest('.maplibregl-canvas-container')) return
@@ -474,9 +520,15 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
         }}
       >
         {showLoadingOverlay && <MapLoader visible={isLoading} variant={loader} theme={resolvedTheme} />}
-        {/* SSR-safe: children render only when map is loaded on client */}
-        {mapInstance && (controls === undefined ? DEFAULT_MAP_CONTROLS : controls)}
-        {mapInstance && children}
+        {/* SSR-safe: children render only when map is loaded on client. One
+            element either way, so starting to extend under a pane keeps their
+            state: without a pane it is display:contents and changes nothing. */}
+        {mapInstance && (
+          <div className="geo-map-chrome">
+            {controls === undefined ? DEFAULT_MAP_CONTROLS : controls}
+            {children}
+          </div>
+        )}
       </div>
     </MapContext.Provider>
   )

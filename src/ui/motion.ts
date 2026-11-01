@@ -35,16 +35,22 @@ export function useMotionPresence(open: boolean, duration: number = MOTION_DURAT
     if (reducedMotion) return
     if (open) {
       // A newly mounted surface must paint its starting state before entry.
+      // This effect is cleaned up whenever `open` changes, so it alone decides.
+      // Reading `previous.open` instead lost entries: the render-phase update
+      // above was not always in the state this updater received, and the
+      // desktop table then stayed off screen.
       frame = requestAnimationFrame(() => {
         nextFrame = requestAnimationFrame(() =>
-          setState((previous) => (previous.open ? { ...previous, visible: true } : previous)),
+          setState((previous) =>
+            previous.visible ? previous : { ...previous, open: true, present: true, visible: true },
+          ),
         )
       })
     } else {
       timer = setTimeout(
         () =>
           setState((previous) =>
-            !previous.open && previous.present ? { ...previous, present: false, visible: false } : previous,
+            previous.present ? { ...previous, open: false, present: false, visible: false } : previous,
           ),
         Math.max(0, duration),
       )

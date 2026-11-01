@@ -1,4 +1,5 @@
 import type * as MapLibreGL from 'maplibre-gl'
+import { mapCoveredBottom, visibleMapBounds } from './map-resize.js'
 
 export type MapViewportEvent = 'load' | 'moveend' | 'zoomend' | 'resize'
 export interface MapViewportSnapshot {
@@ -15,14 +16,15 @@ export interface MapViewportObserverOptions {
 
 export const DEFAULT_VIEWPORT_EVENTS: readonly MapViewportEvent[] = ['load', 'moveend', 'zoomend', 'resize']
 
+/** The visible viewport; canvas under a docked layout pane is excluded. */
 export function readMapViewport(map: MapLibreGL.Map): MapViewportSnapshot {
-  const bounds = map.getBounds()
+  const bounds = visibleMapBounds(map)
   const canvas = map.getCanvas()
   return {
-    bounds: [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()],
+    bounds: [bounds.west, bounds.south, bounds.east, bounds.north],
     zoom: map.getZoom(),
     width: canvas.clientWidth,
-    height: canvas.clientHeight,
+    height: Math.max(0, canvas.clientHeight - mapCoveredBottom(map)),
   }
 }
 

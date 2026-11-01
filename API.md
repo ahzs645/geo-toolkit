@@ -21,7 +21,7 @@ not a promise that every historical module is stable.
 | `/visualizations/react` | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, `DonutRingMap`, canvas points and typed series/axis contracts | React, React DOM |
 | `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                  | None                                                           |
 | `/grids/map-raster-grid`             | `createRasterGridLayer`, `RasterGridPick`                                                                                                            | `@deck.gl/core`, `@deck.gl/geo-layers`, `@deck.gl/layers`      |
-| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), settled viewport observation and screen-point clustering, `captureMapImage`, offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants               | React, React DOM, MapLibre                                     |
+| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), `resizeMap`, settled viewport observation and screen-point clustering, `captureMapImage`, offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants               | React, React DOM, MapLibre                                     |
 | `/map/persistent-map`                | `PersistentMapProvider`, `PersistentMapHost`, `SharedMap`, `usePersistentMap`, `useMapBasemap`                                                       | React, React DOM, MapLibre                                     |
 | `/map/map-deck`                      | Shared deck.gl overlay integration                                                                                                                   | React, React DOM, MapLibre, `@deck.gl/core`, `@deck.gl/mapbox` |
 | `/workspace`                         | `WorkspaceProvider`, `MapSectionLayout`, responsive media hooks and `requestMapSearch`                                                               | React, React DOM                                               |
@@ -286,6 +286,24 @@ its last content only through a desktop closing transition; set
 
 These are observable behavior changes at the existing private 0.1.0 extraction
 boundary; no registry release or new peer dependency is introduced.
+
+On desktop, `bottomPane` covers the bottom of the map area the way Felt's data
+table covers its map, instead of shrinking the map. The main `Map` (one that
+fills the content area to its bottom edge) extends its canvas under the pane by
+the pane's animated height, so the canvas never changes size while the pane
+opens, closes, expands to full screen or is dragged, and the picture stays
+still. Map controls and children stay in the visible part above the pane. The
+pane's settled height is added to the map's persistent bottom padding, so
+`getCenter`, `flyTo`, `easeTo`, `fitBounds` and `useFlyToSelection` frame the
+visible area; `onMoveEnd` bounds and `readMapViewport` exclude the covered
+strip. A bottom padding the host sets itself is preserved.
+
+Maps that still resize (sidebar transitions, window resizes, persistent map
+hosts) are redrawn in the same frame. Changing a canvas's size clears its WebGL
+buffer, and a bare `map.resize()` only paints on the next animation frame, which
+shows as a blank flash. Hosts that own a raw MapLibre map should call
+`resizeMap(map)` from `/map` in their `ResizeObserver` callback instead of
+`map.resize()`; do not defer it to `requestAnimationFrame`.
 
 `DialogShell` starts its visual close immediately, then invokes `onClose` and
 `onOpenChange(false)` after exit (immediately with reduced motion). Opening
