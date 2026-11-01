@@ -277,6 +277,17 @@ defers reframing until release. User map gestures stop following until a new
 selection or `focusKey` requests it again. Desktop layout resizes are batched
 into a settled correction rather than restarting a flight on each frame.
 
+On phones the controls sheet and every `MobileFeatureCard` are one stack, held
+in the workspace's sheet store: the order alone decides which sheet is in
+front. As in Felt, each sheet behind the front one is drawn at the front card's
+height, raised 10 px per step, inset 8 px per step and a shade darker, and
+sheets from the third step back are hidden; the controls sheet is the rearmost
+strip. Tapping any visible part of a rear sheet swaps it to the front. A card
+whose `cardKey` changes, or whose new `focusKey` asks for it, comes to the
+front (`focusKey` keeps its detent; `cardKey` starts a new selection). Panels
+carry `data-stack-role` = `primary`, `secondary` or `docked` (behind the
+controls sheet).
+
 Controls and feature-card handles support pointer/touch dragging, velocity
 settling, interruption at the current rendered position, and keyboard detents.
 Hidden bodies are inert; exposed stack controls remain operable. Desktop

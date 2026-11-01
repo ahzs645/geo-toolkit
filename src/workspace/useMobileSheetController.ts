@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   MOBILE_FEATURE_CARD_COMPACT_HEIGHT,
   MOBILE_FEATURE_CARD_COLLAPSED_HEIGHT,
@@ -22,6 +22,8 @@ import { MOTION_DURATION, MOTION_EASING, useReducedMotion } from '../ui/motion.j
 import { useMobileSheetGestures } from './useMobileSheetGestures.js'
 import { moveSheet } from './sheet-motion.js'
 import { useVisibleMapPanel } from './visible-map-panels.js'
+import { CONTROLS_STACK_ID, MOBILE_CARD_STACK_MAX_VISIBLE_DEPTH, mobileCardStackView } from './mobile-card-store.js'
+import { useWorkspaceSheetStack } from '../ui/mobile-card-stack.js'
 import type { MapSectionLayoutProps } from './MapSectionLayout.js'
 import {
   DEFAULT_FULL_SNAP_OFFSET,
@@ -89,17 +91,36 @@ export function useMobileSheetController({
   const [mobileSheetState, setMobileSheetState] = useState<MobileSheetState>(mobileInitialSheetState)
   const mobileSheetStateRef = useRef<MobileSheetState>(mobileInitialSheetState)
   const [mobileFeatureCardOpen, setMobileFeatureCardOpenState] = useState(false)
-  const [mobileControlsInFront, setMobileControlsInFrontState] = useState(false)
   const featureCardOpenRef = useRef(false)
-  const controlsInFrontRef = useRef(false)
   const setMobileFeatureCardOpen = useCallback((open: boolean) => {
     featureCardOpenRef.current = open
     setMobileFeatureCardOpenState(open)
   }, [])
-  const setMobileControlsInFront = useCallback((front: boolean) => {
-    controlsInFrontRef.current = front
-    setMobileControlsInFrontState(front)
-  }, [])
+  // The controls sheet is one member of the workspace's sheet stack, with the
+  // cards. Whether it is in front is read from that stack, never kept here.
+  const sheetStack = useWorkspaceSheetStack()
+  const stackEntries = useSyncExternalStore(sheetStack.subscribe, sheetStack.getSnapshot, sheetStack.getServerSnapshot)
+  const mobileControlsInFront = mobileCardStackView(stackEntries, CONTROLS_STACK_ID).controlsInFront
+  const controlsInFrontRef = useRef(mobileControlsInFront)
+  controlsInFrontRef.current = mobileControlsInFront
+  const stackCards = stackEntries.filter((entry) => entry.id !== CONTROLS_STACK_ID)
+  /** Cards drawn in the stack: the controls sheet's strip goes above the rearmost. */
+  const visibleCardCount = Math.min(stackCards.length, MOBILE_CARD_STACK_MAX_VISIBLE_DEPTH)
+  const visibleCardCountRef = useRef(visibleCardCount)
+  visibleCardCountRef.current = visibleCardCount
+  const frontCardHeight = stackCards[stackCards.length - 1]?.visibleHeight ?? 0
+  const setMobileControlsInFront = useCallback(
+    (front: boolean) => {
+      controlsInFrontRef.current = front
+      if (front) sheetStack.push(CONTROLS_STACK_ID)
+      else sheetStack.sendToBack(CONTROLS_STACK_ID)
+    },
+    [sheetStack],
+  )
+  useEffect(() => {
+    sheetStack.sendToBack(CONTROLS_STACK_ID)
+    return () => sheetStack.remove(CONTROLS_STACK_ID)
+  }, [sheetStack])
   const [mobileFeaturePeek, setMobileFeaturePeek] = useState<{ title?: string; subtitle?: string }>({})
 
   // DOM refs
@@ -244,9 +265,13 @@ export function useMobileSheetController({
             : window.innerHeight) - 104,
         ),
       )
-      const visibleHeight = collapsedFeature
-        ? featureHeight + MOBILE_STACK_REAR_SHEET_VISIBLE_GAP
-        : featureHeight + MOBILE_STACK_REAR_SHEET_VISIBLE_GAP - MOBILE_FEATURE_CARD_FRONT_OFFSET
+      // The controls sheet is the rearmost strip: one gap above the last card
+      // drawn behind the front one. A lone compact card sits offset downwards.
+      const cards = Math.max(1, visibleCardCountRef.current)
+      const visibleHeight =
+        collapsedFeature || cards > 1
+          ? featureHeight + MOBILE_STACK_REAR_SHEET_VISIBLE_GAP * cards
+          : featureHeight + MOBILE_STACK_REAR_SHEET_VISIBLE_GAP - MOBILE_FEATURE_CARD_FRONT_OFFSET
       const snaps = getSnapPositions(sheetHeight, getFullSnapOffset(), mobileCollapsedVisibleHeight)
       const y = Math.max(snaps.full, Math.min(snaps.collapsed, sheetHeight - visibleHeight))
       suppressScrim.current = true
@@ -302,6 +327,15 @@ export function useMobileSheetController({
       isMobile,
     ],
   )
+
+  // A card joining or leaving the stack moves the controls strip with it.
+  const previousCardCountRef = useRef(visibleCardCount)
+  useEffect(() => {
+    if (previousCardCountRef.current === visibleCardCount) return
+    previousCardCountRef.current = visibleCardCount
+    if (!isMobile || controlsInFrontRef.current || visibleCardCount === 0 || frontCardHeight <= 0) return
+    stackBehindFeatureCard(frontCardHeight <= MOBILE_FEATURE_CARD_COLLAPSED_HEIGHT + 1, frontCardHeight)
+  }, [frontCardHeight, isMobile, stackBehindFeatureCard, visibleCardCount])
 
   const bringControlsToFront = useCallback(() => {
     if (!isMobile) return
