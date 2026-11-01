@@ -274,13 +274,20 @@ export function MobileFeatureCard({
   const trackRenderedHeight = useCallback(() => {
     cancelAnimationFrame(heightFrameRef.current)
     const started = performance.now()
+    const sample = { previous: Number.NaN, still: 0, frames: 0 }
     const report = () => {
       const panel = panelRef.current
       if (!panel || closingRef.current) return
-      publishVisibleHeight(panel.getBoundingClientRect().height, true)
-      if (!reducedMotion && performance.now() - started < MOTION_DURATION.panel + 32) {
-        heightFrameRef.current = requestAnimationFrame(report)
-      }
+      const height = panel.getBoundingClientRect().height
+      publishVisibleHeight(height, true)
+      sample.still = Math.abs(height - sample.previous) < 0.25 ? sample.still + 1 : 0
+      sample.previous = height
+      sample.frames += 1
+      // Follow the transition until it has settled, not for its nominal length:
+      // on a busy device frames run late, and stopping early left the cards
+      // behind sized to a mid-transition height.
+      const running = !reducedMotion && performance.now() - started < MOTION_DURATION.panel + 32
+      if ((running || sample.still < 2) && sample.frames < 240) heightFrameRef.current = requestAnimationFrame(report)
     }
     heightFrameRef.current = requestAnimationFrame(report)
   }, [publishVisibleHeight, reducedMotion])

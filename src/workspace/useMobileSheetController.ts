@@ -328,12 +328,16 @@ export function useMobileSheetController({
     ],
   )
 
-  // A card joining or leaving the stack moves the controls strip with it.
+  // A card joining or leaving a stack that already has cards moves the controls
+  // strip with it. The first card's opening already positions it (the stack
+  // event), so that is not done twice.
   const previousCardCountRef = useRef(visibleCardCount)
   useEffect(() => {
-    if (previousCardCountRef.current === visibleCardCount) return
+    const previous = previousCardCountRef.current
+    if (previous === visibleCardCount) return
     previousCardCountRef.current = visibleCardCount
-    if (!isMobile || controlsInFrontRef.current || visibleCardCount === 0 || frontCardHeight <= 0) return
+    if (previous === 0 || visibleCardCount === 0) return
+    if (!isMobile || controlsInFrontRef.current || frontCardHeight <= 0) return
     stackBehindFeatureCard(frontCardHeight <= MOBILE_FEATURE_CARD_COLLAPSED_HEIGHT + 1, frontCardHeight)
   }, [frontCardHeight, isMobile, stackBehindFeatureCard, visibleCardCount])
 
