@@ -29,33 +29,54 @@ export function useMotionPresence(open: boolean, duration: number = MOTION_DURAT
   }
 
   useLayoutEffect(() => {
+    let cancelled = false
     let frame = 0
     let nextFrame = 0
     let timer: ReturnType<typeof setTimeout> | undefined
-    if (reducedMotion) return
-    if (open) {
-      // A newly mounted surface must paint its starting state before entry.
-      // This effect is cleaned up whenever `open` changes, so it alone decides.
-      // Reading `previous.open` instead lost entries: the render-phase update
-      // above was not always in the state this updater received, and the
-      // desktop table then stayed off screen.
-      frame = requestAnimationFrame(() => {
-        nextFrame = requestAnimationFrame(() =>
-          setState((previous) =>
-            previous.visible ? previous : { ...previous, open: true, present: true, visible: true },
-          ),
-        )
+    // The render-phase adjustment above is not always retained in the state
+    // later updates read (seen on CI and in the workspace fixture): a desktop
+    // table then never entered, and a reduced-motion dialog never finished
+    // closing. Reconcile from the committed props before the browser paints.
+    // This effect is cleaned up whenever `open` changes, so it alone decides.
+    queueMicrotask(() => {
+      if (cancelled) return
+      setState((previous) => {
+        const next = {
+          open,
+          reducedMotion,
+          present: reducedMotion ? open : open || previous.present,
+          visible: open && (reducedMotion || (previous.open && previous.visible)),
+        }
+        return next.open === previous.open &&
+          next.reducedMotion === previous.reducedMotion &&
+          next.present === previous.present &&
+          next.visible === previous.visible
+          ? previous
+          : next
       })
-    } else {
-      timer = setTimeout(
-        () =>
-          setState((previous) =>
-            previous.present ? { ...previous, open: false, present: false, visible: false } : previous,
-          ),
-        Math.max(0, duration),
-      )
+    })
+    if (!reducedMotion) {
+      if (open) {
+        // A newly mounted surface must paint its starting state before entry.
+        frame = requestAnimationFrame(() => {
+          nextFrame = requestAnimationFrame(() =>
+            setState((previous) =>
+              previous.visible ? previous : { ...previous, open: true, present: true, visible: true },
+            ),
+          )
+        })
+      } else {
+        timer = setTimeout(
+          () =>
+            setState((previous) =>
+              previous.present ? { ...previous, open: false, present: false, visible: false } : previous,
+            ),
+          Math.max(0, duration),
+        )
+      }
     }
     return () => {
+      cancelled = true
       cancelAnimationFrame(frame)
       cancelAnimationFrame(nextFrame)
       clearTimeout(timer)
