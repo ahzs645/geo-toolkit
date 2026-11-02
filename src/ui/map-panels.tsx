@@ -1009,6 +1009,7 @@ type MapLegendPanelProps = {
   collapsed?: boolean
   onCollapsedChange?: (collapsed: boolean) => void
   contentClassName?: string
+  /** @deprecated The panel always clears a mounted timeline; this has no effect. */
   elevated?: boolean
   /** 'fit' sizes the panel to its content (capped at the 'md' footprint)
    *  whether collapsed or expanded; the fixed sizes reserve their full width
@@ -1028,7 +1029,6 @@ export function MapLegendPanel({
   collapsed,
   onCollapsedChange,
   contentClassName,
-  elevated = false,
   width = 'md',
 }: MapLegendPanelProps) {
   const isMobile = useIsMobile()
@@ -1079,7 +1079,7 @@ export function MapLegendPanel({
       window.removeEventListener('resize', syncLegendHeight)
       root.style.removeProperty('--map-legend-panel-visible-height')
     }
-  }, [className, elevated])
+  }, [className])
 
   return (
     <div
@@ -1091,13 +1091,12 @@ export function MapLegendPanel({
         // right-hand chrome shares one edge.
         'absolute right-2.5 flex flex-col rounded-lg border border-border bg-background/95 px-3 py-2.5 shadow-xl backdrop-blur workspace-desktop:rounded-xl workspace-desktop:p-3',
         MAP_OVERLAY_Z.legend,
-        // The legend takes the corner itself (above the timeline and, on
-        // phones, the sheet); Map lifts MapLibre's attribution onto it. Never
+        // The legend takes the corner itself (above a timeline, when one is
+        // shown, and on phones the sheet); Map lifts MapLibre's attribution
+        // onto it. Never
         // taller than the map leaves room for beside the top controls: the
         // content scrolls instead.
-        elevated
-          ? 'bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-timeline-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_0.625rem)] max-h-[max(6rem,calc(100%_-_var(--map-mobile-sheet-visible-height,0px)_-_var(--map-timeline-height,0px)_-_var(--map-mobile-toolbar-height,0px)_-_14rem))] workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_0.625rem)]'
-          : 'bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_0.625rem)] max-h-[max(6rem,calc(100%_-_var(--map-mobile-sheet-visible-height,0px)_-_var(--map-mobile-toolbar-height,0px)_-_14rem))] workspace-desktop:bottom-2.5',
+        'bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-timeline-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_0.625rem)] max-h-[max(6rem,calc(100%_-_var(--map-mobile-sheet-visible-height,0px)_-_var(--map-timeline-height,0px)_-_var(--map-mobile-toolbar-height,0px)_-_14rem))] workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_0.625rem)]',
         // Widths follow the map, not the viewport, so an embedded or
         // side-by-side map keeps the panel inside it. Collapsed, the pill
         // shrinks to its title instead of keeping the expanded width as an

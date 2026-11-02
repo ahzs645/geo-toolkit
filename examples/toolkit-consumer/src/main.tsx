@@ -1,5 +1,6 @@
 import { ChartExperience } from './ChartExperience'
 import { ControlExperience } from './ControlExperience'
+import { TimelineExperience } from './TimelineExperience'
 import { StrictMode, useCallback, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Map, MapFillLayer, MapPieClusterLayer } from '@pgmaps/geo-toolkit/map'
@@ -403,6 +404,8 @@ createRoot(document.getElementById('root')!).render(
       <ControlExperience />
     ) : window.location.pathname === '/charts' ? (
       <ChartExperience />
+    ) : window.location.pathname === '/timeline' ? (
+      <TimelineExperience />
     ) : (
       <App />
     )}
