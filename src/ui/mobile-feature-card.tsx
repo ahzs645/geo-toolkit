@@ -2,7 +2,7 @@ import { ChevronDown, X } from 'lucide-react'
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { cn } from '../utils.js'
 import { MAP_OVERLAY_Z } from './map-overlay.js'
-import { MOBILE_CARD_STACK_PEEK, useMobileCardStack } from './mobile-card-stack.js'
+import { MOBILE_CARD_STACK_MAX_VISIBLE_DEPTH, MOBILE_CARD_STACK_PEEK, useMobileCardStack } from './mobile-card-stack.js'
 import { MOBILE_MEDIA_QUERY, useIsMobile } from '../workspace/useIsMobile.js'
 import type { MobileSheetState } from '../workspace/sheet-math.js'
 import { featureCardHeights, stepFeatureCard } from './feature-card-math.js'
@@ -19,10 +19,8 @@ import {
   MOBILE_MAP_BLANK_CLICK_EVENT,
   MOBILE_MAP_SHEET_COLLAPSE_EVENT,
   MOBILE_MAP_SHEET_STACK_EVENT,
-  MOBILE_MAP_CONTROLS_FRONT_EVENT,
   MOBILE_MAP_CONTROLS_VISIBLE_HEIGHT_EVENT,
   MOBILE_FEATURE_CARD_DOCK_EVENT,
-  MOBILE_FEATURE_CARD_FRONT_EVENT,
   MOBILE_FEATURE_CARD_PEEK_EVENT,
   MOBILE_FEATURE_CARD_OPEN_EVENT,
   MOBILE_FEATURE_CARD_CLOSE_EVENT,
@@ -50,6 +48,7 @@ export function MobileFeatureCard({
   children,
   className,
   cardKey,
+  focusKey,
   contentClassName,
   height = MOBILE_FEATURE_CARD_HEIGHT,
   initialVisibleHeight = MOBILE_FEATURE_CARD_COMPACT_HEIGHT,
@@ -64,6 +63,12 @@ export function MobileFeatureCard({
   children: ReactNode
   className?: string
   cardKey?: string | number
+  /**
+   * Change to bring the card to the front of the stack without resetting it,
+   * e.g. a table switched to another layer from outside the table. `cardKey`
+   * instead starts a new selection at the compact detent.
+   */
+  focusKey?: unknown
   contentClassName?: string
   height?: number
   initialVisibleHeight?: number
@@ -82,7 +87,6 @@ export function MobileFeatureCard({
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [expanded, setExpanded] = useState(initialVisibleHeight >= height)
-  const [controlsInFront, setControlsInFront] = useState(false)
   const [controlsVisibleHeight, setControlsVisibleHeight] = useState<number | null>(null)
   const [hasDockTarget, setHasDockTarget] = useState(false)
   const dragMovedRef = useRef(false)
@@ -100,6 +104,10 @@ export function MobileFeatureCard({
   const titleId = useId()
   const reducedMotion = useReducedMotion()
   const presence = useMotionPresence(open, MOTION_DURATION.panel + 50)
+  const presentRef = useRef(presence.present)
+  useLayoutEffect(() => {
+    presentRef.current = presence.present
+  }, [presence.present])
   useVisibleMapPanel(panelRef, presence.present)
   const [frameHeight, setFrameHeight] = useState(height)
   const heights = useMemo(
@@ -115,12 +123,26 @@ export function MobileFeatureCard({
     onCloseRef.current = onClose
   }, [onClose])
 
-  const { depth, isFront, hasCardsBehind, frontVisibleHeight, bringToFront, reportVisibleHeight } = useMobileCardStack(
-    stackId,
-    presence.present,
-  )
+  // Front/back comes only from the workspace's one sheet stack (controls sheet
+  // included), never from flags each sheet keeps: those went stale when a third
+  // sheet opened and left a card drawn at the controls' height behind it.
+  const {
+    cardDepth,
+    isFrontCard: isFront,
+    controlsInFront,
+    hasCardsBehind,
+    frontCardVisibleHeight: frontVisibleHeight,
+    bringToFront,
+    reportVisibleHeight,
+  } = useMobileCardStack(stackId, presence.present)
   /** Behind another *card* (not the controls sheet), so it peeks above it instead. */
   const stackedBehind = !isFront && !controlsInFront
+  /**
+   * Hidden rather than drawn as another strip: deep in the stack (Felt hides
+   * from the third sheet back), or not the card tucked behind the controls.
+   */
+  const buriedInStack =
+    (stackedBehind && cardDepth >= MOBILE_CARD_STACK_MAX_VISIBLE_DEPTH) || (controlsInFront && cardDepth > 0)
   /** Front card of a stack sits flush, so only the thin edge of the card behind shows. */
   const coversStack = isFront && hasCardsBehind && !controlsInFront
 
@@ -164,13 +186,26 @@ export function MobileFeatureCard({
     setCollapsed(false)
     setExpanded(initialVisibleHeight >= height)
     setOpen(true)
+    // New content in a card already in the stack brings it forward, as Felt
+    // does for each new selection; the controls sheet goes back behind it. A
+    // card not yet present joins the stack (in front) once it is.
+    if (presentRef.current) bringToFront()
     interactions.dispatchEvent(new CustomEvent(MOBILE_MAP_SHEET_STACK_EVENT))
     interactions.dispatchEvent(
       new CustomEvent(MOBILE_FEATURE_CARD_PEEK_EVENT, {
         detail: { title: titleText, subtitle: subtitleText },
       }),
     )
-  }, [cardKey, height, initialVisibleHeight, interactions, subtitleText, titleText])
+  }, [bringToFront, cardKey, height, initialVisibleHeight, interactions, subtitleText, titleText])
+
+  const focusKeyRef = useRef(focusKey)
+  useLayoutEffect(() => {
+    if (Object.is(focusKeyRef.current, focusKey)) return
+    focusKeyRef.current = focusKey
+    if (!presentRef.current) return
+    bringToFront()
+    interactions.dispatchEvent(new CustomEvent(MOBILE_MAP_SHEET_STACK_EVENT))
+  }, [bringToFront, focusKey, interactions])
 
   useLayoutEffect(() => {
     const frame = frameRef.current
@@ -182,17 +217,18 @@ export function MobileFeatureCard({
     return () => observer.disconnect()
   }, [height, presence.present])
 
-  useEffect(() => {
-    const sendBehind = () => {
+  // The controls sheet coming forward docks this card at its compact detent;
+  // leaving the front, it stops following the controls sheet's height.
+  const [previousControlsInFront, setPreviousControlsInFront] = useState(controlsInFront)
+  if (previousControlsInFront !== controlsInFront) {
+    setPreviousControlsInFront(controlsInFront)
+    if (controlsInFront) {
       setCollapsed(false)
       setExpanded(false)
-      setControlsInFront(true)
-    }
-    const bringFront = () => {
-      setControlsInFront(false)
-      setControlsVisibleHeight(null)
-      interactions.dispatchEvent(new CustomEvent(MOBILE_MAP_SHEET_STACK_EVENT))
-    }
+    } else setControlsVisibleHeight(null)
+  }
+
+  useEffect(() => {
     const syncControlsHeight = (event: Event) => {
       if (!(event instanceof CustomEvent)) return
       const visibleHeight = event.detail?.visibleHeight
@@ -200,13 +236,9 @@ export function MobileFeatureCard({
         setControlsVisibleHeight(visibleHeight)
       }
     }
-    interactions.addEventListener(MOBILE_MAP_CONTROLS_FRONT_EVENT, sendBehind)
     interactions.addEventListener(MOBILE_MAP_CONTROLS_VISIBLE_HEIGHT_EVENT, syncControlsHeight)
-    interactions.addEventListener(MOBILE_FEATURE_CARD_FRONT_EVENT, bringFront)
     return () => {
-      interactions.removeEventListener(MOBILE_MAP_CONTROLS_FRONT_EVENT, sendBehind)
       interactions.removeEventListener(MOBILE_MAP_CONTROLS_VISIBLE_HEIGHT_EVENT, syncControlsHeight)
-      interactions.removeEventListener(MOBILE_FEATURE_CARD_FRONT_EVENT, bringFront)
     }
   }, [interactions])
 
@@ -242,13 +274,20 @@ export function MobileFeatureCard({
   const trackRenderedHeight = useCallback(() => {
     cancelAnimationFrame(heightFrameRef.current)
     const started = performance.now()
+    const sample = { previous: Number.NaN, still: 0, frames: 0 }
     const report = () => {
       const panel = panelRef.current
       if (!panel || closingRef.current) return
-      publishVisibleHeight(panel.getBoundingClientRect().height, true)
-      if (!reducedMotion && performance.now() - started < MOTION_DURATION.panel + 32) {
-        heightFrameRef.current = requestAnimationFrame(report)
-      }
+      const height = panel.getBoundingClientRect().height
+      publishVisibleHeight(height, true)
+      sample.still = Math.abs(height - sample.previous) < 0.25 ? sample.still + 1 : 0
+      sample.previous = height
+      sample.frames += 1
+      // Follow the transition until it has settled, not for its nominal length:
+      // on a busy device frames run late, and stopping early left the cards
+      // behind sized to a mid-transition height.
+      const running = !reducedMotion && performance.now() - started < MOTION_DURATION.panel + 32
+      if ((running || sample.still < 2) && sample.frames < 240) heightFrameRef.current = requestAnimationFrame(report)
     }
     heightFrameRef.current = requestAnimationFrame(report)
   }, [publishVisibleHeight, reducedMotion])
@@ -281,7 +320,11 @@ export function MobileFeatureCard({
     [applyCardHeight, coversStack, heights],
   )
 
+  /** Set when a press brought this card forward, so its click does not also change detent. */
+  const broughtForwardRef = useRef(false)
+  // Gestures call this on every press, so the flag never outlives one press.
   const bringCardForward = useCallback(() => {
+    broughtForwardRef.current = stackedBehind
     if (stackedBehind) bringToFront()
   }, [bringToFront, stackedBehind])
 
@@ -356,8 +399,10 @@ export function MobileFeatureCard({
       return
     }
     // Tapping the exposed top edge of a card behind brings it forward, so the
-    // stack can be flipped through without closing anything.
-    if (stackedBehind) {
+    // stack can be flipped through without closing anything. The press already
+    // swapped it on pointerdown; the card keeps the stack's height, like Felt.
+    if (broughtForwardRef.current || stackedBehind) {
+      broughtForwardRef.current = false
       bringToFront()
       return
     }
@@ -378,7 +423,7 @@ export function MobileFeatureCard({
           : initialVisibleHeight
 
   const boundedVisibleHeight = Math.min(frameHeight, visibleCardHeight)
-  const stackOffset = stackedBehind ? MOBILE_CARD_STACK_PEEK * depth : 0
+  const stackOffset = stackedBehind ? MOBILE_CARD_STACK_PEEK * cardDepth : 0
   const bodyHidden = !open || effectiveCollapsed || stackedBehind || controlsInFront
 
   useLayoutEffect(() => {
@@ -429,7 +474,7 @@ export function MobileFeatureCard({
       )}
       // Front card sits at the active overlay level; each card behind drops one
       // step so they layer instead of colliding at the same z-index.
-      style={controlsInFront ? undefined : { zIndex: 50 - depth }}
+      style={{ zIndex: controlsInFront ? undefined : 50 - cardDepth, visibility: buriedInStack ? 'hidden' : undefined }}
       aria-label="Selected feature"
       data-mobile-feature-card-root="true"
     >
@@ -479,11 +524,18 @@ export function MobileFeatureCard({
                   : expanded
                     ? 'h-full translate-y-2'
                     : 'translate-y-2'),
-            stackedBehind && 'shadow-[0_-3px_14px_rgba(0,0,0,0.24)]',
+            // A rear card reads as the back of a stack, as in Apple Maps: inset
+            // a step per depth and a shade darker, its top strip left to tap.
+            stackedBehind && 'bg-muted shadow-[0_-3px_14px_rgba(0,0,0,0.24)]',
             className,
           )}
+          data-stack-role={controlsInFront ? 'docked' : stackedBehind ? 'secondary' : 'primary'}
+          // Any tap on the strip a rear card leaves showing swaps it to the front,
+          // not only one that lands on its handle (its border and corners too).
+          onClick={stackedBehind ? bringToFront : undefined}
           style={{
             alignSelf: 'end',
+            marginInline: stackedBehind ? `${8 * cardDepth}px` : undefined,
             height: `${boundedVisibleHeight}px`,
             maxHeight: '100%',
             transform: `translateY(${stackedBehind ? -stackOffset : controlsInFront ? -6 : effectiveCollapsed || coversStack ? 0 : 8}px)`,
@@ -509,6 +561,7 @@ export function MobileFeatureCard({
               if (!next) return
               event.preventDefault()
               bringCardForward()
+              broughtForwardRef.current = false
               snapCard(next)
             }}
           >

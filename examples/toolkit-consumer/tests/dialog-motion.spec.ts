@@ -1,4 +1,14 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
+
+/**
+ * Wait until Radix has registered a modal dialog as the top dismissable layer.
+ * It autofocuses during the opening commit but learns its layer index only in
+ * a later, normal-priority render; Escape pressed in between is dropped. Radix
+ * sets the inline pointer-events on a modal layer in that same render.
+ */
+async function topLayerReady(dialog: Locator) {
+  await expect.poll(() => dialog.evaluate((node) => (node as HTMLElement).style.pointerEvents)).toBe('auto')
+}
 
 for (const viewport of [
   { name: 'desktop', width: 1100, height: 800 },
@@ -92,6 +102,7 @@ test('reduced motion closes without retaining an animated modal', async ({ page 
   await expect(dialog).toBeVisible()
   await expect(dialog.getByRole('textbox')).toBeFocused()
   expect(await dialog.evaluate((node) => node.getAnimations().length)).toBe(0)
+  await topLayerReady(dialog)
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(trigger).toBeFocused()
@@ -101,9 +112,10 @@ test('reduced motion closes without retaining an animated modal', async ({ page 
   await recordTrigger.click()
   const recordDialog = page.getByRole('dialog', { name: 'Conditional record' })
   await expect(recordDialog).toBeVisible()
-  // Radix installs modal keyboard handlers with its autofocus effects. Reduced
-  // motion makes the surface visible before those effects necessarily run.
+  // Reduced motion makes the surface visible and focused within the opening
+  // commit, before Radix has registered it as the layer Escape belongs to.
   await expect(recordDialog.getByRole('button', { name: 'Dismiss record' })).toBeFocused()
+  await topLayerReady(recordDialog)
   await page.keyboard.press('Escape')
   await expect(page.locator('[role="dialog"]')).toHaveCount(0)
   await expect(page.getByTestId('close-count')).toHaveText('1')

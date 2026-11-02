@@ -284,6 +284,90 @@ sidebars retain their state while hidden. `MapSectionLayout.bottomPane` retains
 its last content only through a desktop closing transition; set
 `bottomPaneResizing` during direct divider dragging to avoid eased resizing.
 
+### Mobile sheet stack
+
+On phones, `MapSectionLayout`'s controls sheet and every `MobileFeatureCard` in
+the same workspace form one stack, like Felt's stacked sheets. The workspace's
+sheet store holds the order; nothing else decides which sheet is in front.
+
+How a stack looks:
+
+- The front card is interactive at its own detent (compact, full or collapsed).
+- Each card behind it is drawn at the front card's height, raised 10 px per
+  step (`MOBILE_CARD_STACK_PEEK`), inset 8 px per step and a shade darker. Its
+  body is inert; only its top strip shows.
+- Cards three or more steps back are hidden
+  (`MOBILE_CARD_STACK_MAX_VISIBLE_DEPTH`).
+- The controls sheet is the rearmost strip. Tapping it brings it to the front,
+  and the front card docks behind it at the controls' height.
+
+Swapping: tapping any visible part of a rear sheet brings it to the front. It
+opens at its own detent, and the previous front card lines up behind it.
+
+#### Add a sheet
+
+1. Render a `MobileFeatureCard` inside the layout's workspace, usually through
+   `ResponsiveFeatureDetail` so desktop gets the popup instead:
+
+   ```tsx
+   <ResponsiveFeatureDetail
+     popup={<MapPopup …>{details}</MapPopup>}
+     card={
+       <MobileFeatureCard
+         stackId="parcel"
+         title={parcel.name}
+         subtitle="Parcels"
+         cardKey={parcel.id}
+         onClose={() => setParcel(null)}
+       >
+         {details}
+       </MobileFeatureCard>
+     }
+   />
+   ```
+
+2. Pick `stackId` by identity, not by content. Cards with the same `stackId` are
+   one sheet: selecting another parcel updates the `parcel` sheet in place.
+   Different ids stack, e.g. a parcel card in front of the feature table. The
+   default is `feature`.
+
+3. Signal new content so the sheet comes forward, as Felt does on a new
+   selection:
+   - `cardKey`: a new selection. The card comes to the front and resets to its
+     compact detent.
+   - `focusKey`: the same sheet, asked for again (e.g. a table switched to
+     another layer from the controls). The card comes to the front and keeps its
+     detent.
+
+4. Size it with `height` (the full detent) and `initialVisibleHeight` (the
+   compact one). Cards behind the front card follow the front card's height
+   whatever their own sizes.
+
+Do not build a separate fixed bottom sheet for map content: it would sit outside
+the stack and cover or be covered by the others unpredictably. Modal dialogs
+(`DialogContent variant="sheet"`) are a separate, blocking layer and are fine.
+
+#### Test a stack
+
+Each card panel has `data-map-feature-card-panel="true"` and
+`data-stack-role`: `primary` (front), `secondary` (behind another card) or
+`docked` (behind the controls sheet). A docked card is `aria-hidden`, so find
+cards by panel and header text rather than by role, and tap the top strip of a
+rear card to swap it:
+
+```ts
+const card = (name: string) =>
+  page
+    .locator('[data-map-feature-card-panel="true"]')
+    .filter({ has: page.locator(':scope > header').getByText(name, { exact: true }) })
+const box = (await card('Parcel 12').boundingBox())!
+await page.touchscreen.tap(box.x + box.width / 2, box.y + 4)
+await expect(card('Parcel 12')).toHaveAttribute('data-stack-role', 'primary')
+```
+
+The rear card follows the front card's reported height a frame later, so poll
+geometry assertions instead of reading once.
+
 These are observable behavior changes at the existing private 0.1.0 extraction
 boundary; no registry release or new peer dependency is introduced.
 
