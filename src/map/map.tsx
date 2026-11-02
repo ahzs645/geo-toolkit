@@ -22,6 +22,7 @@ import { DEFAULT_MAP_CONTROLS } from './map-controls.js'
 import { MOBILE_MAP_FEATURE_CLICK_EVENT } from '../workspace/workspace-events.js'
 import { useMapLayoutCovers } from '../workspace/map-layout-covers.js'
 import { resizeMap, setMapCoveredBottom, visibleMapBounds } from './map-resize.js'
+import { mapCornerTargets, publishMapCornerHeights } from './map-corners.js'
 import {
   MapContext,
   registerMapInteractions,
@@ -373,6 +374,13 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     }
   }, [mapInstance])
 
+  // Legends and controls in a bottom corner stack above MapLibre's attribution.
+  useEffect(() => {
+    const container = containerRef.current
+    if (!mapInstance || !container) return
+    return publishMapCornerHeights(container, mapCornerTargets(container))
+  }, [mapInstance])
+
   useLayoutEffect(() => {
     if (!mapInstance || deferResize) return
     resizeMap(mapInstance)
@@ -496,7 +504,7 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
         ref={containerRef}
         data-map-layout-root="true"
         data-map-extends-under-pane={extendsUnderPane || undefined}
-        className={cn('relative h-full w-full', className, extendsUnderPane && 'geo-map-under-pane')}
+        className={cn('geo-map relative h-full w-full', className, extendsUnderPane && 'geo-map-under-pane')}
         onPointerDownCapture={(event) => {
           if (!(event.target instanceof Element)) return
           if (!event.target.closest('.maplibregl-canvas-container')) return

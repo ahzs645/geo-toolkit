@@ -25,7 +25,7 @@ not a promise that every historical module is stable.
 | `/map/persistent-map`                | `PersistentMapProvider`, `PersistentMapHost`, `SharedMap`, `usePersistentMap`, `useMapBasemap`                                                       | React, React DOM, MapLibre                                     |
 | `/map/map-deck`                      | Shared deck.gl overlay integration                                                                                                                   | React, React DOM, MapLibre, `@deck.gl/core`, `@deck.gl/mapbox` |
 | `/workspace`                         | `WorkspaceProvider`, `MapSectionLayout`, responsive media hooks and `requestMapSearch`                                                               | React, React DOM                                               |
-| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `PlaybackControls`; form and numeric-range fields; clipboard controls/state; `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                    | React, React DOM                                               |
+| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `PlaybackControls`; `MapTimeline`; form and numeric-range fields; clipboard controls/state; `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                    | React, React DOM                                               |
 | `/projects`                          | Scene/layer types, codecs, repositories and JSON import/export/share ports                                                                           | None                                                           |
 | `/export`                            | `toCsv`, `csvRows`, `csvCell`, `downloadBlob`, `downloadText`; `CsvColumn`, `CsvOptions`                                                             | None; downloads need a browser DOM                             |
 | `/format`                            | `formatMeasure`, `formatNumber`, `formatPercent`, currency/date/byte/length/area formatters                                                          | None                                                           |
@@ -787,6 +787,66 @@ the user's position with a marker.
 
 `PlaybackControls` steps a host-owned frame index with play/pause,
 previous/next and a scrubber, for time-lapse maps.
+
+### Map timeline
+
+`MapTimeline` (`/ui`) is the timeline for time-based map data: transport
+controls, the current window's label, and one track that is both the histogram
+and the scrubber. Build its buckets with `buildTimelineBuckets` (`/calculations`)
+and key your per-bucket values with `timelineBucketKey`, so the two agree.
+
+```tsx
+const buckets = buildTimelineBuckets({ start, end, granularity: 'month' })
+const range = timelineWindow(buckets.length, value, size, 'end') // filter your data with this
+<MapTimeline
+  buckets={buckets}
+  value={value}
+  onValueChange={setValue}
+  granularity="month"
+  values={countsByBucketKey}
+  window={{ size, onSizeChange: setSize, anchor: 'end', options: [{ value: 3, label: '3 mo' }, { value: 'cumulative', label: 'Cumul.' }] }}
+  change={{ label: 'YoY', offset: 12 }}
+  summary="1,204 visible"
+  onClose={close}
+/>
+```
+
+- **Value.** The value is the index of the bucket the window is anchored on:
+  its first bucket for a start anchor, its last for an end anchor or a
+  cumulative window. `timelineWindow` and `timelineWindowDates` give the
+  buckets and dates the window covers. `formatTimelineWindow` gives its label.
+- **Layout.** It lays itself out from its own width, not the viewport's:
+  - one row at 880 px or more (960 px on a touch screen);
+  - two rows with window and speed under an options button from 420 px;
+  - a phone layout below that.
+
+  On short maps (a landscape phone) the track gets shorter. Touch screens get
+  44 px controls. `density` fixes a layout.
+- **Interaction.**
+  - Press or drag anywhere on the track to scrub, and hover for a tooltip.
+  - Holding a step button keeps stepping.
+  - Pressing Play on the last bucket starts over.
+  - The track is a `role="slider"` with the window label as `aria-valuetext`.
+    Arrows step, PageUp/PageDown move a larger period, Home/End jump to the
+    ends and Space plays.
+- **Map chrome.** As a map overlay (the default; `placement="inline"` for a
+  sidebar or dashboard) it floats above the phone sheet. It publishes its
+  footprint as `--map-timeline-height` on every enclosing layout root, so
+  legends, the attribution, controls and floating panels stack above it.
+  Selection framing keeps features clear of it. On phones, opening it drops the
+  sheet to its peek height.
+
+The bottom-right corner of a map is shared, from the bottom up:
+
+1. the timeline;
+2. a `MapLegendPanel`, which publishes `--map-legend-panel-visible-height`
+   while it sits in that corner;
+3. MapLibre's attribution, whose height `Map` publishes as
+   `--map-bottom-right-controls-height`;
+4. any bottom-corner controls or floating panels.
+
+Zoom and compass default to the top right, below a floating phone toolbar,
+whose height the workspace publishes as `--map-mobile-toolbar-height`.
 
 ### Settled viewport observation
 
