@@ -144,6 +144,7 @@ test('a card drags from its body as well as its grip, and shows its body while d
     await handle.press('Home')
     await expect(handle).toHaveAttribute('aria-valuenow', '0')
     await expect(body).toHaveAttribute('inert', '')
+    await settledRect(featureA)
     const grip = (await handle.boundingBox())!
     const finger = await touchSession(page)
     try {
@@ -171,6 +172,11 @@ test('the half controls sheet leaves the map usable; tapping outside the full sh
     await ready(page)
     const controls = page.locator('[data-map-mobile-sheet="true"]')
     const handle = page.locator('[data-map-mobile-sheet-handle="true"]')
+    // Reach half by moving the sheet, so the scrim has followed it there.
+    await handle.press('Home')
+    await expect(handle).toHaveAttribute('aria-valuetext', 'collapsed panel')
+    await settledRect(controls)
+    await handle.press('ArrowUp')
     await expect(handle).toHaveAttribute('aria-valuetext', 'half panel')
     await settledRect(controls)
     await expect(scrim(page)).toHaveCSS('pointer-events', 'none')
