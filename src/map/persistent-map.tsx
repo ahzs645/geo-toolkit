@@ -22,6 +22,7 @@ import { MAP_STYLES } from './map-styles.js'
 import { DEFAULT_MAP_CONTROLS, MapContext } from './map.js'
 import { MapOverlayRoot } from '../ui/map-overlays.js'
 import { resizeMap } from './map-resize.js'
+import { mapCornerTargets, publishMapCornerHeights } from './map-corners.js'
 import { MOBILE_MAP_BLANK_CLICK_EVENT, MOBILE_MAP_INTERACTION_EVENT } from '../workspace/workspace-events.js'
 
 type MapStyleOption = string | MapLibreGL.StyleSpecification
@@ -77,7 +78,7 @@ function PersistentMapProviderImplementation({
   const containerRef = useRef<HTMLDivElement | null>(null)
   if (containerRef.current === null && typeof document !== 'undefined') {
     const el = document.createElement('div')
-    el.className = 'relative h-full w-full'
+    el.className = 'geo-map relative h-full w-full'
     containerRef.current = el
   }
 
@@ -246,10 +247,12 @@ export function PersistentMapHost({ className, loading = false, loadingLabel, lo
 
     const observer = new ResizeObserver(() => map && resizeMap(map))
     observer.observe(host)
+    const unpublishCorners = map ? publishMapCornerHeights(container, mapCornerTargets(host)) : undefined
 
     return () => {
       cancelAnimationFrame(raf)
       observer.disconnect()
+      unpublishCorners?.()
       if (container.parentElement === host) {
         host.removeChild(container)
       }
