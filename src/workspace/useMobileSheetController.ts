@@ -178,9 +178,11 @@ export function useMobileSheetController({
         )
       }
 
-      // Scrim opacity (0 at collapsed → 0.4 at full)
+      // Scrim opacity: 0 up to the half detent → 0.4 at full. At half the map
+      // stays usable (pan, tap a feature), as it does beside a half-height card;
+      // only the full sheet takes over the screen and dims what it covers.
       const snaps = getSnapPositions(sheetHeight, getFullSnapOffset(), mobileCollapsedVisibleHeight)
-      const t = sheetOpenProgress(y, snaps.full, snaps.collapsed)
+      const t = sheetOpenProgress(y, snaps.full, snaps.half)
       if (scrimRef.current) {
         const showScrim = mobileSheetInteractive && mobileScrimEnabled && !suppressScrim.current
         scrimRef.current.style.opacity = showScrim ? String(t * 0.4) : '0'
@@ -580,28 +582,32 @@ export function useMobileSheetController({
     }
   }, [applyTransform, getFullSnapOffset, getSheetHeight, mobileCollapsedVisibleHeight, isMobile])
 
-  const {
-    handleScrimClick,
-    handleMobileSheetKeyDown,
-    startHandlePointerDrag,
-    moveHandlePointerDrag,
-    endHandlePointerDrag,
-  } = useMobileSheetGestures({
-    sheetRef,
-    handleRef,
-    draggingRef,
-    translateRef,
-    mobileFeatureCardOpen,
-    mobileControlsInFront,
-    bringControlsToFront,
-    applyTransform,
-    getFullSnapOffset,
-    getSheetHeight,
-    mobileCollapsedVisibleHeight,
-    snapTo,
-    mobileSheetState,
-    isMobile,
-  })
+  // Tapping outside the sheet dismisses what the scrim was raised for. With a
+  // card docked behind the controls that is the controls sheet itself: the card
+  // the person was reading comes back to the front rather than everything
+  // collapsing into a peek that hides it.
+  const handleScrimClick = useCallback(() => {
+    if (featureCardOpenRef.current && controlsInFrontRef.current) bringFeatureCardToFront()
+    else snapTo('collapsed')
+  }, [bringFeatureCardToFront, snapTo])
+
+  const { handleMobileSheetKeyDown, startHandlePointerDrag, moveHandlePointerDrag, endHandlePointerDrag } =
+    useMobileSheetGestures({
+      sheetRef,
+      handleRef,
+      draggingRef,
+      translateRef,
+      mobileFeatureCardOpen,
+      mobileControlsInFront,
+      bringControlsToFront,
+      applyTransform,
+      getFullSnapOffset,
+      getSheetHeight,
+      mobileCollapsedVisibleHeight,
+      snapTo,
+      mobileSheetState,
+      isMobile,
+    })
 
   useEffect(() => {
     const collapse = () => {

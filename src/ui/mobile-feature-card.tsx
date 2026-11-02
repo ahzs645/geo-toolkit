@@ -87,6 +87,17 @@ export function MobileFeatureCard({
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [expanded, setExpanded] = useState(initialVisibleHeight >= height)
+  /**
+   * A collapsed card being dragged open shows its body as soon as it grows,
+   * rather than staying an empty header until the finger lifts.
+   */
+  const [dragRevealed, setDragRevealed] = useState(false)
+  const dragRevealedRef = useRef(false)
+  const setBodyRevealedForDrag = useCallback((revealed: boolean) => {
+    if (dragRevealedRef.current === revealed) return
+    dragRevealedRef.current = revealed
+    setDragRevealed(revealed)
+  }, [])
   const [controlsVisibleHeight, setControlsVisibleHeight] = useState<number | null>(null)
   const [hasDockTarget, setHasDockTarget] = useState(false)
   const dragMovedRef = useRef(false)
@@ -184,6 +195,7 @@ export function MobileFeatureCard({
       openerRef.current = focused
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Replace an exiting selection before it can paint or call its stale close callback.
     setCollapsed(false)
+    setBodyRevealedForDrag(false)
     setExpanded(initialVisibleHeight >= height)
     setOpen(true)
     // New content in a card already in the stack brings it forward, as Felt
@@ -196,7 +208,16 @@ export function MobileFeatureCard({
         detail: { title: titleText, subtitle: subtitleText },
       }),
     )
-  }, [bringToFront, cardKey, height, initialVisibleHeight, interactions, subtitleText, titleText])
+  }, [
+    bringToFront,
+    cardKey,
+    height,
+    initialVisibleHeight,
+    interactions,
+    setBodyRevealedForDrag,
+    subtitleText,
+    titleText,
+  ])
 
   const focusKeyRef = useRef(focusKey)
   useLayoutEffect(() => {
@@ -250,11 +271,12 @@ export function MobileFeatureCard({
         lastGestureAtRef.current = Date.now()
         interactions.dispatchEvent(new CustomEvent(MOBILE_MAP_SHEET_COLLAPSE_EVENT))
       }
+      setBodyRevealedForDrag(false)
       setCollapsed(true)
     }
     interactions.addEventListener(MOBILE_MAP_INTERACTION_EVENT, collapse)
     return () => interactions.removeEventListener(MOBILE_MAP_INTERACTION_EVENT, collapse)
-  }, [collapseOnMapInteraction, interactions])
+  }, [collapseOnMapInteraction, interactions, setBodyRevealedForDrag])
 
   const publishVisibleHeight = useCallback(
     (visibleHeight: number, direct = false) => {
@@ -300,24 +322,27 @@ export function MobileFeatureCard({
       if (!panel) return
       cancelAnimationFrame(heightFrameRef.current)
       const boundedHeight = Math.max(heights.collapsed, Math.min(heights.full, visibleHeight))
+      // Unanimated heights come from a finger; animated ones are snaps, which settle the detent.
+      if (!animate) setBodyRevealedForDrag(boundedHeight > heights.collapsed + 16)
       panel.dataset.mapTargetVisibleHeight = String(boundedHeight)
       panel.style.transition = animate ? transition : 'none'
       panel.style.height = `${boundedHeight}px`
       publishVisibleHeight(boundedHeight, !animate)
       if (animate) trackRenderedHeight()
     },
-    [heights, publishVisibleHeight, trackRenderedHeight, transition],
+    [heights, publishVisibleHeight, setBodyRevealedForDrag, trackRenderedHeight, transition],
   )
 
   const snapCard = useCallback(
     (state: MobileSheetState) => {
+      setBodyRevealedForDrag(false)
       setCollapsed(state === 'collapsed')
       setExpanded(state === 'full')
       applyCardHeight(heights[state], true)
       if (panelRef.current)
         panelRef.current.style.transform = `translateY(${state === 'collapsed' || coversStack ? 0 : 8}px)`
     },
-    [applyCardHeight, coversStack, heights],
+    [applyCardHeight, coversStack, heights, setBodyRevealedForDrag],
   )
 
   /** Set when a press brought this card forward, so its click does not also change detent. */
@@ -330,6 +355,9 @@ export function MobileFeatureCard({
 
   const { cancelGesture, ...gestureHandlers } = useFeatureCardGestures({
     panelRef,
+    bodyRef,
+    bodyActive: presence.present,
+    detent,
     heights,
     disabled: !open || controlsInFront,
     movedRef: dragMovedRef,
@@ -356,11 +384,12 @@ export function MobileFeatureCard({
     returnFocusRef.current = !!panelRef.current?.contains(document.activeElement)
     closingRef.current = true
     cancelGesture()
+    setBodyRevealedForDrag(false)
     cancelAnimationFrame(heightFrameRef.current)
     if (panelRef.current) panelRef.current.dataset.mapTargetVisibleHeight = '0'
     setOpen(false)
     interactions.dispatchEvent(new CustomEvent(MOBILE_MAP_SHEET_COLLAPSE_EVENT))
-  }, [cancelGesture, interactions])
+  }, [cancelGesture, interactions, setBodyRevealedForDrag])
 
   useEffect(() => {
     // Presence also completes when the browser does not emit transitionend.
@@ -412,6 +441,8 @@ export function MobileFeatureCard({
   // A card sent behind another one un-collapses so it can match the front card's
   // height and peek above it, rather than hiding beneath a taller card.
   const effectiveCollapsed = collapsed && !stackedBehind
+  /** Collapsed and not being dragged open: only the header shows. */
+  const headerOnly = effectiveCollapsed && !dragRevealed
   const visibleCardHeight = effectiveCollapsed
     ? MOBILE_FEATURE_CARD_COLLAPSED_HEIGHT
     : controlsInFront && controlsVisibleHeight != null
@@ -424,7 +455,7 @@ export function MobileFeatureCard({
 
   const boundedVisibleHeight = Math.min(frameHeight, visibleCardHeight)
   const stackOffset = stackedBehind ? MOBILE_CARD_STACK_PEEK * cardDepth : 0
-  const bodyHidden = !open || effectiveCollapsed || stackedBehind || controlsInFront
+  const bodyHidden = !open || headerOnly || stackedBehind || controlsInFront
 
   useLayoutEffect(() => {
     const body = bodyRef.current
@@ -570,7 +601,7 @@ export function MobileFeatureCard({
           <header
             className={cn(
               'shrink-0 cursor-grab touch-none border-b border-border px-4 active:cursor-grabbing',
-              effectiveCollapsed ? 'pb-0' : 'pb-3',
+              headerOnly ? 'pb-0' : 'pb-3',
             )}
             {...gestureHandlers}
           >

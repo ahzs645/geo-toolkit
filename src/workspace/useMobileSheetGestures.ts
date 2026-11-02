@@ -230,9 +230,6 @@ export function useMobileSheetGestures({
     translateRef,
   ])
 
-  // Scrim tap → collapse
-  const handleScrimClick = useCallback(() => snapTo('collapsed'), [snapTo])
-
   const startHandlePointerDrag = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!isMobile || event.pointerType === 'touch') return
@@ -345,7 +342,6 @@ export function useMobileSheetGestures({
   )
 
   return {
-    handleScrimClick,
     handleMobileSheetKeyDown,
     startHandlePointerDrag,
     moveHandlePointerDrag,
