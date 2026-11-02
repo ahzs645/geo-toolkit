@@ -43,14 +43,17 @@ for (const viewport of [
       const exit = await dialog.evaluate(async (node) => {
         node.querySelector<HTMLButtonElement>('[data-testid="dialog-done"]')!.click()
         await new Promise(requestAnimationFrame)
+        await new Promise(requestAnimationFrame)
         return {
           connected: node.isConnected,
           state: node.getAttribute('data-state'),
           blocked: getComputedStyle(node).pointerEvents === 'none',
           animating: node.getAnimations().some((animation) => animation.playState === 'running'),
+          // Host chrome hidden for the dialog returns as the exit starts, not after it.
+          chrome: document.querySelector('[data-testid="chrome-state"]')?.textContent,
         }
       })
-      expect(exit).toEqual({ connected: true, state: 'closed', blocked: true, animating: true })
+      expect(exit).toEqual({ connected: true, state: 'closed', blocked: true, animating: true, chrome: 'visible' })
       await expect(dialog).toHaveCount(0)
       await expect(trigger).toBeFocused()
       await expect(page.getByTestId('chrome-state')).toHaveText('visible')

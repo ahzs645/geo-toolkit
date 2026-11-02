@@ -499,7 +499,10 @@ Placement and responsiveness are independent controls. `toolbar` accepts an
 explicit host toolbar element; `rootElement` supports host-owned sibling
 content. Routine embedded maps should let the provider measure its own root.
 Dialog portals inherit workspace theme/bounds; `onDialogOpenChange` lets the
-host coordinate its own chrome without the toolkit searching the document.
+host coordinate its own chrome without the toolkit searching the document. It
+(and `DialogContent`'s `onOpenEffect`) reports `false` when the close starts,
+not after the exit animation, so hidden chrome returns while the dialog fades
+and is there for focus to return to; a reopen during the exit reports `true`.
 Editorial and scene reading layouts follow the nearest provider's responsive
 mode too. Their existing story-specific thresholds remain independent of the
 configurable sheet breakpoint; a nested viewport workspace keeps page-wide
