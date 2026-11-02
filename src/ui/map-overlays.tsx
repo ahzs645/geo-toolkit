@@ -19,14 +19,23 @@ export function MapOverlayRoot({ className, style, initializeVariables = true, .
 
 type FloatingPanelPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
+// Bottom panels stack above MapLibre's own corner box (the attribution) and,
+// on phones, above the sheet and a legend panel's footprint.
 const floatingPanelPositionClasses: Record<FloatingPanelPosition, string> = {
   'top-left': 'left-3 top-3',
   'top-right': 'right-3 top-3',
   'bottom-left':
-    'left-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)+var(--map-legend-panel-visible-height,0px)+var(--map-timeline-height,0px)+var(--map-safe-bottom-offset,0px)+0.75rem)] workspace-desktop:bottom-3',
+    'left-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px),var(--map-bottom-left-controls-height,0px)_+_0.5rem))] workspace-desktop:bottom-[max(0.75rem,calc(var(--map-bottom-left-controls-height,0px)_+_0.5rem))]',
   'bottom-right':
-    'right-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)+var(--map-legend-panel-visible-height,0px)+var(--map-timeline-height,0px)+var(--map-safe-bottom-offset,0px)+0.75rem)] workspace-desktop:bottom-3',
+    'right-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px),var(--map-bottom-right-controls-height,0px)_+_0.5rem))] workspace-desktop:bottom-[max(0.75rem,calc(var(--map-bottom-right-controls-height,0px)_+_0.5rem))]',
 }
+
+const floatingPanelNoLegendPositionClasses = {
+  'bottom-left':
+    'left-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-bottom-left-controls-height,0px)_+_0.5rem))] workspace-desktop:bottom-[max(0.75rem,calc(var(--map-bottom-left-controls-height,0px)_+_0.5rem))]',
+  'bottom-right':
+    'right-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-bottom-right-controls-height,0px)_+_0.5rem))] workspace-desktop:bottom-[max(0.75rem,calc(var(--map-bottom-right-controls-height,0px)_+_0.5rem))]',
+} as const
 
 type MapFloatingPanelProps = ComponentPropsWithoutRef<'div'> & {
   position?: FloatingPanelPosition
@@ -44,11 +53,9 @@ export function MapFloatingPanel({
   ...props
 }: MapFloatingPanelProps) {
   const positionClass =
-    !reserveLegendSpace && position === 'bottom-left'
-      ? 'left-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)+var(--map-timeline-height,0px)+var(--map-safe-bottom-offset,0px)+0.75rem)] workspace-desktop:bottom-3'
-      : !reserveLegendSpace && position === 'bottom-right'
-        ? 'right-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)+var(--map-timeline-height,0px)+var(--map-safe-bottom-offset,0px)+0.75rem)] workspace-desktop:bottom-3'
-        : floatingPanelPositionClasses[position]
+    !reserveLegendSpace && (position === 'bottom-left' || position === 'bottom-right')
+      ? floatingPanelNoLegendPositionClasses[position]
+      : floatingPanelPositionClasses[position]
 
   return (
     <div className={cn('absolute', MAP_OVERLAY_Z[z], positionClass, className)} {...props}>

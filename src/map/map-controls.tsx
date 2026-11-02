@@ -33,11 +33,16 @@ type MapControlsProps = {
   trackLocation?: boolean
 }
 
+// Bottom corners stack above MapLibre's own corner box (the attribution, whose
+// height Map publishes) and, when a legend panel is mounted, above its whole
+// footprint. Phones also clear the bottom sheet and the safe area.
 const positionClasses = {
   'top-left': 'top-2 left-2',
   'top-right': 'top-2 right-2',
-  'bottom-left': 'bottom-2 left-2',
-  'bottom-right': 'bottom-10 right-2',
+  'bottom-left':
+    'bottom-[calc(var(--map-timeline-height,0px)_+_var(--map-bottom-left-controls-height,0px)_+_0.5rem)] left-2',
+  'bottom-right':
+    'bottom-[calc(var(--map-timeline-height,0px)_+_max(var(--map-legend-panel-visible-height,0px),var(--map-bottom-right-controls-height,0px)_+_0.5rem))] right-2',
 }
 
 const desktopPositionClasses = {
@@ -46,16 +51,18 @@ const desktopPositionClasses = {
   'top-right':
     'workspace-desktop:top-2 workspace-desktop:bottom-auto workspace-desktop:right-2 workspace-desktop:left-auto',
   'bottom-left':
-    'workspace-desktop:bottom-2 workspace-desktop:top-auto workspace-desktop:left-2 workspace-desktop:right-auto',
+    'workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_var(--map-bottom-left-controls-height,0px)_+_0.5rem)] workspace-desktop:top-auto workspace-desktop:left-2 workspace-desktop:right-auto',
   'bottom-right':
-    'workspace-desktop:bottom-10 workspace-desktop:top-auto workspace-desktop:right-2 workspace-desktop:left-auto',
+    'workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_max(var(--map-legend-panel-visible-height,0px),var(--map-bottom-right-controls-height,0px)_+_0.5rem))] workspace-desktop:top-auto workspace-desktop:right-2 workspace-desktop:left-auto',
 }
 
+// A phone's legend can span most of the map's width, so both bottom corners
+// reserve its footprint there.
 const mobilePanelAwarePositionClasses = {
   'bottom-left':
-    'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)+var(--map-legend-panel-visible-height,0px)+var(--map-timeline-height,0px)+var(--map-safe-bottom-offset,0px)+2.5rem)]',
+    'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px),var(--map-bottom-left-controls-height,0px)_+_0.5rem))]',
   'bottom-right':
-    'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)+var(--map-legend-panel-visible-height,0px)+var(--map-timeline-height,0px)+var(--map-safe-bottom-offset,0px)+2.5rem)]',
+    'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px),var(--map-bottom-right-controls-height,0px)_+_0.5rem))]',
 }
 
 function ControlGroup({ children }: { children: React.ReactNode }) {
@@ -362,7 +369,6 @@ function MapScaleBar({ position = 'bottom-left', maxWidth = 100, hideAbovePitch 
         'pointer-events-none absolute rounded bg-background/80 px-1.5 pb-1 pt-0.5 text-[10px] leading-3 text-foreground shadow-sm',
         MAP_OVERLAY_Z.controls,
         positionClasses[position],
-        position === 'bottom-right' ? 'bottom-8 workspace-desktop:bottom-8' : null,
         mobilePanelAwarePositionClasses[position],
         className,
       )}

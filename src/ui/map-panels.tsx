@@ -257,7 +257,8 @@ export function MapLegendItem({
       type="button"
       disabled={disabled}
       className={cn(
-        'flex w-full items-center gap-1.5 rounded px-2 py-0.5 text-left text-xs transition-colors hover:bg-accent disabled:pointer-events-none workspace-desktop:px-1',
+        // Same inset at every size; rows are taller on phones, where they are tap targets.
+        'flex w-full items-center gap-1.5 rounded px-1 py-1 text-left text-xs transition-colors hover:bg-accent disabled:pointer-events-none workspace-desktop:py-0.5',
         className,
       )}
       {...props}
@@ -1049,10 +1050,14 @@ export function MapLegendPanel({
     const root = panel.closest<HTMLElement>('[data-map-layout-root="true"]')
     if (!root) return
 
+    // The panel's whole footprint above the map's bottom edge: the attribution
+    // it sits on, its own height and the gap above it. Controls and floating
+    // panels in the same corner stack on top of that.
     const syncLegendHeight = () => {
+      const height = Math.ceil(panel.getBoundingClientRect().height)
       root.style.setProperty(
         '--map-legend-panel-visible-height',
-        `${Math.ceil(panel.getBoundingClientRect().height) + 12}px`,
+        `calc(max(0.75rem, var(--map-bottom-right-controls-height, 0px) + 0.5rem) + ${height}px + 0.5rem)`,
       )
     }
     syncLegendHeight()
@@ -1068,33 +1073,37 @@ export function MapLegendPanel({
   return (
     <div
       ref={panelRef}
+      data-map-legend-panel=""
+      data-collapsed={isCollapsed || undefined}
       className={cn(
-        'absolute right-3 rounded-lg border border-border bg-background/95 p-2 shadow-xl backdrop-blur workspace-desktop:right-6 workspace-desktop:rounded-xl workspace-desktop:p-4',
+        // Inset like MapLibre's attribution and the zoom controls, so the
+        // right-hand chrome shares one edge.
+        'absolute right-2.5 flex flex-col rounded-lg border border-border bg-background/95 px-3 py-2.5 shadow-xl backdrop-blur workspace-desktop:rounded-xl workspace-desktop:p-3',
         MAP_OVERLAY_Z.legend,
+        // Stacked above MapLibre's attribution (which Map lifts above the
+        // timeline and, on phones, the sheet), and never taller than the map
+        // leaves room for beside the top controls: the content scrolls instead.
         elevated
-          ? 'bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-timeline-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_0.75rem)] workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_1.5rem)]'
-          : 'bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_0.75rem)] workspace-desktop:bottom-6',
-        // Collapsed, the pill shrinks to its title instead of keeping the
-        // expanded panel's width as an empty box; the cap still stops long
-        // descriptions from outgrowing the expanded footprint.
+          ? 'bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-timeline-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_max(0.75rem,var(--map-bottom-right-controls-height,0px)_+_0.5rem))] max-h-[max(6rem,calc(100%_-_var(--map-mobile-sheet-visible-height,0px)_-_var(--map-timeline-height,0px)_-_12rem))] workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-bottom-right-controls-height,0px)_+_0.5rem))]'
+          : 'bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_max(0.75rem,var(--map-bottom-right-controls-height,0px)_+_0.5rem))] max-h-[max(6rem,calc(100%_-_var(--map-mobile-sheet-visible-height,0px)_-_12rem))] workspace-desktop:bottom-[max(0.75rem,calc(var(--map-bottom-right-controls-height,0px)_+_0.5rem))]',
+        // Widths follow the map, not the viewport, so an embedded or
+        // side-by-side map keeps the panel inside it. Collapsed, the pill
+        // shrinks to its title instead of keeping the expanded width as an
+        // empty box; the cap still stops long titles outgrowing the panel.
         width === 'sm' &&
-          (isCollapsed
-            ? 'w-auto max-w-[min(14rem,calc(100vw-2rem))]'
-            : 'w-[min(14rem,calc(100vw-2rem))] workspace-desktop:w-56'),
+          (isCollapsed ? 'w-auto max-w-[min(14rem,calc(100%_-_1.25rem))]' : 'w-[min(14rem,calc(100%_-_1.25rem))]'),
         width === 'md' &&
           (isCollapsed
-            ? 'w-auto max-w-[min(18rem,calc(100vw-2rem))]'
-            : 'w-[min(18rem,calc(100vw-2rem))] workspace-desktop:w-auto'),
+            ? 'w-auto max-w-[min(18rem,calc(100%_-_1.25rem))]'
+            : 'w-[min(18rem,calc(100%_-_1.25rem))] workspace-desktop:w-auto workspace-desktop:min-w-[min(12rem,calc(100%_-_1.25rem))] workspace-desktop:max-w-[min(18rem,calc(100%_-_1.25rem))]'),
         width === 'lg' &&
-          (isCollapsed
-            ? 'w-auto max-w-[min(22rem,calc(100vw-2rem))]'
-            : 'w-[min(22rem,calc(100vw-2rem))] workspace-desktop:w-88'),
-        width === 'fit' && 'w-auto max-w-[min(18rem,calc(100vw-2rem))]',
+          (isCollapsed ? 'w-auto max-w-[min(22rem,calc(100%_-_1.25rem))]' : 'w-[min(22rem,calc(100%_-_1.25rem))]'),
+        width === 'fit' && 'w-auto max-w-[min(18rem,calc(100%_-_1.25rem))]',
         className,
       )}
     >
       {title && (
-        <div className={cn(!isCollapsed && 'mb-2')}>
+        <div className={cn('shrink-0', !isCollapsed && 'mb-2')}>
           {collapsible ? (
             <div className="flex items-start justify-between gap-3">
               <button
@@ -1140,7 +1149,11 @@ export function MapLegendPanel({
           )}
         </div>
       )}
-      {!isCollapsed ? <div className={contentClassName}>{children}</div> : null}
+      {!isCollapsed ? (
+        // Long legends scroll here, under a fixed header. The -m/p pair keeps
+        // rows' focus rings inside the scroll port without moving the rows.
+        <div className={cn('-m-1 min-h-0 overflow-y-auto overscroll-contain p-1', contentClassName)}>{children}</div>
+      ) : null}
     </div>
   )
 }
@@ -1253,7 +1266,8 @@ export function LegendItem({
         onClick={onClick}
         aria-pressed={active}
         className={cn(
-          'flex w-full items-center justify-between gap-2 rounded px-2 py-0.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring workspace-desktop:px-1',
+          // Same inset at every size; rows are taller on phones, where they are tap targets.
+          'flex w-full items-center justify-between gap-2 rounded px-1 py-1 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring workspace-desktop:py-0.5',
           !active && 'text-muted-foreground',
           className,
         )}
