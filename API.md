@@ -279,7 +279,12 @@ into a settled correction rather than restarting a flight on each frame.
 
 Controls and feature-card handles support pointer/touch dragging, velocity
 settling, interruption at the current rendered position, and keyboard detents.
-Hidden bodies are inert; exposed stack controls remain operable. Desktop
+A touch on a sheet's or card's body drags it too: below the full detent any
+vertical swipe moves it, and at full a downward swipe moves it once its content
+is scrolled to the top, so the content scrolls otherwise. Taps, horizontal
+swipes and form fields stay with the content. A collapsed card shows its body
+as soon as it is dragged open. Hidden bodies are inert; exposed stack controls
+remain operable. Desktop
 sidebars retain their state while hidden. `MapSectionLayout.bottomPane` retains
 its last content only through a desktop closing transition; set
 `bottomPaneResizing` during direct divider dragging to avoid eased resizing.
@@ -303,6 +308,12 @@ How a stack looks:
 
 Swapping: tapping any visible part of a rear sheet brings it to the front. It
 opens at its own detent, and the previous front card lines up behind it.
+
+Dismissing: the map stays usable beside a sheet at its compact detent. Above
+it, the controls sheet dims the map, fully at the full detent, and tapping the
+dimmed map dismisses the sheet: with a card docked behind the controls, that
+card comes back to the front; otherwise the controls collapse to their peek.
+Tapping the map beside a front card closes the card (`closeOnBlankMapClick`).
 
 #### Add a sheet
 
@@ -488,7 +499,10 @@ Placement and responsiveness are independent controls. `toolbar` accepts an
 explicit host toolbar element; `rootElement` supports host-owned sibling
 content. Routine embedded maps should let the provider measure its own root.
 Dialog portals inherit workspace theme/bounds; `onDialogOpenChange` lets the
-host coordinate its own chrome without the toolkit searching the document.
+host coordinate its own chrome without the toolkit searching the document. It
+(and `DialogContent`'s `onOpenEffect`) reports `false` when the close starts,
+not after the exit animation, so hidden chrome returns while the dialog fades
+and is there for focus to return to; a reopen during the exit reports `true`.
 Editorial and scene reading layouts follow the nearest provider's responsive
 mode too. Their existing story-specific thresholds remain independent of the
 configurable sheet breakpoint; a nested viewport workspace keeps page-wide

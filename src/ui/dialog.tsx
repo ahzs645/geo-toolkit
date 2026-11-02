@@ -10,12 +10,36 @@ const DialogTrigger = DialogPrimitive.Trigger
 const DialogPortal = DialogPrimitive.Portal
 const DialogClose = DialogPrimitive.Close
 
+/**
+ * Reports the dialog as closed when its close *starts*, not once its exit
+ * animation has unmounted it: chrome a host hid for the dialog (a toolbar)
+ * comes back while the dialog fades, and is there for focus to return to.
+ * A reopen during the exit reports it open again.
+ */
 function DialogOpenEffect({ onOpenChange }: { onOpenChange?: (open: boolean) => void }) {
+  const markerRef = React.useRef<HTMLSpanElement>(null)
   React.useEffect(() => {
-    onOpenChange?.(true)
-    return () => onOpenChange?.(false)
+    // The marker's parent is the Radix content, whose data-state flips to
+    // "closed" as soon as the dialog is asked to close.
+    const content = markerRef.current?.parentElement
+    let open = content?.dataset.state !== 'closed'
+    if (open) onOpenChange?.(true)
+    const observer =
+      content && typeof MutationObserver !== 'undefined'
+        ? new MutationObserver(() => {
+            const next = content.dataset.state !== 'closed'
+            if (next === open) return
+            open = next
+            onOpenChange?.(next)
+          })
+        : null
+    observer?.observe(content!, { attributes: true, attributeFilter: ['data-state'] })
+    return () => {
+      observer?.disconnect()
+      if (open) onOpenChange?.(false)
+    }
   }, [onOpenChange])
-  return null
+  return <span ref={markerRef} style={{ display: 'none' }} aria-hidden="true" />
 }
 
 const DialogOverlay = React.forwardRef<

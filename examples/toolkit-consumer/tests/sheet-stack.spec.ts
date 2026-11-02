@@ -88,3 +88,142 @@ test('a card opened while the controls are in front stacks the earlier card behi
     await context.close()
   }
 })
+
+async function touchSession(page: Page) {
+  const session = await page.context().newCDPSession(page)
+  const point = (x: number, y: number) => [{ x, y, id: 0, radiusX: 2, radiusY: 2, force: 1 }]
+  return {
+    start: (x: number, y: number) =>
+      session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: point(x, y) }),
+    move: async (x: number, y: number) => {
+      await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: point(x, y) })
+      await page.evaluate(() => new Promise(requestAnimationFrame))
+    },
+    end: () => session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }),
+    dispose: () => session.detach(),
+  }
+}
+
+/** A vertical swipe in steps, so the gesture sees a direction before it ends. */
+async function swipe(page: Page, x: number, fromY: number, toY: number) {
+  const finger = await touchSession(page)
+  try {
+    await finger.start(x, fromY)
+    for (let step = 1; step <= 10; step++) await finger.move(x, fromY + ((toY - fromY) * step) / 10)
+    await finger.end()
+  } finally {
+    await finger.dispose()
+  }
+}
+
+const scrim = (page: Page) => page.locator('[data-map-sidebar-wrapper="true"] > div[aria-hidden="true"]').first()
+
+test('a card drags from its body as well as its grip, and shows its body while dragged open', async ({ browser }) => {
+  const context = await browser.newContext({ ...mobile, reducedMotion: 'no-preference' })
+  const page = await context.newPage()
+  try {
+    await ready(page)
+    await page.getByRole('button', { name: 'Select A', exact: true }).click()
+    const featureA = card(page, 'Feature A')
+    const handle = featureA.getByRole('separator', { name: 'Resize selected feature card' })
+    const body = featureA.locator('[data-mobile-feature-card-body]')
+    await expect(handle).toHaveAttribute('aria-valuenow', '1')
+    let rect = await settledRect(featureA)
+
+    // Below the full detent, a vertical swipe on the body moves the card.
+    await swipe(page, 195, rect.top + rect.height - 30, rect.top - 220)
+    await expect(handle).toHaveAttribute('aria-valuenow', '2')
+    rect = await settledRect(featureA)
+
+    // At full, with nothing scrolled, a downward swipe on the body brings it back down.
+    await swipe(page, 195, rect.top + rect.height - 60, rect.top + rect.height + 120)
+    await expect(handle).not.toHaveAttribute('aria-valuenow', '2')
+    await settledRect(featureA)
+
+    // Dragging a collapsed card open shows its body before the finger lifts.
+    await handle.press('Home')
+    await expect(handle).toHaveAttribute('aria-valuenow', '0')
+    await expect(body).toHaveAttribute('inert', '')
+    await settledRect(featureA)
+    const grip = (await handle.boundingBox())!
+    const finger = await touchSession(page)
+    try {
+      await finger.start(grip.x + grip.width / 2, grip.y + grip.height / 2)
+      for (let step = 1; step <= 6; step++)
+        await finger.move(grip.x + grip.width / 2, grip.y + grip.height / 2 - step * 25)
+      await expect(body).not.toHaveAttribute('inert', '')
+      await finger.end()
+    } finally {
+      await finger.dispose()
+    }
+    await expect(handle).toHaveAttribute('aria-valuenow', '1')
+    await expect(page.getByLabel('Selected feature note')).toHaveValue('Keep selected edit')
+  } finally {
+    await context.close()
+  }
+})
+
+test('the half controls sheet leaves the map usable; tapping outside the full sheet collapses it', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ ...mobile, reducedMotion: 'no-preference' })
+  const page = await context.newPage()
+  try {
+    await ready(page)
+    const controls = page.locator('[data-map-mobile-sheet="true"]')
+    const handle = page.locator('[data-map-mobile-sheet-handle="true"]')
+    // Reach half by moving the sheet, so the scrim has followed it there.
+    await handle.press('Home')
+    await expect(handle).toHaveAttribute('aria-valuetext', 'collapsed panel')
+    await settledRect(controls)
+    await handle.press('ArrowUp')
+    await expect(handle).toHaveAttribute('aria-valuetext', 'half panel')
+    await settledRect(controls)
+    await expect(scrim(page)).toHaveCSS('pointer-events', 'none')
+    await expect(scrim(page)).toHaveCSS('opacity', '0')
+
+    await handle.press('End')
+    await expect(handle).toHaveAttribute('aria-valuetext', 'full panel')
+    await settledRect(controls)
+    await expect(scrim(page)).toHaveCSS('pointer-events', 'auto')
+    const workspace = (await page.getByTestId('workspace').boundingBox())!
+    await page.touchscreen.tap(workspace.x + workspace.width / 2, workspace.y + 4)
+    await expect(handle).toHaveAttribute('aria-valuetext', 'collapsed panel')
+  } finally {
+    await context.close()
+  }
+})
+
+test('tapping outside the full controls sheet brings a docked card back to the front', async ({ browser }) => {
+  const context = await browser.newContext({ ...mobile, reducedMotion: 'no-preference' })
+  const page = await context.newPage()
+  try {
+    await ready(page)
+    await page.getByRole('button', { name: 'Select A', exact: true }).click()
+    const featureA = card(page, 'Feature A')
+    await settledRect(featureA)
+
+    const controls = page.locator('[data-map-mobile-sheet="true"]')
+    await tapTopStrip(page, controls)
+    await expect(featureA).toHaveAttribute('data-stack-role', 'docked')
+    const handle = page.locator('[data-map-mobile-sheet-handle="true"]')
+    await handle.press('End')
+    await expect(handle).toHaveAttribute('aria-valuetext', 'full panel')
+    await settledRect(controls)
+    await expect(scrim(page)).toHaveCSS('pointer-events', 'auto')
+
+    // The card the controls were raised over returns, rather than the whole
+    // stack collapsing into a peek with the card hidden behind it.
+    const workspace = (await page.getByTestId('workspace').boundingBox())!
+    await page.touchscreen.tap(workspace.x + workspace.width / 2, workspace.y + 4)
+    await expect(featureA).toHaveAttribute('data-stack-role', 'primary')
+    await expect(featureA.getByRole('separator', { name: 'Resize selected feature card' })).toHaveAttribute(
+      'aria-valuenow',
+      '1',
+    )
+    await expect(scrim(page)).toHaveCSS('pointer-events', 'none')
+    await expect(page.getByTestId('closed-count')).toHaveText('0')
+  } finally {
+    await context.close()
+  }
+})
