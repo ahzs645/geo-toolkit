@@ -33,16 +33,18 @@ type MapControlsProps = {
   trackLocation?: boolean
 }
 
-// Bottom corners stack above MapLibre's own corner box (the attribution, whose
-// height Map publishes) and, when a legend panel is mounted, above its whole
-// footprint. Phones also clear the bottom sheet and the safe area.
+// Top corners clear a toolbar floating over the map on phones (the workspace
+// publishes its height). Bottom corners stack above whatever holds the bottom
+// edge: on the right the legend panel's footprint, then MapLibre's attribution
+// on top of it (Map publishes the corners' heights); phones also clear the
+// bottom sheet and the safe area.
 const positionClasses = {
-  'top-left': 'top-2 left-2',
-  'top-right': 'top-2 right-2',
+  'top-left': 'top-[calc(var(--map-mobile-toolbar-height,0px)_+_0.5rem)] left-2',
+  'top-right': 'top-[calc(var(--map-mobile-toolbar-height,0px)_+_0.5rem)] right-2',
   'bottom-left':
     'bottom-[calc(var(--map-timeline-height,0px)_+_var(--map-bottom-left-controls-height,0px)_+_0.5rem)] left-2',
   'bottom-right':
-    'bottom-[calc(var(--map-timeline-height,0px)_+_max(var(--map-legend-panel-visible-height,0px),var(--map-bottom-right-controls-height,0px)_+_0.5rem))] right-2',
+    'bottom-[calc(var(--map-timeline-height,0px)_+_var(--map-legend-panel-visible-height,0px)_+_var(--map-bottom-right-controls-height,0px)_+_0.5rem)] right-2',
 }
 
 const desktopPositionClasses = {
@@ -53,16 +55,16 @@ const desktopPositionClasses = {
   'bottom-left':
     'workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_var(--map-bottom-left-controls-height,0px)_+_0.5rem)] workspace-desktop:top-auto workspace-desktop:left-2 workspace-desktop:right-auto',
   'bottom-right':
-    'workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_max(var(--map-legend-panel-visible-height,0px),var(--map-bottom-right-controls-height,0px)_+_0.5rem))] workspace-desktop:top-auto workspace-desktop:right-2 workspace-desktop:left-auto',
+    'workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_var(--map-legend-panel-visible-height,0px)_+_var(--map-bottom-right-controls-height,0px)_+_0.5rem)] workspace-desktop:top-auto workspace-desktop:right-2 workspace-desktop:left-auto',
 }
 
 // A phone's legend can span most of the map's width, so both bottom corners
 // reserve its footprint there.
 const mobilePanelAwarePositionClasses = {
   'bottom-left':
-    'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px),var(--map-bottom-left-controls-height,0px)_+_0.5rem))]',
+    'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px)_+_0.5rem,var(--map-bottom-left-controls-height,0px)_+_0.5rem))]',
   'bottom-right':
-    'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px),var(--map-bottom-right-controls-height,0px)_+_0.5rem))]',
+    'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_var(--map-legend-panel-visible-height,0px)_+_var(--map-bottom-right-controls-height,0px)_+_0.5rem)]',
 }
 
 function ControlGroup({ children }: { children: React.ReactNode }) {
@@ -312,14 +314,13 @@ function CompassButton({ onClick }: { onClick: () => void }) {
 }
 
 /**
- * The control set the PG map sections settled on: top-right on desktop, moved
- * clear of the mobile sheet, with zoom and compass. `Map` and `SharedMap`
+ * The control set the PG map sections settled on: zoom and compass in the top
+ * right, on phones too (below the floating toolbar), so the bottom corner
+ * belongs to the legend and the attribution. `Map` and `SharedMap`
  * render this when their `controls` prop is omitted, so a section only spells
  * controls out when it wants something else.
  */
-export const DEFAULT_MAP_CONTROLS = (
-  <MapControls position="top-right" mobilePosition="bottom-right" showZoom showCompass />
-)
+export const DEFAULT_MAP_CONTROLS = <MapControls position="top-right" showZoom showCompass />
 
 type MapScaleBarProps = {
   /** Corner to sit in; bottom corners clear the phone sheet like the controls do. */

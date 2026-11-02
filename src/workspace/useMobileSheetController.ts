@@ -461,6 +461,33 @@ export function useMobileSheetController({
 
   // ------ lifecycle --------------------------------------------------------
 
+  // Chrome pinned to the map's top corners (zoom and compass) clears a toolbar
+  // floating over the map on phones: publish how far the toolbar reaches into
+  // the layout. A hidden toolbar measures zero.
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const toolbar = workspace?.toolbar ?? root.querySelector<HTMLElement>('[data-map-mobile-toolbar="true"]')
+    if (!isMobile || !toolbar) {
+      root.style.removeProperty('--map-mobile-toolbar-height')
+      return
+    }
+    const sync = () => {
+      const rect = toolbar.getBoundingClientRect()
+      const overlap = rect.height > 0 ? Math.max(0, Math.ceil(rect.bottom - root.getBoundingClientRect().top)) : 0
+      root.style.setProperty('--map-mobile-toolbar-height', `${overlap}px`)
+    }
+    sync()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(sync)
+    observer?.observe(toolbar)
+    window.addEventListener('resize', sync)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', sync)
+      root.style.removeProperty('--map-mobile-toolbar-height')
+    }
+  }, [isMobile, workspace?.toolbar])
+
   // Position on first paint (before browser paints → no flash)
   useLayoutEffect(() => {
     // No bottom sheet is rendered when the sidebar is disabled. Keep publishing

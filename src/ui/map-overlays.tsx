@@ -19,15 +19,16 @@ export function MapOverlayRoot({ className, style, initializeVariables = true, .
 
 type FloatingPanelPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
-// Bottom panels stack above MapLibre's own corner box (the attribution) and,
-// on phones, above the sheet and a legend panel's footprint.
+// Bottom panels stack above whatever holds the bottom edge: MapLibre's own
+// corner box (the attribution) and, on the right, the legend panel it sits on.
+// Phones also clear the sheet, and reserve a wide legend's height on the left.
 const floatingPanelPositionClasses: Record<FloatingPanelPosition, string> = {
   'top-left': 'left-3 top-3',
   'top-right': 'right-3 top-3',
   'bottom-left':
-    'left-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px),var(--map-bottom-left-controls-height,0px)_+_0.5rem))] workspace-desktop:bottom-[max(0.75rem,calc(var(--map-bottom-left-controls-height,0px)_+_0.5rem))]',
+    'left-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px)_+_0.5rem,var(--map-bottom-left-controls-height,0px)_+_0.5rem))] workspace-desktop:bottom-[max(0.75rem,calc(var(--map-bottom-left-controls-height,0px)_+_0.5rem))]',
   'bottom-right':
-    'right-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px),var(--map-bottom-right-controls-height,0px)_+_0.5rem))] workspace-desktop:bottom-[max(0.75rem,calc(var(--map-bottom-right-controls-height,0px)_+_0.5rem))]',
+    'right-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px)_+_var(--map-bottom-right-controls-height,0px)_+_0.5rem))] workspace-desktop:bottom-[max(0.75rem,calc(var(--map-legend-panel-visible-height,0px)_+_var(--map-bottom-right-controls-height,0px)_+_0.5rem))]',
 }
 
 const floatingPanelNoLegendPositionClasses = {

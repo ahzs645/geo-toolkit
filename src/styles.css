@@ -169,24 +169,36 @@
   pointer-events: auto;
 }
 /* MapLibre's bottom corners (the attribution) stay clear of a map timeline and,
- * on phones, of the bottom sheet, rather than sliding under them. Map publishes
- * the corners' heights, and legends and controls stack above them in turn.
+ * on phones, of the bottom sheet, rather than sliding under them. The right
+ * corner also sits on a legend panel's footprint, which the panel publishes;
+ * Map publishes the corners' heights so controls stack above them in turn.
  * :where keeps this at two classes, so a page can still move a corner. */
-:where(.geo-map) > .maplibregl-control-container > .maplibregl-ctrl-bottom-left,
-:where(.geo-map) > .maplibregl-control-container > .maplibregl-ctrl-bottom-right {
+:where(.geo-map) > .maplibregl-control-container > .maplibregl-ctrl-bottom-left {
   bottom: var(--map-timeline-height, 0px);
 }
+:where(.geo-map) > .maplibregl-control-container > .maplibregl-ctrl-bottom-right {
+  bottom: calc(var(--map-timeline-height, 0px) + var(--map-legend-panel-visible-height, 0px));
+}
 @scope (.geo-toolkit[data-workspace-mobile='true']) to (.geo-toolkit) {
-  :where(.geo-map) > .maplibregl-control-container > .maplibregl-ctrl-bottom-left,
-  :where(.geo-map) > .maplibregl-control-container > .maplibregl-ctrl-bottom-right {
+  :where(.geo-map) > .maplibregl-control-container > .maplibregl-ctrl-bottom-left {
     bottom: calc(
       var(--map-mobile-sheet-visible-height, 0px) + var(--map-safe-bottom-offset, 0px) + var(--map-timeline-height, 0px)
     );
   }
+  :where(.geo-map) > .maplibregl-control-container > .maplibregl-ctrl-bottom-right {
+    bottom: calc(
+      var(--map-mobile-sheet-visible-height, 0px) + var(--map-safe-bottom-offset, 0px) +
+        var(--map-timeline-height, 0px) + var(--map-legend-panel-visible-height, 0px)
+    );
+  }
 }
-.geo-map-under-pane > .maplibregl-control-container > .maplibregl-ctrl-bottom-left,
-.geo-map-under-pane > .maplibregl-control-container > .maplibregl-ctrl-bottom-right {
+.geo-map-under-pane > .maplibregl-control-container > .maplibregl-ctrl-bottom-left {
   bottom: calc(var(--map-bottom-pane-height, 0px) + var(--map-timeline-height, 0px));
+}
+.geo-map-under-pane > .maplibregl-control-container > .maplibregl-ctrl-bottom-right {
+  bottom: calc(
+    var(--map-bottom-pane-height, 0px) + var(--map-timeline-height, 0px) + var(--map-legend-panel-visible-height, 0px)
+  );
 }
 .geo-motion-dialog-overlay[data-state='open'] {
   animation: geo-motion-fade-in var(--geo-motion-feedback, 150ms) ease-out both;
