@@ -64,7 +64,7 @@ export interface MapTimelineProps {
   /** Unit read out with a value, e.g. "inspections". */
   valueLabel?: string
   window?: MapTimelineWindow
-  /** Read out the change against an earlier bucket, e.g. `{ label: 'YoY' }`. */
+  /** Read out the change against an earlier bucket, e.g. `{ label: 'YoY' }`. One-bucket windows only. */
   change?: { label?: string; offset?: number }
   /** Page facts shown beside the date at every size, e.g. "1,204 visible". */
   summary?: ReactNode
@@ -93,9 +93,15 @@ export const DEFAULT_TIMELINE_SPEEDS: readonly MapTimelineSpeed[] = [
 const FULL_MIN_WIDTH = 880
 // 44px touch targets need more room before everything fits on one row.
 const FULL_MIN_WIDTH_TOUCH = 960
+// A picker drops the skip and speed controls, so its one row fits in less.
+const PICKER_FULL_MIN_WIDTH = 520
+const PICKER_FULL_MIN_WIDTH_TOUCH = 560
 const COMPACT_MIN_WIDTH = 420
 // Below this map height (a landscape phone) the track gives up height first.
 const SHORT_MAP_HEIGHT = 480
+// Up to this many buckets, each is its own target on the track: the timeline is
+// a picker, and playback over so few steps has nothing for a speed to change.
+const PICKER_MAX_BUCKETS = 12
 const MIN_LABEL_PX: Record<TimelineGranularity, number> = { week: 64, month: 44, year: 40, decade: 52 }
 // Round strides keep a thinned axis on calendar years (1990, 2000…).
 const NICE_STRIDES = [1, 2, 5, 10, 20, 25, 50, 100]
@@ -103,10 +109,39 @@ const HOLD_DELAY_MS = 400
 const HOLD_REPEAT_MS = 120
 
 /** The density a timeline of this width gets with `density="auto"`. */
-export function timelineDensityForWidth(width: number, touch = false): MapTimelineDensity {
-  if (width >= (touch ? FULL_MIN_WIDTH_TOUCH : FULL_MIN_WIDTH)) return 'full'
+export function timelineDensityForWidth(width: number, touch = false, picker = false): MapTimelineDensity {
+  const fullMinWidth = picker
+    ? touch
+      ? PICKER_FULL_MIN_WIDTH_TOUCH
+      : PICKER_FULL_MIN_WIDTH
+    : touch
+      ? FULL_MIN_WIDTH_TOUCH
+      : FULL_MIN_WIDTH
+  if (width >= fullMinWidth) return 'full'
   if (width >= COMPACT_MIN_WIDTH) return 'compact'
   return 'mini'
+}
+
+/** Whether a timeline of this length picks buckets directly rather than scrubbing. */
+export function isTimelinePicker(bucketCount: number): boolean {
+  return bucketCount <= PICKER_MAX_BUCKETS
+}
+
+/**
+ * The window options worth offering for this many buckets. A fixed window as
+ * long as the data shows all of it with nowhere to step, which is what the
+ * cumulative window ends on, and one bucket has no window to choose at all. The
+ * selected option stays, so a page's current choice is never left unshown.
+ */
+export function timelineWindowOptions<T extends { value: TimelineWindowSize }>(
+  options: readonly T[],
+  bucketCount: number,
+  selected: TimelineWindowSize,
+): T[] {
+  if (bucketCount < 2) return []
+  return options.filter(
+    (option) => option.value === selected || option.value === 'cumulative' || option.value < bucketCount,
+  )
 }
 
 /** Which bucket indices carry an axis label at this track width. */
@@ -257,6 +292,8 @@ export function MapTimeline({
   const isMobile = useIsMobile()
   const interactions = useWorkspaceInteractions()
   const [menuOpen, setMenuOpen] = useState(false)
+  const trackAreaRef = useRef<HTMLDivElement>(null)
+  const [trackAreaHeight, setTrackAreaHeight] = useState(0)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [scrubbing, setScrubbing] = useState(false)
   const [internalPlaying, setInternalPlaying] = useState(false)
@@ -273,6 +310,7 @@ export function MapTimeline({
   )
 
   const count = buckets.length
+  const picker = isTimelinePicker(count)
   const size = windowMode?.size ?? 1
   const anchor = windowMode?.anchor ?? 'start'
   const cumulative = size === 'cumulative'
@@ -309,7 +347,7 @@ export function MapTimeline({
   const density: MapTimelineDensity =
     densityProp === 'auto'
       ? rootWidth
-        ? timelineDensityForWidth(rootWidth, touch)
+        ? timelineDensityForWidth(rootWidth, touch, picker)
         : isMobile
           ? 'mini'
           : 'full'
@@ -401,7 +439,8 @@ export function MapTimeline({
   })
 
   const changeText = useMemo(() => {
-    if (!change || !values) return null
+    // It compares one bucket with another, which says nothing about a longer window.
+    if (!change || !values || size !== 1) return null
     const offset = Math.max(1, Math.floor(change.offset ?? 1))
     const current = buckets[range.end]
     const previous = buckets[range.end - offset]
@@ -411,7 +450,7 @@ export function MapTimeline({
       values.get(current.key) ?? 0,
     )
     return result ? `${change.label ?? 'Change'} ${formatPercentChange(result.percentChange)}` : null
-  }, [change, values, buckets, range.end])
+  }, [change, values, buckets, range.end, size])
 
   const summaryContent =
     summary || changeText ? (
@@ -517,12 +556,21 @@ export function MapTimeline({
   const button = touch ? 'size-11' : density === 'full' ? 'size-8' : 'size-9'
   // Steps and close stay 44px tall on touch but slimmer, leaving the date room.
   const slimButton = touch ? 'h-11 w-9' : button
-  const showOptions = Boolean(windowMode?.options.length) || speeds.length > 1
+  const windowOptions = windowMode ? timelineWindowOptions(windowMode.options, count, windowMode.size) : []
+  const showSpeeds = !picker && speeds.length > 1
+  const showOptions = windowOptions.length > 1 || showSpeeds
+  const barHeight = (bucket: TimelineBucket) => {
+    const raw = values ? (values.get(bucket.key) ?? 0) : null
+    return raw === null ? 0.3 : maxValue > 0 && raw > 0 ? Math.max(0.08, (raw / maxValue) * 0.95) : 0.03
+  }
   const speedLabel = speeds.find((s) => s.intervalMs === speedMs)?.label
+
+  // On a phone a picker's bars are the steps, and the room goes to the summary.
+  const stepButtons = !(picker && density === 'mini')
 
   const transport = (
     <div className="flex shrink-0 items-center gap-0.5">
-      {density === 'full' ? (
+      {density === 'full' && !picker ? (
         <button
           type="button"
           aria-label="First"
@@ -533,15 +581,17 @@ export function MapTimeline({
           <SkipBack className="size-4" />
         </button>
       ) : null}
-      <button
-        type="button"
-        aria-label="Previous"
-        className={cn(iconButton, button)}
-        disabled={index <= 0}
-        {...prevHold}
-      >
-        <ChevronLeft className="size-4" />
-      </button>
+      {stepButtons ? (
+        <button
+          type="button"
+          aria-label="Previous"
+          className={cn(iconButton, button)}
+          disabled={index <= 0}
+          {...prevHold}
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+      ) : null}
       <button
         type="button"
         aria-label={playing ? 'Pause' : 'Play'}
@@ -557,16 +607,18 @@ export function MapTimeline({
       >
         {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
       </button>
-      <button
-        type="button"
-        aria-label="Next"
-        className={cn(iconButton, slimButton)}
-        disabled={index >= maxIndex}
-        {...nextHold}
-      >
-        <ChevronRight className="size-4" />
-      </button>
-      {density === 'full' ? (
+      {stepButtons ? (
+        <button
+          type="button"
+          aria-label="Next"
+          className={cn(iconButton, slimButton)}
+          disabled={index >= maxIndex}
+          {...nextHold}
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      ) : null}
+      {density === 'full' && !picker ? (
         <button
           type="button"
           aria-label="Latest"
@@ -586,25 +638,25 @@ export function MapTimeline({
     </button>
   ) : null
 
-  const windowGroup = windowMode?.options.length ? (
-    <OptionGroup
-      label="Window"
-      options={windowMode.options}
-      value={windowMode.size}
-      onChange={windowMode.onSizeChange}
-      touch={touch}
-    />
-  ) : null
-  const speedGroup =
-    speeds.length > 1 ? (
+  const windowGroup =
+    windowMode && windowOptions.length > 1 ? (
       <OptionGroup
-        label="Speed"
-        options={speeds.map((s) => ({ value: s.intervalMs, label: s.label }))}
-        value={speedMs}
-        onChange={(next) => setSpeedMs(next as number)}
+        label="Window"
+        options={windowOptions}
+        value={windowMode.size}
+        onChange={windowMode.onSizeChange}
         touch={touch}
       />
     ) : null
+  const speedGroup = showSpeeds ? (
+    <OptionGroup
+      label="Speed"
+      options={speeds.map((s) => ({ value: s.intervalMs, label: s.label }))}
+      value={speedMs}
+      onChange={(next) => setSpeedMs(next as number)}
+      touch={touch}
+    />
+  ) : null
 
   const dateLabel = (
     <div className="min-w-0 flex-1">
@@ -631,7 +683,8 @@ export function MapTimeline({
       className={cn(
         placement === 'map-overlay'
           ? cn(
-              'absolute inset-x-2.5 mx-auto max-w-[64rem] bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_0.625rem)]',
+              'absolute inset-x-2.5 mx-auto bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_0.625rem)]',
+              picker ? 'max-w-[36rem]' : 'max-w-[64rem]',
               MAP_OVERLAY_Z.passiveOverlay,
             )
           : 'relative w-full',
@@ -668,7 +721,11 @@ export function MapTimeline({
                 aria-label="Timeline options"
                 aria-expanded={menuOpen}
                 className={cn(iconButton, slimButton, menuOpen && 'bg-muted text-foreground')}
-                onClick={() => setMenuOpen((open) => !open)}
+                onClick={() => {
+                  // Measured before the track hides: see the options row below.
+                  if (!menuOpen) setTrackAreaHeight(trackAreaRef.current?.offsetHeight ?? 0)
+                  setMenuOpen(!menuOpen)
+                }}
               >
                 {speedLabel && speedMs !== 1000 ? (
                   <span className="text-[11px] font-semibold tabular-nums">{speedLabel}</span>
@@ -683,9 +740,13 @@ export function MapTimeline({
       </div>
 
       {/* Narrow layouts swap the track for the options in place, so nothing
-          pops up over the map's header on a short screen. */}
+          pops up over the map's header on a short screen. They hold the track's
+          height, or everything stacked above the timeline jumps on each press. */}
       {menuOpen && density !== 'full' ? (
-        <div className="mt-1.5 flex flex-wrap items-end gap-x-3 gap-y-2 pb-1">
+        <div
+          className="mt-1.5 flex flex-wrap items-end gap-x-3 gap-y-2"
+          style={{ minHeight: trackAreaHeight || undefined }}
+        >
           {windowGroup ? (
             <div className="space-y-1">
               <div className="text-[11px] font-medium text-muted-foreground">Window</div>
@@ -704,6 +765,7 @@ export function MapTimeline({
       {/* Track: one scrubber that is also the histogram. Hidden, not unmounted,
           while the options show, so its width observer keeps its element. */}
       <div
+        ref={trackAreaRef}
         className={cn('relative', density === 'full' ? 'mt-2' : 'mt-1.5', menuOpen && density !== 'full' && 'hidden')}
       >
         {tooltipBucket ? (
@@ -744,45 +806,66 @@ export function MapTimeline({
             className="absolute inset-y-0 rounded-md bg-primary/10"
             style={{ left: percent(range.start), width: percent(range.end - range.start + 1) }}
           />
-          {/* Bars, or a comb of ticks without values */}
-          <svg
-            aria-hidden="true"
-            className="absolute inset-x-0 bottom-1.5 top-1 h-[calc(100%-0.625rem)] w-full overflow-visible"
-            viewBox={`0 0 ${count} 1`}
-            preserveAspectRatio="none"
-          >
-            {buckets.map((bucket, i) => {
-              const inWindow = i >= range.start && i <= range.end
-              const raw = values ? (values.get(bucket.key) ?? 0) : null
-              const height =
-                raw === null ? 0.3 : maxValue > 0 && raw > 0 ? Math.max(0.08, (raw / maxValue) * 0.95) : 0.03
-              return (
-                <rect
-                  key={bucket.key}
-                  x={i + (count > 60 ? 0.05 : 0.15)}
-                  width={count > 60 ? 0.9 : 0.7}
-                  y={1 - height}
-                  height={height}
-                  rx={0}
-                  className={cn(
-                    inWindow ? 'fill-primary' : 'fill-muted-foreground/25',
-                    hoverIndex === i && !inWindow && 'fill-muted-foreground/50',
-                  )}
-                />
-              )
-            })}
-          </svg>
+          {/* Bars, or a comb of ticks without values. A picker's bars keep a
+              bar's proportions at any width; a long track packs them in an SVG. */}
+          {picker ? (
+            <div aria-hidden="true" className="absolute inset-x-0 bottom-1.5 top-1 flex items-end">
+              {buckets.map((bucket, i) => {
+                const inWindow = i >= range.start && i <= range.end
+                return (
+                  <div key={bucket.key} className="flex h-full min-w-0 flex-1 items-end justify-center">
+                    <div
+                      className={cn(
+                        'w-[70%] max-w-12 rounded-t-sm transition-colors motion-reduce:transition-none',
+                        inWindow ? 'bg-primary' : 'bg-muted-foreground/25',
+                        hoverIndex === i && !inWindow && 'bg-muted-foreground/50',
+                      )}
+                      style={{ height: `${barHeight(bucket) * 100}%` }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <svg
+              aria-hidden="true"
+              className="absolute inset-x-0 bottom-1.5 top-1 h-[calc(100%-0.625rem)] w-full overflow-visible"
+              viewBox={`0 0 ${count} 1`}
+              preserveAspectRatio="none"
+            >
+              {buckets.map((bucket, i) => {
+                const inWindow = i >= range.start && i <= range.end
+                const height = barHeight(bucket)
+                return (
+                  <rect
+                    key={bucket.key}
+                    x={i + (count > 60 ? 0.05 : 0.15)}
+                    width={count > 60 ? 0.9 : 0.7}
+                    y={1 - height}
+                    height={height}
+                    rx={0}
+                    className={cn(
+                      inWindow ? 'fill-primary' : 'fill-muted-foreground/25',
+                      hoverIndex === i && !inWindow && 'fill-muted-foreground/50',
+                    )}
+                  />
+                )
+              })}
+            </svg>
+          )}
           {/* Baseline */}
           <div aria-hidden="true" className="absolute inset-x-0 bottom-1.5 h-px bg-border" />
-          {/* Playhead */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 -translate-x-1/2"
-            style={{ left: percent(anchorIndex + 0.5) }}
-          >
-            <div className="mx-auto h-full w-0.5 rounded-full bg-foreground" />
-            <div className="absolute bottom-0 left-1/2 size-3 -translate-x-1/2 translate-y-1/3 rounded-full border-2 border-background bg-foreground shadow" />
-          </div>
+          {/* Playhead: a picker's selected bars already say where it is. */}
+          {picker ? null : (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 -translate-x-1/2"
+              style={{ left: percent(anchorIndex + 0.5) }}
+            >
+              <div className="mx-auto h-full w-0.5 rounded-full bg-foreground" />
+              <div className="absolute bottom-0 left-1/2 size-3 -translate-x-1/2 translate-y-1/3 rounded-full border-2 border-background bg-foreground shadow" />
+            </div>
+          )}
         </div>
         {/* Axis labels */}
         <div aria-hidden="true" className="relative mt-1 h-3.5 overflow-hidden text-[10px] leading-none">
