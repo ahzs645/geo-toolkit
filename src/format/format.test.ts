@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatArea,
   formatBytes,
   formatCompactCurrency,
+  formatLength,
   formatMeasure,
   formatMonthYear,
   formatNumber,
@@ -53,5 +55,21 @@ describe('formatMeasure', () => {
   it('accepts a minimum precision above the default maximum', () => {
     expect(formatMeasure(2, undefined, { minimumFractionDigits: 2 })).toBe('2.00')
     expect(formatMeasure(0.000123, '%', { maximumFractionDigits: 6 })).toBe('0.000123%')
+  })
+})
+
+describe('measures read like the numbers beside them', () => {
+  it('groups thousands', () => {
+    expect(formatArea(21_181_000)).toBe('2,118.1 ha')
+    expect(formatLength(1_234_500)).toBe('1,234.5 km')
+    expect(formatArea(9_876.4)).toBe('9,876 m²')
+  })
+
+  it('keeps one decimal and the empty result for nothing', () => {
+    expect(formatArea(10_000)).toBe('1.0 ha')
+    expect(formatLength(1_000)).toBe('1.0 km')
+    expect(formatLength(999)).toBe('999 m')
+    expect(formatArea(0)).toBe('')
+    expect(formatLength(null)).toBe('')
   })
 })

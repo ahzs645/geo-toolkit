@@ -56,12 +56,15 @@ export function MobileFeatureCard({
   closeOnBlankMapClick = true,
   showDockAction = true,
   stackId = 'feature',
+  closeLabel = 'Close feature card',
   onClose,
 }: {
   title: ReactNode
   subtitle?: ReactNode
   children: ReactNode
   className?: string
+  /** Accessible name of the close button, for a card that is not a feature. */
+  closeLabel?: string
   cardKey?: string | number
   /**
    * Change to bring the card to the front of the stack without resetting it,
@@ -659,7 +662,7 @@ export function MobileFeatureCard({
                 <button
                   type="button"
                   className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Close feature card"
+                  aria-label={closeLabel}
                   data-mobile-feature-card-action="true"
                   onClick={closeWithAnimation}
                 >

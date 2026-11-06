@@ -35,8 +35,8 @@ export type MapRasterQuadStyle = {
   visible?: boolean
   /** Draw-order slot shared with the vector layers; higher draws on top. */
   layerOrder?: number
-  /** Insert before another layer ID when no layerOrder is given. */
-  beforeId?: string
+  /** Insert before another layer ID when no layerOrder is given, or find it once the style is ready. */
+  beforeId?: string | ((map: MapLibreGL.Map) => string | undefined)
 }
 
 export type MapCanvasLayerProps = MapRasterQuadStyle & {
@@ -50,6 +50,14 @@ export type MapCanvasLayerProps = MapRasterQuadStyle & {
   revision?: unknown
   /** Re-read the canvas on every frame, for continuously animated drawings (default: false). */
   animate?: boolean
+  /** Stable id for the source and layer, for hosts that look them up. Generated when omitted. */
+  id?: string
+  /**
+   * Gives the host the source for timed drawing it must run itself, such as a crossfade
+   * or corners that have to change in the same frame as the pixels. Called with null
+   * when the source goes away. Set `revision` aside: the host calls `play` and `pause`.
+   */
+  onSource?: (source: MapLibreGL.CanvasSource | null) => void
 }
 
 function useRasterQuadLayer(
@@ -78,6 +86,7 @@ function addRasterQuadLayer(
   layerId: string,
   { opacity = 0.75, resampling = 'linear', visible = true, layerOrder, beforeId }: MapRasterQuadStyle,
 ) {
+  const before = typeof beforeId === 'function' ? beforeId(map) : beforeId
   map.addLayer(
     {
       id: layerId,
@@ -86,7 +95,7 @@ function addRasterQuadLayer(
       layout: { visibility: visible ? 'visible' : 'none' },
       paint: { 'raster-opacity': opacity, 'raster-resampling': resampling, 'raster-fade-duration': 0 },
     },
-    layerOrder === undefined && beforeId && map.getLayer(beforeId) ? beforeId : undefined,
+    layerOrder === undefined && before && map.getLayer(before) ? before : undefined,
   )
   const releaseOrder = registerMapLayerOrder(map, [layerId], layerOrder)
   return () => {
@@ -105,10 +114,20 @@ function addRasterQuadLayer(
  * A host-painted canvas pinned to four map corners, such as an interpolated
  * surface computed off the main thread. Set `revision` after each repaint.
  */
-export function MapCanvasLayer({ canvas, coordinates, revision, animate = false, ...style }: MapCanvasLayerProps) {
+export function MapCanvasLayer({
+  canvas,
+  coordinates,
+  revision,
+  animate = false,
+  id,
+  onSource,
+  ...style
+}: MapCanvasLayerProps) {
   const uid = useId().replace(/:/g, '')
-  const sourceId = `canvas-src-${uid}`
-  const layerId = `canvas-layer-${uid}`
+  const sourceId = id ?? `canvas-src-${uid}`
+  const layerId = id ?? `canvas-layer-${uid}`
+  const hostDrawn = Boolean(onSource)
+  const onSourceRef = useRef(onSource)
   const { map, isLoaded } = useRasterQuadLayer(layerId, style)
   const coordinatesKey = JSON.stringify(coordinates)
   const coordinatesRef = useRef(coordinates)
@@ -117,12 +136,18 @@ export function MapCanvasLayer({ canvas, coordinates, revision, animate = false,
   useEffect(() => {
     coordinatesRef.current = coordinates
     styleRef.current = style
+    onSourceRef.current = onSource
   })
 
   useEffect(() => {
     if (!isLoaded || !map || !canvas) return
     map.addSource(sourceId, { type: 'canvas', canvas, coordinates: coordinatesRef.current, animate })
-    return addRasterQuadLayer(map, sourceId, layerId, styleRef.current)
+    const remove = addRasterQuadLayer(map, sourceId, layerId, styleRef.current)
+    onSourceRef.current?.(map.getSource(sourceId) as MapLibreGL.CanvasSource)
+    return () => {
+      onSourceRef.current?.(null)
+      remove()
+    }
   }, [animate, canvas, isLoaded, layerId, map, sourceId, style.layerOrder])
 
   useEffect(() => {
@@ -133,7 +158,7 @@ export function MapCanvasLayer({ canvas, coordinates, revision, animate = false,
 
   // A paused canvas source keeps its last texture; play for one frame to upload.
   useEffect(() => {
-    if (!isLoaded || !map || animate) return
+    if (!isLoaded || !map || animate || hostDrawn) return
     const source = map.getSource(sourceId) as MapLibreGL.CanvasSource | undefined
     if (!source) return
     source.play()
@@ -145,7 +170,7 @@ export function MapCanvasLayer({ canvas, coordinates, revision, animate = false,
     return () => {
       map.off('render', pause)
     }
-  }, [animate, canvas, isLoaded, map, revision, sourceId, coordinatesKey, style.layerOrder])
+  }, [animate, canvas, hostDrawn, isLoaded, map, revision, sourceId, coordinatesKey, style.layerOrder])
 
   return null
 }

@@ -204,6 +204,8 @@ export function PersistentMapProvider(props: PersistentMapProviderProps) {
 }
 
 export type PersistentMapHostProps = {
+  /** Scale the current frame during a pane drag, with one real resize at the end. */
+  deferResize?: boolean
   className?: string
   loading?: boolean
   loadingLabel?: string
@@ -217,9 +219,19 @@ export type PersistentMapHostProps = {
  * on unmount it releases the container (the next host re-claims it), so the
  * MapLibre instance survives the route change.
  */
-export function PersistentMapHost({ className, loading = false, loadingLabel, loader }: PersistentMapHostProps) {
+export function PersistentMapHost({
+  className,
+  loading = false,
+  loadingLabel,
+  loader,
+  deferResize = false,
+}: PersistentMapHostProps) {
   const { container, map, isLoaded, routeLoadingKey, interactionTarget, theme } = usePersistentMap()
   const hostRef = useRef<HTMLDivElement>(null)
+  const deferResizeRef = useRef(deferResize)
+  useEffect(() => {
+    deferResizeRef.current = deferResize
+  }, [deferResize])
 
   const pointerStartRef = useRef<{ x: number; y: number; dispatched: boolean } | null>(null)
   const lastGestureAtRef = useRef(0)
@@ -245,7 +257,17 @@ export function PersistentMapHost({ className, loading = false, loadingLabel, lo
     if (map) resizeMap(map)
     const raf = requestAnimationFrame(() => map && resizeMap(map))
 
-    const observer = new ResizeObserver(() => map && resizeMap(map))
+    const observer = new ResizeObserver(([entry]) => {
+      if (!map) return
+      if (deferResizeRef.current) {
+        // Resizing clears the WebGL buffer, so scale the existing frame during a drag.
+        const canvas = map.getCanvas()
+        canvas.style.width = `${entry.contentRect.width}px`
+        canvas.style.height = `${entry.contentRect.height}px`
+        return
+      }
+      resizeMap(map)
+    })
     observer.observe(host)
     const unpublishCorners = map ? publishMapCornerHeights(container, mapCornerTargets(host)) : undefined
 
@@ -258,6 +280,11 @@ export function PersistentMapHost({ className, loading = false, loadingLabel, lo
       }
     }
   }, [container, map])
+
+  // The real resize a deferred drag skipped.
+  useLayoutEffect(() => {
+    if (map && !deferResize) resizeMap(map)
+  }, [deferResize, map])
 
   useEffect(() => {
     routeLoadingStartedAtRef.current = Date.now()
@@ -351,6 +378,8 @@ export type SharedMapProps = {
    * `null` to render none, or your own element to customize.
    */
   controls?: ReactNode
+  /** Scale the current frame while a pane is dragged, with one real resize at the end. */
+  deferResize?: boolean
 }
 
 /**
@@ -360,12 +389,21 @@ export type SharedMapProps = {
  * (markers, layers, popups) attach to the shared instance via useMap() and can
  * be rendered as children regardless of DOM nesting.
  */
-export function SharedMap({ children, styles, className, loading, loadingLabel, loader, controls }: SharedMapProps) {
+export function SharedMap({
+  children,
+  styles,
+  className,
+  loading,
+  loadingLabel,
+  loader,
+  controls,
+  deferResize,
+}: SharedMapProps) {
   useMapBasemap(styles ?? MAP_STYLES)
 
   return (
     <MapOverlayRoot className={className} initializeVariables={false}>
-      <PersistentMapHost loading={loading} loadingLabel={loadingLabel} loader={loader} />
+      <PersistentMapHost loading={loading} loadingLabel={loadingLabel} loader={loader} deferResize={deferResize} />
       {controls === undefined ? DEFAULT_MAP_CONTROLS : controls}
       {children}
     </MapOverlayRoot>
