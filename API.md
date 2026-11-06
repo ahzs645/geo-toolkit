@@ -783,9 +783,15 @@ north })`. Change `revision` after repainting so MapLibre uploads the new
 pixels, or set `animate` for a canvas that changes every frame.
 `MapImageLayer` does the same for an image URL. Pass `id` when the host has to look
 the source or layer up; otherwise one is generated.
+A host running its own timed drawing, such as a crossfade, passes `onSource` to receive the
+`CanvasSource` and calls `play` and `pause` itself; `revision` is then ignored. `id` names the
+source and layer, and `beforeId` can be a function that finds a layer once the style is ready.
 
 `MapRasterLayer` takes `fadeDuration`; use 0 for data rasters that must not blend while
 tiles load.
+`bounds` limits tile requests, `id` gives the source and layer a stable name, and
+`addOnStyleLoad` adds the layer once the style is usable rather than after the map's first
+full load, for imagery the map opens to show.
 
 `MapTerrain` adds relief shading and 3D terrain from one elevation dataset, keeping the
 separate sources MapLibre needs for the two. The host supplies `dem`, and optionally
@@ -805,6 +811,8 @@ cannot replace the style. `draggableCompass` on `MapControls` turns and tilts by
 owns them, and `beforeId` places it under a host's data. `captureMapImage` takes `overlays`,
 a function resolving to copies of canvases drawn separately from the map. Take each copy in
 that renderer's after-render callback, because a WebGL canvas reads back blank later.
+`terrainOnly` is the reverse: 3D terrain with no hillshade, leaving the sky alone, which a
+globe view relies on.
 
 `WORKSPACE_MAP_CONTROLS` is `DEFAULT_MAP_CONTROLS` plus fullscreen, for a workspace whose
 map is the main surface.
@@ -1027,6 +1035,7 @@ workspace needs to. `filesFromInput` and `filesFromDrop` are the same reads with
 
 `ToolPageHeader` heads a tool that is a scrolling page. `MapSidebarShell` takes
 `density="compact"` for a tighter sidebar; every `SidebarSection` inside follows it.
+Pass `size="lg"` on a hub page that lists tools.
 
 ## Clipboard feedback and transports
 

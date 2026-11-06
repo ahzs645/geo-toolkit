@@ -1005,7 +1005,7 @@ export function SelectedItemCard({
   )
 }
 
-type MapLegendPanelProps = {
+type MapLegendPanelProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
   children: ReactNode
   className?: string
   title?: ReactNode
@@ -1038,7 +1038,10 @@ export function MapLegendPanel({
   collapsed,
   onCollapsedChange,
   contentClassName,
+  // Deprecated and ignored, but it must not reach the DOM through `rest`.
+  elevated: _elevated,
   width = 'md',
+  ...rest
 }: MapLegendPanelProps) {
   const isMobile = useIsMobile()
   const [internalCollapsed, setInternalCollapsed] = useState<boolean | null>(null)
@@ -1099,6 +1102,7 @@ export function MapLegendPanel({
 
   return (
     <div
+      {...rest}
       ref={panelRef}
       data-map-legend-panel=""
       data-collapsed={isCollapsed || undefined}

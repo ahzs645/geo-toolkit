@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useMap } from '../map-context.js'
 import { registerMapLayerOrder } from '../map-layer-order.js'
 
@@ -25,6 +25,15 @@ export type MapRasterLayerProps = {
   beforeId?: string
   /** Draw-order slot shared with the vector layers; higher draws on top. Overrides beforeId. */
   layerOrder?: number
+  /** Limits tile requests to this [west, south, east, north] box. */
+  bounds?: [number, number, number, number]
+  /** Stable id for the source and layer, for hosts that look them up. Generated when omitted. */
+  id?: string
+  /**
+   * Add the layer as soon as the style is usable rather than after the map's first
+   * full load, which waits for every basemap tile. For imagery the map opens to show.
+   */
+  addOnStyleLoad?: boolean
 }
 
 export function MapRasterLayer({
@@ -39,11 +48,27 @@ export function MapRasterLayer({
   attribution,
   beforeId,
   layerOrder,
+  bounds,
+  id,
+  addOnStyleLoad = false,
 }: MapRasterLayerProps) {
-  const { map, isLoaded } = useMap()
+  const { map, isLoaded: mapLoaded } = useMap()
   const uid = useId().replace(/:/g, '')
-  const sourceId = `raster-src-${uid}`
-  const layerId = `raster-layer-${uid}`
+  const sourceId = id ?? `raster-src-${uid}`
+  const layerId = id ?? `raster-layer-${uid}`
+  const [styleLoads, setStyleLoads] = useState(0)
+  const isLoaded = mapLoaded || (addOnStyleLoad && styleLoads > 0)
+
+  // A new style drops the source and layer, so they are rebuilt on each load.
+  useEffect(() => {
+    if (!addOnStyleLoad || !map) return
+    const loaded = () => setStyleLoads((count) => count + 1)
+    if (map.getStyle()) loaded()
+    map.on('style.load', loaded)
+    return () => {
+      map.off('style.load', loaded)
+    }
+  }, [addOnStyleLoad, map])
 
   // Mount: create source + layer
   useEffect(() => {
@@ -55,6 +80,7 @@ export function MapRasterLayer({
       tileSize,
       minzoom: minZoom,
       maxzoom: maxZoom,
+      ...(bounds && { bounds }),
       ...(attribution && { attribution }),
     })
 
@@ -76,6 +102,7 @@ export function MapRasterLayer({
     return () => {
       releaseOrder()
       try {
+        if (!map.getStyle()) return
         if (map.getLayer(layerId)) map.removeLayer(layerId)
         if (map.getSource(sourceId)) map.removeSource(sourceId)
       } catch {
@@ -83,7 +110,7 @@ export function MapRasterLayer({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, map, layerOrder])
+  }, [isLoaded, map, layerOrder, styleLoads])
 
   // Update opacity
   useEffect(() => {

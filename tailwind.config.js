@@ -8,6 +8,16 @@ export default {
   content: ['./src/**/*.{js,ts,jsx,tsx,mjs}'],
   theme: {
     extend: {
+      fontSize: {
+        '3xs': '10px',
+        '2xs': '11px',
+      },
+      zIndex: {
+        menu: '1300',
+        overlay: '1400',
+        'workspace-menu': '1500',
+        'workspace-popover': '1600',
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',

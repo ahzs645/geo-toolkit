@@ -13,6 +13,8 @@ export type ToolPageHeaderProps = {
   back?: ReactNode
   /** Right-aligned status, such as a "Runs in your browser" badge. */
   aside?: ReactNode
+  /** 'lg' for a hub page that lists tools, matching the map library's heading. */
+  size?: 'md' | 'lg'
   className?: string
 }
 
@@ -25,6 +27,7 @@ export function ToolPageHeader({
   eyebrowClassName,
   back,
   aside,
+  size = 'md',
   className,
 }: ToolPageHeaderProps) {
   return (
@@ -38,7 +41,9 @@ export function ToolPageHeader({
               {eyebrow}
             </div>
           )}
-          <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+          <h1 className={cn('font-bold tracking-tight', size === 'lg' ? 'text-3xl sm:text-5xl' : 'text-2xl')}>
+            {title}
+          </h1>
           {description && <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>}
         </div>
         {aside && <div className="shrink-0 self-start">{aside}</div>}

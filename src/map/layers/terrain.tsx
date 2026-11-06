@@ -21,6 +21,11 @@ export type MapTerrainProps = {
    * something else owns them, such as a point-cloud viewer. `terrain` is then ignored.
    */
   reliefOnly?: boolean
+  /**
+   * Lift the map onto 3D terrain and draw nothing else: no hillshade, and the sky and
+   * atmosphere stay as the map set them, which a globe view relies on.
+   */
+  terrainOnly?: boolean
   /** Draw the hillshade below this layer, when it exists. Defaults to under the labels. */
   beforeId?: string
   hillshade?: boolean
@@ -50,6 +55,7 @@ export function MapTerrain({
   id = 'map-terrain',
   terrain = false,
   reliefOnly = false,
+  terrainOnly = false,
   beforeId,
   hillshade = true,
   exaggeration = 1,
@@ -77,9 +83,9 @@ export function MapTerrain({
       ...(maxZoom !== undefined && { maxzoom: maxZoom }),
       ...(attribution && { attribution }),
     }
-    if (!map.getSource(hillshadeSourceId)) map.addSource(hillshadeSourceId, source)
+    if (!terrainOnly && !map.getSource(hillshadeSourceId)) map.addSource(hillshadeSourceId, source)
     if (!reliefOnly && !map.getSource(terrainSourceId)) map.addSource(terrainSourceId, source)
-    if (!map.getLayer(hillshadeLayerId)) {
+    if (!terrainOnly && !map.getLayer(hillshadeLayerId)) {
       map.addLayer(
         {
           id: hillshadeLayerId,
@@ -95,7 +101,9 @@ export function MapTerrain({
     }
     return () => {
       // Terrain has to be released before the source it reads from.
-      if (!reliefOnly && map.getTerrain()) map.setTerrain(null)
+      if (!reliefOnly && (terrainOnly ? map.getTerrain()?.source === terrainSourceId : map.getTerrain())) {
+        map.setTerrain(null)
+      }
       if (map.getLayer(hillshadeLayerId)) map.removeLayer(hillshadeLayerId)
       if (map.getSource(hillshadeSourceId)) map.removeSource(hillshadeSourceId)
       if (!reliefOnly && map.getSource(terrainSourceId)) map.removeSource(terrainSourceId)
@@ -112,6 +120,7 @@ export function MapTerrain({
     map,
     maxZoom,
     reliefOnly,
+    terrainOnly,
     terrainSourceId,
     tileSize,
     tilesKey,
@@ -134,8 +143,8 @@ export function MapTerrain({
   useEffect(() => {
     if (reliefOnly || !isLoaded || !map || !map.getSource(terrainSourceId)) return
     map.setTerrain(terrain ? { source: terrainSourceId, exaggeration } : null)
-    map.setSky(terrain && sky ? sky : { 'atmosphere-blend': 0 })
-  }, [exaggeration, isLoaded, map, reliefOnly, sky, terrain, terrainSourceId])
+    if (!terrainOnly) map.setSky(terrain && sky ? sky : { 'atmosphere-blend': 0 })
+  }, [exaggeration, isLoaded, map, reliefOnly, sky, terrain, terrainOnly, terrainSourceId])
 
   useEffect(() => {
     if (!isLoaded || !map || !map.getLayer(hillshadeLayerId)) return
