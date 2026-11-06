@@ -110,8 +110,16 @@ export function VirtualResultList<T>({
     }
     pendingReveal.current = null
     virtualizer.measureElement(row)
-    const tallerThanViewport = row.offsetHeight > (getScrollElement()?.clientHeight ?? Infinity)
-    virtualizer.scrollToIndex(index, { align: tallerThanViewport ? 'start' : 'auto' })
+    const scroller = getScrollElement()
+    if (!scroller) return
+    // Read the mounted row itself: the virtualizer keeps its old size for this
+    // row until the next render, so scrollToIndex would judge a row that just
+    // grew by its old height and could leave the new part out of view.
+    const port = scroller.getBoundingClientRect()
+    const box = row.getBoundingClientRect()
+    const top = port.top + stickyHeaderHeight
+    if (box.top < top || box.height > port.bottom - top) scroller.scrollTop += box.top - top
+    else if (box.bottom > port.bottom) scroller.scrollTop += box.bottom - port.bottom
   })
 
   useLayoutEffect(() => {
