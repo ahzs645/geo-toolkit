@@ -9,6 +9,7 @@ export const MAP_OVERLAY_Z = {
 export const MAP_OVERLAY_ROOT_STYLE = {
   '--map-mobile-sheet-visible-height': '0px',
   '--map-legend-panel-visible-height': '0px',
+  '--map-legend-stack-height': '0px',
   '--map-timeline-height': '0px',
   '--map-bottom-left-controls-height': '0px',
   '--map-bottom-right-controls-height': '0px',

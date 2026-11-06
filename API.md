@@ -861,7 +861,18 @@ const range = timelineWindow(buckets.length, value, size, 'end') // filter your 
   - a phone layout below that.
 
   On short maps (a landscape phone) the track gets shorter. Touch screens get
-  44 px controls. `density` fixes a layout.
+  44 px controls. `density` fixes a layout. The options swap in for the track at
+  the track's height, so chrome stacked above doesn't jump.
+- **Few buckets.** With 12 or fewer (`isTimelinePicker`) every bucket is its own
+  target, so the timeline becomes a picker: bars keep a bar's proportions, the
+  selected ones stand in for the playhead, and the skip and speed controls go,
+  as do the step buttons on a phone, where the arrow keys still step.
+  It is capped at 36 rem wide and needs 520 px for one row (560 px on touch).
+- **Window options.** `timelineWindowOptions` drops fixed windows as long as the
+  data, which only repeat the end of the cumulative window, and offers nothing
+  for a single bucket. The selected option always stays.
+- **Change.** `change` compares one bucket with another, so it reads out only
+  while the window is one bucket long.
 - **Interaction.**
   - Press or drag anywhere on the track to scrub, and hover for a tooltip.
   - Holding a step button keeps stepping.
@@ -879,11 +890,14 @@ const range = timelineWindow(buckets.length, value, size, 'end') // filter your 
 The bottom-right corner of a map is shared, from the bottom up:
 
 1. the timeline;
-2. a `MapLegendPanel`, which publishes `--map-legend-panel-visible-height`
-   while it sits in that corner;
-3. MapLibre's attribution, whose height `Map` publishes as
+2. MapLibre's attribution, whose height `Map` publishes as
    `--map-bottom-right-controls-height`;
+3. a `MapLegendPanel`, which publishes `--map-legend-panel-visible-height`, and
+   `--map-legend-stack-height` with the attribution added, while it sits in that
+   corner;
 4. any bottom-corner controls or floating panels.
+
+Opening a legend therefore moves nothing below it.
 
 Zoom and compass default to the top right, below a floating phone toolbar,
 whose height the workspace publishes as `--map-mobile-toolbar-height`.

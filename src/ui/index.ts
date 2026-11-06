@@ -44,7 +44,14 @@ export * from './clipboard-text.js'
 export * from './use-clipboard-text.js'
 export * from './copy-button.js'
 export * from './numeric-range-field.js'
-export { MapTimeline, DEFAULT_TIMELINE_SPEEDS, timelineDensityForWidth, timelineTickIndices } from './map-timeline.js'
+export {
+  MapTimeline,
+  DEFAULT_TIMELINE_SPEEDS,
+  isTimelinePicker,
+  timelineDensityForWidth,
+  timelineTickIndices,
+  timelineWindowOptions,
+} from './map-timeline.js'
 export type {
   MapTimelineProps,
   MapTimelineWindow,

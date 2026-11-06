@@ -38,9 +38,9 @@ type MapControlsProps = {
 
 // Top corners clear a toolbar floating over the map on phones (the workspace
 // publishes its height). Bottom corners stack above whatever holds the bottom
-// edge: on the right the legend panel's footprint, then MapLibre's attribution
-// on top of it (Map publishes the corners' heights); phones also clear the
-// bottom sheet and the safe area.
+// edge: on the right MapLibre's attribution (Map publishes the corners' heights),
+// then the legend panel's footprint on top of it; phones also clear the bottom
+// sheet and the safe area.
 const positionClasses = {
   'top-left': 'top-[calc(var(--map-mobile-toolbar-height,0px)_+_0.5rem)] left-2',
   'top-right': 'top-[calc(var(--map-mobile-toolbar-height,0px)_+_0.5rem)] right-2',
@@ -65,7 +65,7 @@ const desktopPositionClasses = {
 // reserve its footprint there.
 const mobilePanelAwarePositionClasses = {
   'bottom-left':
-    'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px)_+_0.5rem,var(--map-bottom-left-controls-height,0px)_+_0.5rem))]',
+    'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-stack-height,0px)_+_0.5rem,var(--map-bottom-left-controls-height,0px)_+_0.5rem))]',
   'bottom-right':
     'workspace-mobile:bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_var(--map-legend-panel-visible-height,0px)_+_var(--map-bottom-right-controls-height,0px)_+_0.5rem)]',
 }

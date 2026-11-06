@@ -1059,11 +1059,11 @@ export function MapLegendPanel({
     const root = panel.closest<HTMLElement>('[data-map-layout-root="true"]')
     if (!root) return
 
-    // The panel's footprint above the map's bottom edge (its inset plus its
-    // height). MapLibre's attribution sits on top of it, and controls and
-    // floating panels in the same corner above that. A page that moves the
-    // panel out of the bottom-right corner publishes nothing, so the
-    // attribution stays in the corner.
+    // The panel's footprint above MapLibre's attribution (its inset plus its
+    // height). Controls and floating panels in the same corner stack on top,
+    // and the opposite corner clears the whole stack on phones, where a wide
+    // panel reaches it. A page that moves the panel out of the bottom-right
+    // corner publishes nothing.
     const syncLegendHeight = () => {
       const container = panel.offsetParent ?? root
       const bounds = container.getBoundingClientRect()
@@ -1072,9 +1072,15 @@ export function MapLegendPanel({
       const bottomCorner =
         rect.height > 0 && bounds.right - rect.right < 32 && bounds.bottom - sheet - rect.bottom < rect.top - bounds.top
       if (bottomCorner) {
-        root.style.setProperty('--map-legend-panel-visible-height', `calc(0.625rem + ${Math.ceil(rect.height)}px)`)
+        const footprint = `calc(0.625rem + ${Math.ceil(rect.height)}px)`
+        root.style.setProperty('--map-legend-panel-visible-height', footprint)
+        root.style.setProperty(
+          '--map-legend-stack-height',
+          `calc(${footprint} + var(--map-bottom-right-controls-height, 0px))`,
+        )
       } else {
         root.style.removeProperty('--map-legend-panel-visible-height')
+        root.style.removeProperty('--map-legend-stack-height')
       }
     }
     syncLegendHeight()
@@ -1087,6 +1093,7 @@ export function MapLegendPanel({
       observer.disconnect()
       window.removeEventListener('resize', syncLegendHeight)
       root.style.removeProperty('--map-legend-panel-visible-height')
+      root.style.removeProperty('--map-legend-stack-height')
     }
   }, [className])
 
@@ -1098,14 +1105,14 @@ export function MapLegendPanel({
       className={cn(
         // Inset like MapLibre's attribution and the zoom controls, so the
         // right-hand chrome shares one edge.
-        'absolute right-2.5 flex flex-col rounded-lg border border-border bg-background/95 px-3 py-2.5 shadow-xl backdrop-blur workspace-desktop:rounded-xl workspace-desktop:p-3',
+        'absolute right-2.5 flex flex-col rounded-lg border border-border bg-background/95 px-2.5 py-2 shadow-xl backdrop-blur workspace-desktop:rounded-xl workspace-desktop:px-3 workspace-desktop:py-2.5',
         MAP_OVERLAY_Z.legend,
-        // The legend takes the corner itself (above a timeline, when one is
-        // shown, and on phones the sheet); Map lifts MapLibre's attribution
-        // onto it. Never
-        // taller than the map leaves room for beside the top controls: the
-        // content scrolls instead.
-        'bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-timeline-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_0.625rem)] max-h-[max(6rem,calc(100%_-_var(--map-mobile-sheet-visible-height,0px)_-_var(--map-timeline-height,0px)_-_var(--map-mobile-toolbar-height,0px)_-_14rem))] workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_0.625rem)]',
+        // The legend stacks on MapLibre's attribution, which keeps the corner
+        // (above a timeline, when one is shown, and on phones the sheet), so
+        // opening the legend moves nothing below it. Never taller than the
+        // map leaves room for beside the top controls: the content scrolls
+        // instead.
+        'bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-timeline-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-bottom-right-controls-height,0px)_+_0.625rem)] max-h-[max(6rem,calc(100%_-_var(--map-mobile-sheet-visible-height,0px)_-_var(--map-timeline-height,0px)_-_var(--map-bottom-right-controls-height,0px)_-_var(--map-mobile-toolbar-height,0px)_-_14rem))] workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_var(--map-bottom-right-controls-height,0px)_+_0.625rem)]',
         // Widths follow the map, not the viewport, so an embedded or
         // side-by-side map keeps the panel inside it. Collapsed, the pill
         // shrinks to its title instead of keeping the expanded width as an
@@ -1123,7 +1130,7 @@ export function MapLegendPanel({
       )}
     >
       {title && (
-        <div className={cn('shrink-0', !isCollapsed && 'mb-2')}>
+        <div className={cn('shrink-0', !isCollapsed && 'mb-1.5')}>
           {collapsible ? (
             <div className="flex items-start justify-between gap-3">
               <button

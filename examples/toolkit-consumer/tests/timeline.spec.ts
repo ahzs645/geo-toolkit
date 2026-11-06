@@ -38,6 +38,23 @@ test('the map timeline scrubs, steps, plays from the end and stacks the legend a
   const legend = (await page.locator('[data-map-legend-panel]').boundingBox())!
   const panel = (await timeline.boundingBox())!
   expect(legend.y + legend.height).toBeLessThanOrEqual(panel.y)
+
+  // The attribution holds the corner under the legend, so opening one moves nothing below it.
+  const attribution = (await page.locator('.maplibregl-ctrl-attrib').boundingBox())!
+  expect(legend.y + legend.height).toBeLessThanOrEqual(attribution.y)
+  expect(attribution.y + attribution.height).toBeLessThanOrEqual(panel.y)
+})
+
+test('the map timeline reads out a change only for a one-bucket window', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/timeline')
+  const timeline = page.locator('[data-map-timeline]')
+  const windows = timeline.getByRole('group', { name: 'Window' })
+  await expect(timeline.getByText(/YoY/)).toHaveCount(0)
+  await windows.getByRole('button', { name: '1 mo' }).click()
+  await expect(timeline.getByText(/YoY/)).toBeVisible()
+  await windows.getByRole('button', { name: 'Cumul.' }).click()
+  await expect(timeline.getByText(/YoY/)).toHaveCount(0)
 })
 
 test('the map timeline narrows to the phone layout with options in place of the track', async ({ page }) => {

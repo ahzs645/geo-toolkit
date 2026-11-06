@@ -8,7 +8,12 @@ import {
   timelineWindow,
   timelineWindowDates,
 } from './timeline.js'
-import { timelineDensityForWidth, timelineTickIndices } from '../ui/map-timeline.js'
+import {
+  isTimelinePicker,
+  timelineDensityForWidth,
+  timelineTickIndices,
+  timelineWindowOptions,
+} from '../ui/map-timeline.js'
 
 describe('buildTimelineBuckets', () => {
   it('keys months zero-based, as pages already key their counts', () => {
@@ -106,6 +111,33 @@ describe('timeline layout', () => {
     expect(timelineDensityForWidth(600)).toBe('compact')
     expect(timelineDensityForWidth(360)).toBe('mini')
     expect(timelineDensityForWidth(720, true)).toBe('compact')
+  })
+
+  it('fits a picker on one row in less width, since it has fewer controls', () => {
+    expect(timelineDensityForWidth(560, false, true)).toBe('full')
+    expect(timelineDensityForWidth(540, true, true)).toBe('compact')
+    expect(timelineDensityForWidth(560, true, true)).toBe('full')
+  })
+
+  it('treats a dozen buckets as a picker and anything longer as a scrubber', () => {
+    expect(isTimelinePicker(5)).toBe(true)
+    expect(isTimelinePicker(12)).toBe(true)
+    expect(isTimelinePicker(13)).toBe(false)
+  })
+
+  it('drops fixed windows as long as the data', () => {
+    const options = [{ value: 1 }, { value: 2 }, { value: 5 }, { value: 'cumulative' as const }]
+    expect(timelineWindowOptions(options, 5, 1).map((o) => o.value)).toEqual([1, 2, 'cumulative'])
+    expect(timelineWindowOptions(options, 6, 1).map((o) => o.value)).toEqual([1, 2, 5, 'cumulative'])
+  })
+
+  it('keeps the selected window even when it no longer earns its place', () => {
+    const options = [{ value: 1 }, { value: 5 }, { value: 'cumulative' as const }]
+    expect(timelineWindowOptions(options, 5, 5).map((o) => o.value)).toEqual([1, 5, 'cumulative'])
+  })
+
+  it('offers no window for a single bucket', () => {
+    expect(timelineWindowOptions([{ value: 1 }, { value: 'cumulative' as const }], 1, 1)).toEqual([])
   })
 
   it('thins axis labels to round years when they would crowd', () => {
