@@ -411,6 +411,13 @@ cancels the previous keyboard scroll target and resets the results viewport to
 the top. An older virtualizer reconciliation cannot scroll the filtered list
 back to the former end. Retained focused items preserve their position.
 
+`revealKey` scrolls that row into view when the key changes, measuring it first
+so a row that grew to show its detail ends up fully visible. Render a selection's
+detail under its row in `children`, not above the list: rows are re-measured, and
+the clicked row stays where it is. `ResultRowDetail` continues the row's selected
+tint and left bar under it, so the two read as one item. Scrolling to a row allows for a sticky
+`ListHeader` placed directly above the list.
+
 Import the toolkit stylesheet once. Give the workspace a definite height and
 one provider per independent map experience. Supply initial camera coordinates
 and your tile styles; the toolkit does not infer an application's region.

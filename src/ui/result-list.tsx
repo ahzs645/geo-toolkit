@@ -93,6 +93,23 @@ export function ResultRow({
   )
 }
 
+/**
+ * Detail shown under a selected `ResultRow`, in the same list item. It carries
+ * the row's tint and left bar on, so the two read as one selected item, and
+ * lines its content up with the row's title. Assumes the row has a marker.
+ */
+export function ResultRowDetail({
+  accent = 'sky',
+  className,
+  children,
+}: {
+  accent?: ResultRowAccent
+  className?: string
+  children: ReactNode
+}) {
+  return <div className={cn('pb-3 pl-8 pr-3 text-xs', selectedClasses[accent], className)}>{children}</div>
+}
+
 type ListHeaderProps = {
   count: number
   /** Noun for the items, e.g. `['station', 'stations']`. */

@@ -6,17 +6,33 @@ interface VirtualResultListProps<T> {
   getKey: (item: T) => string
   estimateSize: number
   label: string
+  /**
+   * Key of a row to bring into view each time this changes, e.g. the selected
+   * row after a map click or on a deep link. The row is measured first, so one
+   * that grew to show its detail ends up fully visible.
+   */
+  revealKey?: string | null
   children: (item: T) => ReactNode
 }
 
 /** Variable-height results inside MapSidebarShell's existing scroll container. */
-export function VirtualResultList<T>({ items, getKey, estimateSize, label, children }: VirtualResultListProps<T>) {
+export function VirtualResultList<T>({
+  items,
+  getKey,
+  estimateSize,
+  label,
+  revealKey = null,
+  children,
+}: VirtualResultListProps<T>) {
   'use no memo'
   // TanStack Virtual exposes a mutable virtualizer; compiler memoization would freeze visible rows.
   const listRef = useRef<HTMLDivElement>(null)
   const [scrollMargin, setScrollMargin] = useState(0)
+  const [stickyHeaderHeight, setStickyHeaderHeight] = useState(0)
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
   const pendingFocus = useRef<number | null>(null)
+  const lastRevealKey = useRef<string | null>(null)
+  const pendingReveal = useRef<string | null>(null)
   const getScrollElement = useCallback(
     () => listRef.current?.closest<HTMLElement>('[data-map-sidebar-scroll="true"]') ?? null,
     [],
@@ -32,6 +48,8 @@ export function VirtualResultList<T>({ items, getKey, estimateSize, label, child
     getItemKey: (index) => (index >= 0 && index < items.length ? getKey(items[index]) : -Math.abs(index) - 1),
     estimateSize: () => estimateSize,
     scrollMargin,
+    // A sticky ListHeader directly above covers whatever is scrolled to the top.
+    scrollPaddingStart: stickyHeaderHeight,
     overscan: 5,
     // Scrolling with the mouse must not unmount the keyboard's focused row.
     rangeExtractor: (range) => {
@@ -64,11 +82,36 @@ export function VirtualResultList<T>({ items, getKey, estimateSize, label, child
       // noise while scrolling. Feeding it back into this layout effect on every
       // render can exceed React's update depth even though the list did not move.
       setScrollMargin((previous) => (Math.abs(previous - nextMargin) < 1 ? previous : nextMargin))
+      const header = list.previousElementSibling
+      setStickyHeaderHeight(
+        header instanceof HTMLElement && getComputedStyle(header).position === 'sticky' ? header.offsetHeight : 0,
+      )
     }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(scroll)
     return () => observer.disconnect()
+  })
+
+  // Runs after every render: a row outside the virtual window has to be
+  // scrolled to before it mounts, and only then can its real height be read.
+  useLayoutEffect(() => {
+    if (revealKey !== lastRevealKey.current) {
+      lastRevealKey.current = revealKey
+      pendingReveal.current = revealKey
+    }
+    if (pendingReveal.current === null) return
+    const index = items.findIndex((item) => getKey(item) === pendingReveal.current)
+    if (index < 0) return
+    const row = listRef.current?.querySelector<HTMLElement>(`[data-index="${index}"]`)
+    if (!row) {
+      virtualizer.scrollToIndex(index, { align: 'auto' })
+      return
+    }
+    pendingReveal.current = null
+    virtualizer.measureElement(row)
+    const tallerThanViewport = row.offsetHeight > (getScrollElement()?.clientHeight ?? Infinity)
+    virtualizer.scrollToIndex(index, { align: tallerThanViewport ? 'start' : 'auto' })
   })
 
   useLayoutEffect(() => {
