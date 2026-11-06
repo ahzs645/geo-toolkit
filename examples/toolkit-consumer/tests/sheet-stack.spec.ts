@@ -10,7 +10,8 @@ async function settledRect(locator: Locator) {
     for (let frame = 0; frame < 180; frame++) {
       await new Promise(requestAnimationFrame)
       const rect = node.getBoundingClientRect()
-      const running = document.getAnimations().some((animation) => animation.playState === 'running')
+      // Scoped to this element: an unrelated animation elsewhere must not read as unsettled.
+      const running = node.getAnimations({ subtree: true }).some((animation) => animation.playState === 'running')
       stable =
         !running && Math.abs(rect.top - previous.top) < 0.1 && Math.abs(rect.height - previous.height) < 0.1
           ? stable + 1
@@ -152,6 +153,8 @@ test('a card drags from its body as well as its grip, and shows its body while d
       for (let step = 1; step <= 6; step++)
         await finger.move(grip.x + grip.width / 2, grip.y + grip.height / 2 - step * 25)
       await expect(body).not.toHaveAttribute('inert', '')
+      // A release within 100 ms of the last move counts as a flick and skips a detent.
+      await page.waitForTimeout(150)
       await finger.end()
     } finally {
       await finger.dispose()

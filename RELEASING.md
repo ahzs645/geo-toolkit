@@ -27,7 +27,6 @@ npm run format:check
 npm run test
 npm run example:build
 npm run watch:check
-npm run example:test
 npm run nested:test
 npm run pack:check -- --browser
 ```

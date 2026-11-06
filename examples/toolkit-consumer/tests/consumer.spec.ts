@@ -53,8 +53,19 @@ test('mobile cards and sheets belong to their embedded workspace', async ({ page
   await expect(index.getByRole('button', { name: 'Close feature card' })).toHaveCount(0)
   await expect(habitat.getByRole('button', { name: 'Close feature card' })).toBeVisible()
   // A viewport-positioned card would extend outside this scrolling embedded host.
+  const close = habitat.getByRole('button', { name: 'Close feature card' })
+  await close.evaluate(async (node) => {
+    // The card slides in, so measure it once it has stopped moving.
+    let top = node.getBoundingClientRect().top
+    for (let stable = 0, frame = 0; stable < 4 && frame < 180; frame++) {
+      await new Promise(requestAnimationFrame)
+      const next = node.getBoundingClientRect().top
+      stable = Math.abs(next - top) < 0.1 ? stable + 1 : 0
+      top = next
+    }
+  })
   const frame = await habitat.boundingBox()
-  const card = await habitat.getByRole('button', { name: 'Close feature card' }).boundingBox()
+  const card = await close.boundingBox()
   expect(frame).not.toBeNull()
   expect(card).not.toBeNull()
   expect(card!.y).toBeGreaterThanOrEqual(frame!.y)

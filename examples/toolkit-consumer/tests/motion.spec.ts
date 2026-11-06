@@ -299,9 +299,15 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           const toggle = [...document.querySelectorAll<HTMLButtonElement>('nav button')].find(
             (button) => button.textContent === 'Toggle table',
           )!
+          // The exit ends on a 350 ms timer, which two slow frames can outlast. Hold it open
+          // so this always looks mid-exit; reopening below clears the timer.
+          const { setTimeout: realSetTimeout } = window
+          window.setTimeout = ((handler: TimerHandler, ms?: number) =>
+            realSetTimeout(handler, ms && ms >= 300 ? 30_000 : ms)) as typeof window.setTimeout
           toggle.click()
           await new Promise(requestAnimationFrame)
           await new Promise(requestAnimationFrame)
+          window.setTimeout = realSetTimeout
           const state = {
             connected: node.isConnected,
             inert: (node as HTMLElement).inert,
