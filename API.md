@@ -788,6 +788,17 @@ separate sources MapLibre needs for the two. The host supplies `dem`, and option
 <MapTerrain id="site" dem={{ tiles: [url], encoding: 'terrarium', maxZoom: 15 }} terrain={is3d} />
 ```
 
+`Map` also supports a host that manages its own sources and layers, such as a point-cloud
+viewer. `onMapCreate` runs once on construction and may return a release function;
+`onCreateError` receives a constructor failure instead of it throwing; `containerProps`
+sets attributes on the map's element. Pass one object as both `styles`, so a theme change
+cannot replace the style. `draggableCompass` on `MapControls` turns and tilts by dragging.
+
+`reliefOnly` on `MapTerrain` draws just the hillshade and leaves terrain and sky to whatever
+owns them, and `beforeId` places it under a host's data. `captureMapImage` takes `overlays`,
+a function resolving to copies of canvases drawn separately from the map. Take each copy in
+that renderer's after-render callback, because a WebGL canvas reads back blank later.
+
 `WORKSPACE_MAP_CONTROLS` is `DEFAULT_MAP_CONTROLS` plus fullscreen, for a workspace whose
 map is the main surface.
 

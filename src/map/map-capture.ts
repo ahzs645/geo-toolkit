@@ -5,6 +5,12 @@ export interface CaptureMapImageOptions {
   type?: string
   /** Encoder quality for lossy types, 0–1. */
   quality?: number
+  /**
+   * Copies of other canvases to draw over the map, such as a separate deck.gl canvas. WebGL
+   * canvases clear between frames too, so the host takes each copy in that renderer's own
+   * after-render callback. Empty, or resolving to nothing, leaves just the map.
+   */
+  overlays?: () => Promise<CanvasImageSource[]>
 }
 
 /**
@@ -14,17 +20,36 @@ export interface CaptureMapImageOptions {
  * copies it in the same task, which works without that (costly) option.
  * Captures the WebGL canvas only: HTML markers, popups and legends are not included.
  */
-export function captureMapImage(map: MapLibreGL.Map, { type = 'image/png', quality }: CaptureMapImageOptions = {}) {
+export function captureMapImage(
+  map: MapLibreGL.Map,
+  { type = 'image/png', quality, overlays }: CaptureMapImageOptions = {},
+) {
   return new Promise<Blob>((resolve, reject) => {
+    const encode = (canvas: HTMLCanvasElement) =>
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('The map canvas did not produce an image'))),
+        type,
+        quality,
+      )
     map.once('render', () => {
       try {
-        map
-          .getCanvas()
-          .toBlob(
-            (blob) => (blob ? resolve(blob) : reject(new Error('The map canvas did not produce an image'))),
-            type,
-            quality,
-          )
+        if (!overlays) {
+          encode(map.getCanvas())
+          return
+        }
+        // Copy now: the map's buffer will not outlive this frame while the overlays are read.
+        const output = document.createElement('canvas')
+        output.width = map.getCanvas().width
+        output.height = map.getCanvas().height
+        const context = output.getContext('2d')
+        if (!context) throw new Error('The map image could not be composed')
+        context.drawImage(map.getCanvas(), 0, 0)
+        overlays()
+          .then((images) => {
+            for (const image of images) context.drawImage(image, 0, 0, output.width, output.height)
+            encode(output)
+          })
+          .catch((error: unknown) => reject(error instanceof Error ? error : new Error(String(error))))
       } catch (error) {
         reject(error instanceof Error ? error : new Error(String(error)))
       }

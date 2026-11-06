@@ -16,6 +16,13 @@ export type MapTerrainProps = {
   id?: string
   /** Lifts the basemap onto 3D terrain. Off, only the hillshade is drawn. */
   terrain?: boolean
+  /**
+   * Draw only the hillshade and leave the map's terrain and sky alone, for a map where
+   * something else owns them, such as a point-cloud viewer. `terrain` is then ignored.
+   */
+  reliefOnly?: boolean
+  /** Draw the hillshade below this layer, when it exists. Defaults to under the labels. */
+  beforeId?: string
   hillshade?: boolean
   exaggeration?: number
   /** How hard the relief shading is driven, 0–1. */
@@ -42,6 +49,8 @@ export function MapTerrain({
   dem,
   id = 'map-terrain',
   terrain = false,
+  reliefOnly = false,
+  beforeId,
   hillshade = true,
   exaggeration = 1,
   hillshadeIntensity = 0.45,
@@ -69,7 +78,7 @@ export function MapTerrain({
       ...(attribution && { attribution }),
     }
     if (!map.getSource(hillshadeSourceId)) map.addSource(hillshadeSourceId, source)
-    if (!map.getSource(terrainSourceId)) map.addSource(terrainSourceId, source)
+    if (!reliefOnly && !map.getSource(terrainSourceId)) map.addSource(terrainSourceId, source)
     if (!map.getLayer(hillshadeLayerId)) {
       map.addLayer(
         {
@@ -81,18 +90,19 @@ export function MapTerrain({
             ...(hillshadeHighlightColor && { 'hillshade-highlight-color': hillshadeHighlightColor }),
           },
         },
-        firstSymbolLayerId(map),
+        beforeId && map.getLayer(beforeId) ? beforeId : firstSymbolLayerId(map),
       )
     }
     return () => {
       // Terrain has to be released before the source it reads from.
-      if (map.getTerrain()) map.setTerrain(null)
+      if (!reliefOnly && map.getTerrain()) map.setTerrain(null)
       if (map.getLayer(hillshadeLayerId)) map.removeLayer(hillshadeLayerId)
       if (map.getSource(hillshadeSourceId)) map.removeSource(hillshadeSourceId)
-      if (map.getSource(terrainSourceId)) map.removeSource(terrainSourceId)
+      if (!reliefOnly && map.getSource(terrainSourceId)) map.removeSource(terrainSourceId)
     }
   }, [
     attribution,
+    beforeId,
     encoding,
     hillshadeHighlightColor,
     hillshadeLayerId,
@@ -101,13 +111,14 @@ export function MapTerrain({
     isLoaded,
     map,
     maxZoom,
+    reliefOnly,
     terrainSourceId,
     tileSize,
     tilesKey,
   ])
 
   useEffect(() => {
-    if (!terrain || !terrainGroundColor || !isLoaded || !map) return
+    if (reliefOnly || !terrain || !terrainGroundColor || !isLoaded || !map) return
     const backgrounds = map.getStyle().layers.filter((layer) => layer.type === 'background')
     const original = backgrounds.map((layer) => ({
       id: layer.id,
@@ -118,13 +129,13 @@ export function MapTerrain({
       for (const layer of original)
         if (map.getLayer(layer.id)) map.setPaintProperty(layer.id, 'background-color', layer.color)
     }
-  }, [terrain, terrainGroundColor, isLoaded, map])
+  }, [reliefOnly, terrain, terrainGroundColor, isLoaded, map])
 
   useEffect(() => {
-    if (!isLoaded || !map || !map.getSource(terrainSourceId)) return
+    if (reliefOnly || !isLoaded || !map || !map.getSource(terrainSourceId)) return
     map.setTerrain(terrain ? { source: terrainSourceId, exaggeration } : null)
     map.setSky(terrain && sky ? sky : { 'atmosphere-blend': 0 })
-  }, [exaggeration, isLoaded, map, sky, terrain, terrainSourceId])
+  }, [exaggeration, isLoaded, map, reliefOnly, sky, terrain, terrainSourceId])
 
   useEffect(() => {
     if (!isLoaded || !map || !map.getLayer(hillshadeLayerId)) return

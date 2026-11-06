@@ -1,5 +1,6 @@
 'use client'
 
+import { compassDragView } from './compass-drag.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as MapLibreGL from 'maplibre-gl'
 import { Minus, Plus, Locate, LocateFixed, Maximize, Loader2 } from 'lucide-react'
@@ -18,6 +19,8 @@ type MapControlsProps = {
   showZoom?: boolean
   /** Show compass button to reset bearing (default: false) */
   showCompass?: boolean
+  /** Drag the compass to turn and tilt the map, for 3D work (default: false) */
+  draggableCompass?: boolean
   /** Show locate button to find user's location (default: false) */
   showLocate?: boolean
   /** Show fullscreen toggle button (default: false) */
@@ -81,15 +84,18 @@ function ControlButton({
   children,
   disabled = false,
   pressed,
+  buttonProps,
 }: {
   onClick: () => void
   label: string
   children: React.ReactNode
   disabled?: boolean
   pressed?: boolean
+  buttonProps?: React.ButtonHTMLAttributes<HTMLButtonElement>
 }) {
   return (
     <button
+      {...buttonProps}
       onClick={onClick}
       aria-label={label}
       aria-pressed={pressed}
@@ -110,6 +116,7 @@ function MapControls({
   mobilePosition,
   showZoom = true,
   showCompass = false,
+  draggableCompass = false,
   showLocate = false,
   showFullscreen = false,
   className,
@@ -237,7 +244,7 @@ function MapControls({
       )}
       {showCompass && (
         <ControlGroup>
-          <CompassButton onClick={handleResetBearing} />
+          <CompassButton onClick={handleResetBearing} draggable={draggableCompass} />
         </ControlGroup>
       )}
       {showLocate && (
@@ -271,9 +278,43 @@ function MapControls({
   )
 }
 
-function CompassButton({ onClick }: { onClick: () => void }) {
+function CompassButton({ onClick, draggable = false }: { onClick: () => void; draggable?: boolean }) {
   const { isLoaded, map } = useMap()
   const compassRef = useRef<SVGSVGElement>(null)
+  const dragRef = useRef<{ x: number; y: number; bearing: number; pitch: number; moved: boolean } | null>(null)
+  const draggedRef = useRef(false)
+  const dragProps: React.ButtonHTMLAttributes<HTMLButtonElement> | undefined =
+    draggable && map
+      ? {
+          style: { touchAction: 'none' },
+          onPointerDown: (event) => {
+            event.currentTarget.setPointerCapture(event.pointerId)
+            dragRef.current = {
+              x: event.clientX,
+              y: event.clientY,
+              bearing: map.getBearing(),
+              pitch: map.getPitch(),
+              moved: false,
+            }
+          },
+          onPointerMove: (event) => {
+            const drag = dragRef.current
+            if (!drag) return
+            const dx = event.clientX - drag.x
+            const dy = event.clientY - drag.y
+            if (!drag.moved && Math.hypot(dx, dy) < 4) return
+            drag.moved = true
+            map.jumpTo(compassDragView(drag, dx, dy))
+          },
+          onPointerUp: () => {
+            draggedRef.current = !!dragRef.current?.moved
+            dragRef.current = null
+          },
+          onPointerCancel: () => {
+            dragRef.current = null
+          },
+        }
+      : undefined
 
   useEffect(() => {
     if (!isLoaded || !map || !compassRef.current) return
@@ -297,7 +338,15 @@ function CompassButton({ onClick }: { onClick: () => void }) {
   }, [isLoaded, map])
 
   return (
-    <ControlButton onClick={onClick} label="Reset bearing to north">
+    <ControlButton
+      onClick={() => {
+        // A drag ends with a click on the same button; only a plain click resets north.
+        if (draggedRef.current) draggedRef.current = false
+        else onClick()
+      }}
+      label="Reset bearing to north"
+      buttonProps={dragProps}
+    >
       <svg
         ref={compassRef}
         viewBox="0 0 24 24"

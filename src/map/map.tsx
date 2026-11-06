@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type HTMLAttributes,
 } from 'react'
 
 import { cn } from '../utils.js'
@@ -109,6 +110,17 @@ type MapProps = {
   loader?: MapLoaderVariant
   /** Render the loading overlay. Disable for embedded story maps that load unobtrusively. */
   showLoadingOverlay?: boolean
+  /**
+   * Runs once when the map is constructed, before it loads, for a host that manages its
+   * own sources and layers. Return a function to release them; it runs before the map is
+   * removed. Pass one object as both `styles` so a theme change cannot replace the style
+   * and take those layers with it.
+   */
+  onMapCreate?: (map: MapLibreGL.Map) => void | (() => void)
+  /** MapLibre can fail in its constructor, such as with no WebGL. Without this it throws. */
+  onCreateError?: (error: unknown) => void
+  /** Attributes for the map's own element, such as an accessible label. */
+  containerProps?: HTMLAttributes<HTMLDivElement>
   /** Show the loading indicator during style swaps after the initial map load. */
   showStyleLoadingOverlay?: boolean
   /** Keep the current WebGL backing buffer while a surrounding layout is being interactively resized. */
@@ -151,6 +163,9 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     showLoadingOverlay = true,
     showStyleLoadingOverlay = true,
     deferResize = false,
+    onMapCreate,
+    onCreateError,
+    containerProps,
     ...props
   },
   ref,
@@ -169,6 +184,10 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
   const lastFeatureClickAtRef = useRef(0)
   const deferResizeRef = useRef(deferResize)
   deferResizeRef.current = deferResize
+  const onMapCreateRef = useRef(onMapCreate)
+  onMapCreateRef.current = onMapCreate
+  const onCreateErrorRef = useRef(onCreateError)
+  onCreateErrorRef.current = onCreateError
   const layoutCovers = useMapLayoutCovers()
   const coveredTarget = layoutCovers?.bottom ?? 0
   // Whether this map fills the layout's content area down to its bottom edge,
@@ -243,19 +262,26 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     const initialStyle = resolvedTheme === 'dark' ? mapStyles.dark : mapStyles.light
     currentStyleRef.current = initialStyle
 
-    const map = new MapLibreGL.Map({
-      container: containerRef.current,
-      style: initialStyle,
-      renderWorldCopies: false,
-      attributionControl: {
-        compact: true,
-      },
-      ...props,
-      // This wrapper owns container resizing below. Keeping MapLibre's internal
-      // observer enabled would duplicate resize work and bypass drag deferral.
-      trackResize: false,
-      ...viewport,
-    })
+    let map: MapLibreGL.Map
+    try {
+      map = new MapLibreGL.Map({
+        container: containerRef.current,
+        style: initialStyle,
+        renderWorldCopies: false,
+        attributionControl: {
+          compact: true,
+        },
+        ...props,
+        // This wrapper owns container resizing below. Keeping MapLibre's internal
+        // observer enabled would duplicate resize work and bypass drag deferral.
+        trackResize: false,
+        ...viewport,
+      })
+    } catch (error) {
+      if (!onCreateErrorRef.current) throw error
+      onCreateErrorRef.current(error)
+      return
+    }
 
     const unregisterInteractions = registerMapInteractions(map, interactionTarget)
 
@@ -317,8 +343,10 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     interactionTarget.addEventListener(MOBILE_MAP_FEATURE_CLICK_EVENT, handleFeatureClick)
     armStyleFallback(map)
     setMapInstance(map)
+    const releaseHost = onMapCreateRef.current?.(map)
 
     return () => {
+      releaseHost?.()
       clearStyleTimeout()
       clearFallbackTimer()
       map.off('load', loadHandler)
@@ -501,6 +529,7 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
   return (
     <MapContext.Provider value={contextValue}>
       <div
+        {...containerProps}
         ref={containerRef}
         data-map-layout-root="true"
         data-map-extends-under-pane={extendsUnderPane || undefined}
