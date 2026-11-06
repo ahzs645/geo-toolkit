@@ -56,7 +56,13 @@ export function TimelineExperience() {
           mobilePeekTitle="Heron sightings"
           mobilePeekSubtitle={label}
         >
-          <Map styles={styles} center={[-2.75, 50.95]} zoom={6.2} loader="spinner">
+          <Map
+            styles={styles}
+            center={[-2.75, 50.95]}
+            zoom={6.2}
+            loader="spinner"
+            attributionControl={{ compact: true, customAttribution: 'Example attribution' }}
+          >
             <MapLegendPanel title="Sightings" collapsible width="sm">
               <LegendItem color="hsl(var(--primary))" label="In the window" />
               <LegendItem color="#cbd5e1" label="Outside it" />

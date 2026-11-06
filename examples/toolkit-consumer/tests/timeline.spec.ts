@@ -40,9 +40,15 @@ test('the map timeline scrubs, steps, plays from the end and stacks the legend a
   expect(legend.y + legend.height).toBeLessThanOrEqual(panel.y)
 
   // The attribution holds the corner under the legend, so opening one moves nothing below it.
-  const attribution = (await page.locator('.maplibregl-ctrl-attrib').boundingBox())!
+  const attributionControl = page.locator('.maplibregl-ctrl-attrib')
+  await expect(attributionControl).toBeVisible()
+  const attribution = (await attributionControl.boundingBox())!
   expect(legend.y + legend.height).toBeLessThanOrEqual(attribution.y)
   expect(attribution.y + attribution.height).toBeLessThanOrEqual(panel.y)
+
+  await page.getByRole('button', { name: 'Collapse legend', exact: true }).click()
+  await expect(page.locator('[data-map-legend-panel]')).toHaveAttribute('data-collapsed', 'true')
+  expect((await attributionControl.boundingBox())!.y).toBe(attribution.y)
 })
 
 test('the map timeline reads out a change only for a one-bucket window', async ({ page }) => {
