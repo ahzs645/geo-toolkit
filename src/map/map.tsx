@@ -557,7 +557,7 @@ export { MapLoader, DEFAULT_MAP_LOADER, type MapLoaderVariant } from './map-load
 
 export { MapMarker, MarkerContent, MarkerPopup, MarkerTooltip, MarkerLabel, MapPopup } from './map-markers.js'
 
-export { MapControls, MapScaleBar, DEFAULT_MAP_CONTROLS } from './map-controls.js'
+export { MapControls, WORKSPACE_MAP_CONTROLS, MapScaleBar, DEFAULT_MAP_CONTROLS } from './map-controls.js'
 
 export { MapRoute, MapClusterLayer } from './map-routes.js'
 

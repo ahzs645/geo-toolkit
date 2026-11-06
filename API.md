@@ -774,7 +774,22 @@ circles, all sharing `layerOrder`, `clickHtml` and `hoverHtml`.
 worker) to four corners; build them with `boundsToQuad({ west, south, east,
 north })`. Change `revision` after repainting so MapLibre uploads the new
 pixels, or set `animate` for a canvas that changes every frame.
-`MapImageLayer` does the same for an image URL.
+`MapImageLayer` does the same for an image URL. Pass `id` when the host has to look
+the source or layer up; otherwise one is generated.
+
+`MapRasterLayer` takes `fadeDuration`; use 0 for data rasters that must not blend while
+tiles load.
+
+`MapTerrain` adds relief shading and 3D terrain from one elevation dataset, keeping the
+separate sources MapLibre needs for the two. The host supplies `dem`, and optionally
+`sky` and `terrainGroundColor` for the 3D view, so a workspace keeps its own look:
+
+```tsx
+<MapTerrain id="site" dem={{ tiles: [url], encoding: 'terrarium', maxZoom: 15 }} terrain={is3d} />
+```
+
+`WORKSPACE_MAP_CONTROLS` is `DEFAULT_MAP_CONTROLS` plus fullscreen, for a workspace whose
+map is the main surface.
 
 ```tsx
 <MapCanvasLayer canvas={canvas} coordinates={boundsToQuad(grid.bounds)} revision={grid} layerOrder={1} />
@@ -970,6 +985,16 @@ label/help/value-text associations. `renderControl(controlProps)` adapts a custo
 slider while retaining the same numeric, disabled and accessibility contract.
 The host decides when a change triggers expensive work. Its props and
 `NumericRangeControlProps` are exported from `/ui`.
+
+## Local files and tool pages
+
+`FileDropField` takes local files from a button, an optional folder button, or a drop,
+walking dropped folders. It calls `onFiles` with `PickedFile` entries that keep each
+file's relative path, and does not filter drops by `accept`; filter in `onFiles` if the
+workspace needs to. `filesFromInput` and `filesFromDrop` are the same reads without React.
+
+`ToolPageHeader` heads a tool that is a scrolling page. `MapSidebarShell` takes
+`density="compact"` for a tighter sidebar; every `SidebarSection` inside follows it.
 
 ## Clipboard feedback and transports
 

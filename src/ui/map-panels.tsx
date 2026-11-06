@@ -1,5 +1,7 @@
 import {
+  createContext,
   forwardRef,
+  useContext,
   useEffect,
   useId,
   useRef,
@@ -376,7 +378,12 @@ export type MapSidebarShellProps = HTMLAttributes<HTMLDivElement> & {
   /** Icon tile beside the title, for sections that brand their sidebar. */
   icon?: ElementType
   iconClassName?: string
+  /** `compact` tightens every `SidebarSection` inside, for tools that fit a lot on screen. */
+  density?: SidebarDensity
 }
+
+export type SidebarDensity = 'comfortable' | 'compact'
+const SidebarDensityContext = createContext<SidebarDensity>('comfortable')
 
 export function MapSidebarShell({
   title,
@@ -392,6 +399,7 @@ export function MapSidebarShell({
   hideTitleOnMobile = false,
   icon,
   iconClassName,
+  density = 'comfortable',
   ...props
 }: MapSidebarShellProps) {
   const { className: contentClassName, ...restContentProps } = contentProps ?? {}
@@ -419,7 +427,7 @@ export function MapSidebarShell({
         className={cn('min-h-0 flex-1 overflow-y-auto', scrollClassName, contentClassName)}
         {...restContentProps}
       >
-        {children}
+        <SidebarDensityContext.Provider value={density}>{children}</SidebarDensityContext.Provider>
       </div>
     </div>
   )
@@ -493,10 +501,11 @@ export function SidebarSection({
   className,
   ...props
 }: SidebarSectionProps) {
+  const compact = useContext(SidebarDensityContext) === 'compact'
   return (
-    <section className={cn('border-b border-border bg-background/95 p-4', className)} {...props}>
+    <section className={cn('border-b border-border bg-background/95', compact ? 'p-3' : 'p-4', className)} {...props}>
       {(title || actions) && (
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className={cn('flex items-center justify-between gap-2', compact ? 'mb-2' : 'mb-3')}>
           {title && (
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">

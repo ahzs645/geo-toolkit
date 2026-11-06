@@ -24,6 +24,7 @@ export {
   type MapRasterQuadStyle,
 } from './layers/canvas.js'
 export { MapRasterLayer, type MapRasterLayerProps } from './layers/raster.js'
+export { MapTerrain, type MapTerrainProps } from './layers/terrain.js'
 export { MapHeatmapLayer, type MapHeatmapLayerProps } from './layers/heatmap.js'
 export type { ZoomStops, ColorStops } from './layers/heatmap.js'
 export {

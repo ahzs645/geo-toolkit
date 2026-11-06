@@ -322,6 +322,9 @@ function CompassButton({ onClick }: { onClick: () => void }) {
  */
 export const DEFAULT_MAP_CONTROLS = <MapControls position="top-right" showZoom showCompass />
 
+/** The default set plus fullscreen, for a tool whose map is the main work surface. */
+export const WORKSPACE_MAP_CONTROLS = <MapControls position="top-right" showZoom showCompass showFullscreen />
+
 type MapScaleBarProps = {
   /** Corner to sit in; bottom corners clear the phone sheet like the controls do. */
   position?: 'bottom-left' | 'bottom-right'

@@ -154,13 +154,15 @@ export type MapImageLayerProps = MapRasterQuadStyle & {
   /** Image URL (including data: and blob: URLs) */
   url: string
   coordinates: MapQuadCoordinates
+  /** Stable id for the source and layer, for hosts that look them up. Generated when omitted. */
+  id?: string
 }
 
 /** A single georeferenced image, such as a published model surface or scanned map. */
-export function MapImageLayer({ url, coordinates, ...style }: MapImageLayerProps) {
+export function MapImageLayer({ url, coordinates, id, ...style }: MapImageLayerProps) {
   const uid = useId().replace(/:/g, '')
-  const sourceId = `image-src-${uid}`
-  const layerId = `image-layer-${uid}`
+  const sourceId = id ?? `image-src-${uid}`
+  const layerId = id ?? `image-layer-${uid}`
   const { map, isLoaded } = useRasterQuadLayer(layerId, style)
   const coordinatesKey = JSON.stringify(coordinates)
   const latestRef = useRef({ url, coordinates, style })

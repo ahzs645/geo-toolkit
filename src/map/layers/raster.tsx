@@ -17,6 +17,8 @@ export type MapRasterLayerProps = {
   maxZoom?: number
   /** Use nearest for classified rasters so class boundaries stay sharp when tiles are enlarged. */
   resampling?: 'linear' | 'nearest'
+  /** Crossfade between tiles in ms; 0 for data rasters that must not blend while loading. */
+  fadeDuration?: number
   /** Attribution text shown in map corner */
   attribution?: string
   /** Insert this layer before another layer ID (default: added on top) */
@@ -33,6 +35,7 @@ export function MapRasterLayer({
   minZoom = 0,
   maxZoom = 22,
   resampling = 'linear',
+  fadeDuration,
   attribution,
   beforeId,
   layerOrder,
@@ -63,6 +66,7 @@ export function MapRasterLayer({
         paint: {
           'raster-opacity': opacity,
           'raster-resampling': resampling,
+          ...(fadeDuration !== undefined && { 'raster-fade-duration': fadeDuration }),
         },
       },
       beforeId,
