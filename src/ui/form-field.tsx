@@ -181,6 +181,74 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(funct
   )
 })
 
+export interface CheckboxFieldProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'type' | 'checked' | 'defaultChecked' | 'onChange' | 'children'
+> {
+  label: ReactNode
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+  /** A line of help under the label, associated with the checkbox. */
+  description?: ReactNode
+  inputClassName?: string
+  labelClassName?: string
+}
+
+/**
+ * A checkbox and its label, for an option inside a form or sidebar ("Hide edge
+ * candidates"). Use `ToggleRow` for a layer or data source switched on and off.
+ */
+export const CheckboxField = forwardRef<HTMLInputElement, CheckboxFieldProps>(function CheckboxField(
+  {
+    label,
+    checked,
+    onCheckedChange,
+    description,
+    className,
+    inputClassName,
+    labelClassName,
+    id,
+    disabled,
+    'aria-describedby': ariaDescribedBy,
+    ...props
+  },
+  ref,
+) {
+  const generated = useId()
+  const inputId = id ?? generated
+  const helpId = `${inputId}-description`
+  return (
+    <div className={cn('min-w-0 text-xs', className)}>
+      <label
+        htmlFor={inputId}
+        className={cn(
+          'flex min-w-0 items-start gap-2 text-foreground touch:min-h-10 touch:items-center',
+          disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+          labelClassName,
+        )}
+      >
+        <input
+          {...props}
+          ref={ref}
+          id={inputId}
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          aria-describedby={descriptionIds(ariaDescribedBy, description != null ? helpId : undefined)}
+          onChange={(event) => onCheckedChange(event.target.checked)}
+          className={cn('mt-0.5 size-3.5 shrink-0 accent-primary touch:mt-0', inputClassName)}
+        />
+        <span className="min-w-0">{label}</span>
+      </label>
+      {description != null && (
+        <p id={helpId} className="mt-1 pl-[1.375rem] text-xs leading-4 text-muted-foreground">
+          {description}
+        </p>
+      )}
+    </div>
+  )
+})
+
 interface NumericFieldCommon
   extends
     Omit<
