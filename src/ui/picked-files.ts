@@ -5,6 +5,16 @@ export function filesFromInput(list: FileList | null): PickedFile[] {
   return [...(list ?? [])].map((file) => ({ file, path: file.webkitRelativePath || file.name }))
 }
 
+/**
+ * Copies a file input's chosen files and clears it, so choosing the same file again still
+ * fires a change. The copy comes first: clearing the input empties its `FileList`.
+ */
+export function takeInputFiles(input: { files: ArrayLike<File> | null; value: string }): File[] {
+  const files = Array.from(input.files ?? [])
+  input.value = ''
+  return files
+}
+
 /** Files from a drop, walking dropped folders (a `.gdb` is a folder). */
 export async function filesFromDrop(transfer: DataTransfer): Promise<PickedFile[]> {
   const entries = [...transfer.items]

@@ -1078,6 +1078,12 @@ walking dropped folders. It calls `onFiles` with `PickedFile` entries that keep 
 file's relative path, and does not filter drops by `accept`; filter in `onFiles` if the
 workspace needs to. `filesFromInput` and `filesFromDrop` are the same reads without React.
 
+`FileButton` is the single-button form for a toolbar or panel import: a `Button` (outline,
+`sm` by default; other `Button` props pass through) over a hidden file input named by
+`label`. `onFiles` receives `File[]` and is not called for a cancelled picker; `accept`,
+`multiple` and `inputProps` go to the input. `takeInputFiles` is its read without React: it
+copies an input's files, then clears the input so the same file can be chosen again.
+
 `ToolPageHeader` heads a tool that is a scrolling page. `MapSidebarShell` takes
 `density="compact"` for a tighter sidebar; every `SidebarSection` inside follows it.
 Pass `size="lg"` on a hub page that lists tools.
