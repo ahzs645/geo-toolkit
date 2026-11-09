@@ -273,30 +273,39 @@ export function MapLegendItem({
 
 type MapGradientLegendItemProps = ComponentPropsWithoutRef<'div'> & {
   colors: readonly string[]
-  minLabel: ReactNode
-  maxLabel: ReactNode
+  minLabel?: ReactNode
+  maxLabel?: ReactNode
+  /** Evenly spaced labels under the ramp, in place of `minLabel` / `maxLabel`. */
+  ticks?: readonly ReactNode[]
+  barClassName?: string
+  labelClassName?: string
 }
 
 export function MapGradientLegendItem({
   colors,
   minLabel,
   maxLabel,
+  ticks,
+  barClassName,
+  labelClassName,
   className,
   style,
   ...props
 }: MapGradientLegendItemProps) {
+  const labels = ticks ?? [minLabel, maxLabel]
   return (
     <div className={cn('min-w-24 space-y-1', className)} {...props}>
       <div
-        className="h-2 rounded-sm border"
+        className={cn('h-2 rounded-sm border', barClassName)}
         style={{
           background: `linear-gradient(to right, ${colors.join(', ')})`,
           ...style,
         }}
       />
-      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span>{minLabel}</span>
-        <span>{maxLabel}</span>
+      <div className={cn('flex items-center justify-between gap-3 text-xs text-muted-foreground', labelClassName)}>
+        {labels.map((label, index) => (
+          <span key={index}>{label}</span>
+        ))}
       </div>
     </div>
   )

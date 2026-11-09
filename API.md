@@ -993,8 +993,14 @@ rest. `fitMapToPoints(map, points, options)` applies it with `fitBounds`.
 
 ## Form fields and numeric ranges
 
-`/ui` exports `FormField`, `NativeSelect`, `SelectField`, `NumberField`,
-`NullableNumberField`, `FORM_INPUT_CLASS` and their props.
+`/ui` exports `FormField`, `NativeSelect`, `SelectField`, `CheckboxField`,
+`NumberField`, `NullableNumberField`, `FORM_INPUT_CLASS` and their props.
+
+- `CheckboxField` is a checkbox and its label for an option ("Hide edge
+  candidates"): `checked` / `onCheckedChange(boolean)`, optional `description`
+  (associated with the input) and `disabled`. Other input props, such as
+  `aria-label`, reach the native checkbox. Use `ToggleRow` for a layer or data
+  source switched on and off.
 
 - `FormField` takes a `label`, children, optional `hint` / `description` / `error`,
   and label/content/wrapper classes. It associates direct native inputs and
@@ -1049,6 +1055,21 @@ label/help/value-text associations. `renderControl(controlProps)` adapts a custo
 slider while retaining the same numeric, disabled and accessibility contract.
 The host decides when a change triggers expensive work. Its props and
 `NumericRangeControlProps` are exported from `/ui`.
+
+## Share bars and gradient ticks
+
+`ShareBars` draws each row's share as a bar against a fixed `max` (default 100),
+never against the largest row, so two lists read against each other. Each item
+has a `label`, one value per `series` (`null` draws an empty bar) and an optional
+`display` replacing the formatted text. `series` entries take a `label` prefix
+("A", "B"), a fill `className` or `color`. `layout="inline"` puts label, bar and
+value on one row (a distribution across bins); `"stacked"` puts the bars under the
+label, for comparing series. `StackedShareBar` splits one bar into coloured
+`segments` of a `total`, e.g. a recorded mixture.
+
+`MapGradientLegendItem` takes `ticks` for evenly spaced labels in place of
+`minLabel` / `maxLabel`, plus `barClassName` and `labelClassName` for a denser
+legend strip.
 
 ## Local files and tool pages
 
