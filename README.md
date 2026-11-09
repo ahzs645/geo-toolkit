@@ -51,7 +51,10 @@ export function EmbeddedMap({ features }) {
 }
 ```
 
-Map tiles remain caller-configurable. Import `stories/styles.css` for editorial
+Map tiles remain caller-configurable. `Map` registers MapLibre's right-to-left text plugin
+on first use, so Arabic, Hebrew and other RTL basemap labels are joined and
+ordered correctly; set `rtlTextPlugin` to a self-hosted URL or `false` (see
+API.md). Import `stories/styles.css` for editorial
 presentations. A workspace supplies scoped theme variables and interaction state;
 use one provider per independent map experience. Standalone maps create a private
 provider automatically. Host a persistent map above the views that share it.
