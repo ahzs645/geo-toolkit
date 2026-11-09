@@ -10,7 +10,12 @@ import {
   type SelectHTMLAttributes,
 } from 'react'
 import { cn } from '../utils.js'
-import { resolveNumberFieldInput, stepNumberFieldValue, type NumberFieldPolicy } from './number-field.js'
+import {
+  formatNumberFieldValue,
+  resolveNumberFieldInput,
+  stepNumberFieldValue,
+  type NumberFieldPolicy,
+} from './number-field.js'
 
 export const FORM_INPUT_CLASS =
   'w-full min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-base text-foreground md:text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
@@ -200,6 +205,8 @@ interface NumericFieldCommon
   unitClassName?: string
   /** Optional display rounding. Omit to retain the source value's full precision. */
   precision?: number
+  /** Show every one of `precision`'s decimals (`283.00`) rather than dropping trailing zeros (`283`). */
+  fixedDecimals?: boolean
 }
 
 export interface NumberFieldProps extends NumericFieldCommon {
@@ -228,6 +235,7 @@ function NumericField({
   max,
   step = 1,
   precision,
+  fixedDecimals,
   unit,
   suffix,
   hint,
@@ -253,8 +261,7 @@ function NumericField({
   const helpId = descriptionId ?? `${inputId}-description`
   // Display source precision unless a caller explicitly requests a rounded edit
   // surface. Formatting must never alter an untouched measurement on blur.
-  const format = (n: number | null) =>
-    n === null ? '' : precision === undefined ? String(n) : String(Number(n.toFixed(precision)))
+  const format = (n: number | null) => formatNumberFieldValue(n, { precision, fixedDecimals })
   const [input, setInput] = useState({ value, text: format(value) })
   const dirty = useRef(false)
   const draft = input.value === value ? input.text : format(value)
