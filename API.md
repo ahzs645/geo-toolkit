@@ -25,7 +25,7 @@ not a promise that every historical module is stable.
 | `/map/persistent-map`                | `PersistentMapProvider`, `PersistentMapHost`, `SharedMap`, `usePersistentMap`, `useMapBasemap`                                                       | React, React DOM, MapLibre                                     |
 | `/map/map-deck`                      | Shared deck.gl overlay integration                                                                                                                   | React, React DOM, MapLibre, `@deck.gl/core`, `@deck.gl/mapbox` |
 | `/workspace`                         | `WorkspaceProvider`, `MapSectionLayout`, responsive media hooks and `requestMapSearch`                                                               | React, React DOM                                               |
-| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `PlaybackControls`; `MapTimeline`; form and numeric-range fields; clipboard controls/state; `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                    | React, React DOM                                               |
+| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `PlaybackControls`; `MapTimeline`; form and numeric-range fields; clipboard controls/state; floating notifications (`NotificationProvider`, `Notification`, `useNotifications`, `NotificationCard`, `createNotificationStore`); `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                    | React, React DOM                                               |
 | `/projects`                          | Scene/layer types, codecs, repositories and JSON import/export/share ports                                                                           | None                                                           |
 | `/export`                            | `toCsv`, `csvRows`, `csvCell`, `downloadBlob`, `downloadText`; `CsvColumn`, `CsvOptions`                                                             | None; downloads need a browser DOM                             |
 | `/format`                            | `formatMeasure`, `formatNumber`, `formatPercent`, currency/date/byte/length/area formatters                                                          | None                                                           |
@@ -1064,6 +1064,40 @@ focus and selection. No fallback is silently enabled.
 `options`. It disables itself while pending, reports busy/live state, and calls
 `onResult({ copied, text })` for host-owned manual-copy UI. Preserve URL
 serialization, validation and domain-specific error messages in the host.
+
+## Floating notifications
+
+`/ui` exports one notification card and the stack that places it.
+
+- `NotificationCard` draws a notice: `tone` (`info`, `loading`, `success`,
+  `warning`, `error`), `title`, `message`, `icon` (replaces the tone's icon;
+  `null` drops it), `progress` (`{ value, max, label?, valueText? }`, a
+  determinate bar plus "`value` of `max`"), `action` beside the text, `actions`
+  in a row below, `onDismiss` + `dismissLabel` for a close button. `error` is
+  `role="alert"` (assertive); every other tone is `role="status"` (polite).
+  Remaining props, such as `aria-label` and `data-*`, go on the card.
+- `NotificationViewport` is the fixed stack: bottom-right (24rem) from Tailwind's
+  `sm`, full width along the bottom below it, above the safe-area inset, at
+  `z-notification` (2200). It lets clicks through between cards. Cards stack in
+  arrival order.
+- `NotificationProvider` owns one stack for its subtree; mount it once near the
+  root. `<Notification>` shows while it is mounted (the host owns its presence and
+  `onDismiss` asks the host to remove it). `useNotifications()` returns the store:
+  `push(options)` returns an id, and `update`, `dismiss`, `remove`, `clear`.
+  Pushed `success` and `info` notices close themselves after
+  `NOTIFICATION_DURATION` (5 s, 6 s); `loading`, `warning` and `error` stay. The
+  timers pause while the pointer or focus is in the stack. `duration` overrides
+  the default; `0` or `null` keeps a notice.
+- `createNotificationStore` is the same state without React, for pushing from
+  outside a component; hand it to `NotificationProvider store={…}`.
+
+Cards render where the provider is, so `action`/`actions` content reads React
+context from there, not from the component that declared it. A `<Notification>`
+outside any provider renders its own viewport, so two of them would overlap: use a provider wherever more than one can show. In a standalone
+consumer, render the provider inside a `.geo-toolkit` element (such as
+`WorkspaceProvider`) so its scoped styles apply. Cards animate in with
+`.geo-motion-notification` and leave without an exit animation; reduced motion
+drops the entry too.
 
 ## Numeric scrub field
 

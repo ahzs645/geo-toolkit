@@ -9,7 +9,7 @@ const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
       'font-size': [{ text: ['3xs', '2xs'] }],
-      z: [{ z: ['menu', 'overlay', 'workspace-menu', 'workspace-popover'] }],
+      z: [{ z: ['menu', 'overlay', 'workspace-menu', 'workspace-popover', 'notification'] }],
     },
   },
 })

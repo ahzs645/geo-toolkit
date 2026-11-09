@@ -43,6 +43,7 @@ export * from './number-field.js'
 export * from './clipboard-text.js'
 export * from './use-clipboard-text.js'
 export * from './copy-button.js'
+export * from './notification.js'
 export * from './numeric-range-field.js'
 export {
   MapTimeline,
