@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filesFromDrop, filesFromInput } from './picked-files.js'
+import { filesFromDrop, filesFromInput, takeInputFiles } from './picked-files.js'
 
 const file = (name: string, webkitRelativePath = '') =>
   Object.defineProperty(new File(['x'], name), 'webkitRelativePath', { value: webkitRelativePath })
@@ -36,5 +36,19 @@ describe('picked files', () => {
   it('uses the plain file list when the browser gives no entries', async () => {
     const transfer = { items: [], files: [file('tile.laz')] } as unknown as DataTransfer
     expect((await filesFromDrop(transfer)).map((entry) => entry.path)).toEqual(['tile.laz'])
+  })
+
+  it('takes an input’s files before clearing it, so the same file can be chosen again', () => {
+    const chosen = [file('boundary.geojson')]
+    const input = {
+      value: 'C:\\fakepath\\boundary.geojson',
+      // A real FileList empties when the input is cleared.
+      get files() {
+        return this.value ? chosen : []
+      },
+    }
+    expect(takeInputFiles(input).map((entry) => entry.name)).toEqual(['boundary.geojson'])
+    expect(input.value).toBe('')
+    expect(takeInputFiles({ files: null, value: '' })).toEqual([])
   })
 })
