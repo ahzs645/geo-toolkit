@@ -57,3 +57,19 @@ export function stepNumberFieldValue(
   // Match native number-input arrows even when typed bounds are advisory.
   return Number(Math.max(min, Math.min(max, next)).toFixed(precision))
 }
+
+/**
+ * The text a numeric field shows for a value. With no `precision` it is the source value unchanged.
+ * `precision` rounds it and drops trailing zeros (`283`); `fixedDecimals` keeps them (`283.00`), so a
+ * column of values lines up at the decimal point. A value that rounds to zero never shows as `-0`.
+ */
+export function formatNumberFieldValue(
+  value: number | null,
+  { precision, fixedDecimals = false }: { precision?: number; fixedDecimals?: boolean } = {},
+): string {
+  if (value === null) return ''
+  if (precision === undefined) return String(value)
+  const rounded = Number(value.toFixed(precision))
+  if (!fixedDecimals) return String(rounded)
+  return (rounded === 0 ? 0 : rounded).toFixed(precision)
+}

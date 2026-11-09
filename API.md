@@ -995,7 +995,10 @@ rest. `fitMapToPoints(map, points, options)` applies it with `fitBounds`.
   `invalidValue="null"` also clears invalid nullable input when requested.
 - Numeric source precision is retained by default. An untouched blur emits no
   change. Optional `precision` controls edit-display and keyboard-step rounding;
-  a caller can request `precision={6}` for an existing dense editor. Typed
+  a caller can request `precision={6}` for an existing dense editor. Rounded
+  values drop trailing zeros (`283`); `fixedDecimals` keeps all of them
+  (`283.00`) so a table column lines up at the decimal point, and
+  `formatNumberFieldValue` is the pure formatter both use. Typed
   measurements are not globally snapped to `step`. `stepMode="native"` is the
   default and retains browser arrow-key alignment to the native step grid.
   `stepMode="increment"` uses `stepNumberFieldValue` (default rounding precision
