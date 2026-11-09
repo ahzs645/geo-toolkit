@@ -18,6 +18,8 @@ export type FileDropFieldProps = {
   filesLabel?: string
   /** Adds a folder button, for sources such as a `.gdb` that are folders. */
   folderLabel?: string
+  /** `false` for a field that takes one file, such as an import; a drop still hands over every file. */
+  multiple?: boolean
   dropHint?: string
   disabled?: boolean
   className?: string
@@ -35,6 +37,7 @@ export function FileDropField({
   accept,
   filesLabel = 'Add files',
   folderLabel,
+  multiple = true,
   dropHint = 'or drop here',
   disabled = false,
   className,
@@ -105,7 +108,7 @@ export function FileDropField({
         {...inputProps}
         ref={filesRef}
         type="file"
-        multiple
+        multiple={multiple}
         accept={accept}
         className="hidden"
         disabled={disabled}

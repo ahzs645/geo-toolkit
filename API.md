@@ -1076,7 +1076,9 @@ legend strip.
 `FileDropField` takes local files from a button, an optional folder button, or a drop,
 walking dropped folders. It calls `onFiles` with `PickedFile` entries that keep each
 file's relative path, and does not filter drops by `accept`; filter in `onFiles` if the
-workspace needs to. `filesFromInput` and `filesFromDrop` are the same reads without React.
+workspace needs to. `multiple={false}` makes the button pick one file, for an import;
+a drop still hands over every file, so take the first. `filesFromInput` and
+`filesFromDrop` are the same reads without React.
 
 `FileButton` is the single-button form for a toolbar or panel import: a `Button` (outline,
 `sm` by default; other `Button` props pass through) over a hidden file input named by

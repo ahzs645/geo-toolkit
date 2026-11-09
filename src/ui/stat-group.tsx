@@ -60,6 +60,8 @@ interface StatGroupProps {
   align?: 'start' | 'center'
   /** Fixed column count; omit to fit as many tiles per row as the width allows. */
   columns?: keyof typeof columnClasses
+  /** Names the list for assistive technology when no heading does, e.g. "Comparison counts". */
+  'aria-label'?: string
   className?: string
 }
 
@@ -149,10 +151,19 @@ export function StatTileBody({
  * one stat component: `StatGrid`/`StatTile` in map-panels are thin wrappers
  * kept for existing call sites.
  */
-export function StatGroup({ items, variant = 'inline', size = 'md', align, columns, className }: StatGroupProps) {
+export function StatGroup({
+  items,
+  variant = 'inline',
+  size = 'md',
+  align,
+  columns,
+  'aria-label': ariaLabel,
+  className,
+}: StatGroupProps) {
   if (variant === 'tiles') {
     return (
       <dl
+        aria-label={ariaLabel}
         className={cn(
           'grid',
           columns ? columnClasses[columns] : 'grid-cols-[repeat(auto-fit,minmax(4.75rem,1fr))]',
@@ -168,7 +179,7 @@ export function StatGroup({ items, variant = 'inline', size = 'md', align, colum
   }
 
   return (
-    <dl className={cn('flex items-center justify-around gap-2 text-center', className)}>
+    <dl aria-label={ariaLabel} className={cn('flex items-center justify-around gap-2 text-center', className)}>
       {items.map((item, index) => (
         <div key={itemKey(item, index)} className={cn('flex flex-col-reverse whitespace-nowrap', item.className)}>
           <dt className="text-xs text-muted-foreground">
