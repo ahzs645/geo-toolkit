@@ -11,28 +11,28 @@ consumers. Their declarations describe exact callback and data shapes. The
 package is currently private at `0.1.0`; this documents the extraction boundary,
 not a promise that every historical module is stable.
 
-| Entry point                          | Supported capability                                                                                                                                 | Additional runtime peers                                       |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `/calculations`                      | `scoreRecords`, `normalizeValues`, coverage, drivers, sensitivity, geographic (`haversineKm`, `greatCircleArc`, `geometryBounds`, `featureCollectionBounds`), timeline and join helpers (`crosswalkResolver`, `groupByJoin`, `groupValue`, `joinDiagnostics`, `canEncodeAsArea`); their configuration/result types | None                                                           |
-| `/index-lab`                         | Index Lab state/results, normalization/coverage and spatial/derived recipes; their types                                                             | None                                                           |
-| `/index-lab/react`                   | `IndexLab`, `useIndexLabController`, controls, result lists/cards and metric library components                                                      | React, React DOM                                               |
-| `/scales`                            | `resolvePaletteScale`, `samplePalette`, `paletteInterpolator`, `paletteContrast`, color helpers, `createScaleLegend`, `areaRadiusScale`, `cohortRows`; their options and legend types | None                                                           |
-| `/visualizations`                    | `renderDonutSvg`, `DonutOptions` (count-sized or fixed `radius`, centre `label`, `emphasizedBand`); `layoutDonutRing`, `assignRing`, `ringSlots`                                                                                                                    | None                                                           |
-| `/visualizations/react` | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, `DonutRingMap`, canvas points and typed series/axis contracts | React, React DOM |
-| `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                  | None                                                           |
-| `/grids/map-raster-grid`             | `createRasterGridLayer`, `RasterGridPick`                                                                                                            | `@deck.gl/core`, `@deck.gl/geo-layers`, `@deck.gl/layers`      |
-| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), `resizeMap`, settled viewport observation and screen-point clustering, `captureMapImage`, offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants               | React, React DOM, MapLibre                                     |
-| `/map/persistent-map`                | `PersistentMapProvider`, `PersistentMapHost`, `SharedMap`, `usePersistentMap`, `useMapBasemap`                                                       | React, React DOM, MapLibre                                     |
-| `/map/map-deck`                      | Shared deck.gl overlay integration                                                                                                                   | React, React DOM, MapLibre, `@deck.gl/core`, `@deck.gl/mapbox` |
-| `/workspace`                         | `WorkspaceProvider`, `MapSectionLayout`, responsive media hooks and `requestMapSearch`                                                               | React, React DOM                                               |
-| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `PlaybackControls`; `MapTimeline`; form and numeric-range fields; clipboard controls/state; `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                    | React, React DOM                                               |
-| `/projects`                          | Scene/layer types, codecs, repositories and JSON import/export/share ports                                                                           | None                                                           |
-| `/export`                            | `toCsv`, `csvRows`, `csvCell`, `downloadBlob`, `downloadText`; `CsvColumn`, `CsvOptions`                                                             | None; downloads need a browser DOM                             |
-| `/format`                            | `formatMeasure`, `formatNumber`, `formatPercent`, currency/date/byte/length/area formatters                                                          | None                                                           |
-| `/stories/model/types`               | Native editorial document types                                                                                                                      | None; type-only                                                |
-| `/stories/model/validate.mjs`        | `parseEditorialDocument`, `validateEditorialDocument`                                                                                                | None                                                           |
-| `/stories` and `/stories/components` | `EditorialDocumentRenderer`, `SceneStoryRenderer`, editorial components and diagrams                                                                 | React, React DOM                                               |
-| `/styles.css`, `/stories/styles.css` | Compiled, scoped component and editorial CSS                                                                                                         | None                                                           |
+| Entry point                          | Supported capability                                                                                                                                                                                                                                                                                                                                        | Additional runtime peers                                       |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `/calculations`                      | `scoreRecords`, `normalizeValues`, coverage, drivers, sensitivity, geographic (`haversineKm`, `greatCircleArc`, `geometryBounds`, `featureCollectionBounds`), timeline and join helpers (`crosswalkResolver`, `groupByJoin`, `groupValue`, `joinDiagnostics`, `canEncodeAsArea`); their configuration/result types                                          | None                                                           |
+| `/index-lab`                         | Index Lab state/results, normalization/coverage and spatial/derived recipes; their types                                                                                                                                                                                                                                                                    | None                                                           |
+| `/index-lab/react`                   | `IndexLab`, `useIndexLabController`, controls, result lists/cards and metric library components                                                                                                                                                                                                                                                             | React, React DOM                                               |
+| `/scales`                            | `resolvePaletteScale`, `samplePalette`, `paletteInterpolator`, `paletteContrast`, color helpers, `createScaleLegend`, `areaRadiusScale`, `cohortRows`; their options and legend types                                                                                                                                                                       | None                                                           |
+| `/visualizations`                    | `renderDonutSvg`, `DonutOptions` (count-sized or fixed `radius`, centre `label`, `emphasizedBand`); `layoutDonutRing`, `assignRing`, `ringSlots`                                                                                                                                                                                                            | None                                                           |
+| `/visualizations/react`              | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, `DonutRingMap`, canvas points and typed series/axis contracts                                                                                                                                                                                                   | React, React DOM                                               |
+| `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                                                                                                                                                                                                                         | None                                                           |
+| `/grids/map-raster-grid`             | `createRasterGridLayer`, `RasterGridPick`                                                                                                                                                                                                                                                                                                                   | `@deck.gl/core`, `@deck.gl/geo-layers`, `@deck.gl/layers`      |
+| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), `resizeMap`, `ensureRtlTextPlugin`, settled viewport observation and screen-point clustering, `captureMapImage`, offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants | React, React DOM, MapLibre                                     |
+| `/map/persistent-map`                | `PersistentMapProvider`, `PersistentMapHost`, `SharedMap`, `usePersistentMap`, `useMapBasemap`                                                                                                                                                                                                                                                              | React, React DOM, MapLibre                                     |
+| `/map/map-deck`                      | Shared deck.gl overlay integration                                                                                                                                                                                                                                                                                                                          | React, React DOM, MapLibre, `@deck.gl/core`, `@deck.gl/mapbox` |
+| `/workspace`                         | `WorkspaceProvider`, `MapSectionLayout`, responsive media hooks and `requestMapSearch`                                                                                                                                                                                                                                                                      | React, React DOM                                               |
+| `/ui`                                | Sidebar, list, dialog, feature-card, legend, tab, statistic and control components; `ScaleLegend`; `PlaybackControls`; `MapTimeline`; form and numeric-range fields; clipboard controls/state; `ScrubNumberField` and its pure `snapScrubValue`/`scrubDragValue`/`parseScrubInput` helpers                                                                  | React, React DOM                                               |
+| `/projects`                          | Scene/layer types, codecs, repositories and JSON import/export/share ports                                                                                                                                                                                                                                                                                  | None                                                           |
+| `/export`                            | `toCsv`, `csvRows`, `csvCell`, `downloadBlob`, `downloadText`; `CsvColumn`, `CsvOptions`                                                                                                                                                                                                                                                                    | None; downloads need a browser DOM                             |
+| `/format`                            | `formatMeasure`, `formatNumber`, `formatPercent`, currency/date/byte/length/area formatters                                                                                                                                                                                                                                                                 | None                                                           |
+| `/stories/model/types`               | Native editorial document types                                                                                                                                                                                                                                                                                                                             | None; type-only                                                |
+| `/stories/model/validate.mjs`        | `parseEditorialDocument`, `validateEditorialDocument`                                                                                                                                                                                                                                                                                                       | None                                                           |
+| `/stories` and `/stories/components` | `EditorialDocumentRenderer`, `SceneStoryRenderer`, editorial components and diagrams                                                                                                                                                                                                                                                                        | React, React DOM                                               |
+| `/styles.css`, `/stories/styles.css` | Compiled, scoped component and editorial CSS                                                                                                                                                                                                                                                                                                                | None                                                           |
 
 React and map-engine peers are optional at installation time. Install them when
 using a corresponding entry point. Pure calculations, scales, donuts and grid
@@ -728,7 +728,7 @@ still loads without React. Import `DashboardToolbar`, `RangeControls`,
   Hosts validate edits and calculate presets; no default date or domain policy
   is embedded in the component.
 - `SeriesLegend` and `SelectedSeriesList` accept `{ id, label, color, visible,
-  detail? }` and controlled toggle/remove callbacks. The host owns color slots
+detail? }` and controlled toggle/remove callbacks. The host owns color slots
   and selection limits. `DashboardToolbar` uses its own container width to
   switch between a single row and wrapped controls (`inlineAt`, default 1000px).
 
@@ -741,16 +741,23 @@ There is no implicit global coordination, fetching, aggregation or CSV transport
 ```tsx
 import { LineBandChart } from '@pgmaps/geo-toolkit/visualizations/react'
 
-<LineBandChart
+;<LineBandChart
   label="Energy output envelope"
   height={280}
   extent={[0, 24, -5, 15]}
   xAxis={{ format: (hour) => `${hour} h` }}
   yAxis={{ label: 'kWh' }}
-  series={[{
-    id: 'solar', label: 'Solar', color: '#d97706',
-    points: [{ x: 0, y: 0, range: [-1, 1] }, { x: 12, y: 10, range: [8, 12] }],
-  }]}
+  series={[
+    {
+      id: 'solar',
+      label: 'Solar',
+      color: '#d97706',
+      points: [
+        { x: 0, y: 0, range: [-1, 1] },
+        { x: 12, y: 10, range: [8, 12] },
+      ],
+    },
+  ]}
 />
 ```
 
@@ -833,6 +840,16 @@ load or has not loaded within `styleTimeoutMs` (8 s by default), so data layers
 still draw offline; `onStyleFallback` reports the switch. A theme change tries
 the requested style again.
 
+Basemaps label places in their own script, and MapLibre needs its RTL text
+plugin to join and order Arabic, Hebrew and other right-to-left labels. `Map`
+registers it on first use from `DEFAULT_RTL_TEXT_PLUGIN_URL` (a pinned CDN copy
+of `@mapbox/mapbox-gl-rtl-text`); it is fetched only once such a label is on
+screen. Pass `rtlTextPlugin` a self-hosted URL where scripts must come from your
+own origin, or `false` when the host registers the plugin itself. One
+registration serves every map on the page; `ensureRtlTextPlugin(url?)` does the
+same for a host that creates MapLibre maps without `Map`. If the plugin cannot
+load, those labels draw as before and the map is unaffected.
+
 `captureMapImage(map)` renders a fresh frame and encodes it (PNG by default)
 without needing `preserveDrawingBuffer`; download the blob with `downloadBlob`
 from `/export`. Only the WebGL canvas is captured, not HTML markers or panels.
@@ -878,6 +895,7 @@ const range = timelineWindow(buckets.length, value, size, 'end') // filter your 
   On short maps (a landscape phone) the track gets shorter. Touch screens get
   44 px controls. `density` fixes a layout. The options swap in for the track at
   the track's height, so chrome stacked above doesn't jump.
+
 - **Few buckets.** With 12 or fewer (`isTimelinePicker`) every bucket is its own
   target, so the timeline becomes a picker: bars keep a bar's proportions, the
   selected ones stand in for the playhead, and the skip and speed controls go,
@@ -924,9 +942,13 @@ whose height the workspace publishes as `--map-mobile-toolbar-height`.
 `bounds: [west, south, east, north]`, `zoom`, and canvas `width` / `height`.
 
 ```ts
-const unsubscribe = observeMapViewport(map, ({ bounds, zoom }) => {
-  updateVisibleArea(bounds, zoom)
-}, { events: ['moveend', 'resize'], initial: 'loaded' })
+const unsubscribe = observeMapViewport(
+  map,
+  ({ bounds, zoom }) => {
+    updateVisibleArea(bounds, zoom)
+  },
+  { events: ['moveend', 'resize'], initial: 'loaded' },
+)
 // On teardown:
 unsubscribe()
 ```
@@ -1001,8 +1023,7 @@ rest. `fitMapToPoints(map, points, options)` applies it with `fitBounds`.
   `formatNumberFieldValue` is the pure formatter both use. Typed
   measurements are not globally snapped to `step`. `stepMode="native"` is the
   default and retains browser arrow-key alignment to the native step grid.
-  `stepMode="increment"` uses `stepNumberFieldValue` (default rounding precision
-  6) to step a raw draft and then bound the result, preserving custom road
+  `stepMode="increment"` uses `stepNumberFieldValue` (default rounding precision 6) to step a raw draft and then bound the result, preserving custom road
   editors. `resolveNumberFieldInput` and
   `stepNumberFieldValue` are also exported as pure helpers with their policy and
   result types.

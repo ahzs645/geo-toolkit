@@ -20,6 +20,7 @@ import { cn } from '../utils.js'
 import { MapLoader, type MapLoaderVariant } from './map-loader.js'
 import { MAP_STYLES } from './map-styles.js'
 import { DEFAULT_MAP_CONTROLS } from './map-controls.js'
+import { DEFAULT_RTL_TEXT_PLUGIN_URL, ensureRtlTextPlugin } from './map-rtl-text.js'
 import { MOBILE_MAP_FEATURE_CLICK_EVENT } from '../workspace/workspace-events.js'
 import { useMapLayoutCovers } from '../workspace/map-layout-covers.js'
 import { resizeMap, setMapCoveredBottom, visibleMapBounds } from './map-resize.js'
@@ -125,6 +126,13 @@ type MapProps = {
   showStyleLoadingOverlay?: boolean
   /** Keep the current WebGL backing buffer while a surrounding layout is being interactively resized. */
   deferResize?: boolean
+  /**
+   * Where to load MapLibre's right-to-left text plugin from, so Arabic, Hebrew and other RTL
+   * labels are joined and ordered correctly. Fetched only once such a label is on screen.
+   * Defaults to a pinned CDN copy; pass a self-hosted URL, or `false` if the host registers the
+   * plugin itself or must not load it. One registration applies to every map on the page.
+   */
+  rtlTextPlugin?: string | false
 } & Omit<MapLibreGL.MapOptions, 'container' | 'style' | 'trackResize'>
 
 type MapRef = MapLibreGL.Map
@@ -166,6 +174,7 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
     onMapCreate,
     onCreateError,
     containerProps,
+    rtlTextPlugin = DEFAULT_RTL_TEXT_PLUGIN_URL,
     ...props
   },
   ref,
@@ -261,6 +270,8 @@ const MapImplementation = forwardRef<MapRef, MapProps>(function Map(
 
     const initialStyle = resolvedTheme === 'dark' ? mapStyles.dark : mapStyles.light
     currentStyleRef.current = initialStyle
+
+    if (rtlTextPlugin) ensureRtlTextPlugin(rtlTextPlugin)
 
     let map: MapLibreGL.Map
     try {
