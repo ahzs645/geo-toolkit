@@ -225,6 +225,77 @@
 .geo-motion-map-tooltip {
   animation: geo-motion-surface-in var(--geo-motion-feedback, 150ms) var(--geo-motion-easing, ease-out) both;
 }
+
+/*
+ * MapPopup's arrow. MapLibre draws the tip as a bare CSS triangle beside the content box, so beside
+ * a bordered, shadowed card it reads as a separate shape with the card's border line between them.
+ * The tip takes the card's fill, overlaps the card's border by 1px so the border breaks where they
+ * join, and draws its own two edges in the border colour. The card grows out of the tip on entry,
+ * rather than from its centre, so the two stay joined while it animates.
+ */
+.mapcn-popup .maplibregl-popup-content,
+.mapcn-tooltip .maplibregl-popup-content {
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.mapcn-tooltip .maplibregl-popup-tip {
+  display: none !important;
+}
+.mapcn-popup .maplibregl-popup-tip {
+  display: block !important;
+  position: relative;
+  z-index: 1;
+}
+.mapcn-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: hsl(var(--popover)) !important;
+  margin-top: -1px;
+  filter: drop-shadow(0 1px 0 hsl(var(--border))) drop-shadow(0 2px 2px rgb(0 0 0 / 0.08));
+}
+.mapcn-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: hsl(var(--popover)) !important;
+  margin-bottom: -1px;
+  filter: drop-shadow(0 -1px 0 hsl(var(--border)));
+}
+.mapcn-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: hsl(var(--popover)) !important;
+  margin-right: -1px;
+  filter: drop-shadow(-1px 0 0 hsl(var(--border)));
+}
+.mapcn-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: hsl(var(--popover)) !important;
+  margin-left: -1px;
+  filter: drop-shadow(1px 0 0 hsl(var(--border)));
+}
+.mapcn-popup.maplibregl-popup-anchor-bottom .geo-motion-map-popup {
+  transform-origin: bottom center;
+}
+.mapcn-popup.maplibregl-popup-anchor-bottom-left .geo-motion-map-popup {
+  transform-origin: bottom left;
+}
+.mapcn-popup.maplibregl-popup-anchor-bottom-right .geo-motion-map-popup {
+  transform-origin: bottom right;
+}
+.mapcn-popup.maplibregl-popup-anchor-top .geo-motion-map-popup {
+  transform-origin: top center;
+}
+.mapcn-popup.maplibregl-popup-anchor-top-left .geo-motion-map-popup {
+  transform-origin: top left;
+}
+.mapcn-popup.maplibregl-popup-anchor-top-right .geo-motion-map-popup {
+  transform-origin: top right;
+}
+.mapcn-popup.maplibregl-popup-anchor-left .geo-motion-map-popup {
+  transform-origin: left center;
+}
+.mapcn-popup.maplibregl-popup-anchor-right .geo-motion-map-popup {
+  transform-origin: right center;
+}
 @scope (.geo-toolkit[data-workspace-max-sm='true']) to (.geo-toolkit) {
   .geo-motion-dialog-content[data-dialog-variant='sheet'][data-state='open'] {
     animation-name: geo-motion-sheet-in;
