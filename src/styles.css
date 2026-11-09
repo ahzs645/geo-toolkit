@@ -225,6 +225,21 @@
 .geo-motion-map-tooltip {
   animation: geo-motion-surface-in var(--geo-motion-feedback, 150ms) var(--geo-motion-easing, ease-out) both;
 }
+/* A notification rises into its stack once. It leaves at once, so a dismissed
+ * notice is gone for screen readers and tests in the same frame. */
+@keyframes geo-motion-notification-in {
+  from {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+.geo-motion-notification {
+  animation: geo-motion-notification-in var(--geo-motion-panel, 350ms) var(--geo-motion-easing, ease-out) both;
+}
 
 /*
  * MapPopup's arrow. MapLibre draws the tip as a bare CSS triangle beside the content box, so beside
@@ -374,6 +389,9 @@
   .geo-motion-map-popup,
   .geo-motion-map-tooltip {
     animation-duration: 0.01ms !important;
+  }
+  .geo-motion-notification {
+    animation: none;
   }
   .geo-motion-dialog-root:has(> .geo-motion-dialog-content[data-state='closed']) {
     animation: none;
