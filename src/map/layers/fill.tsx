@@ -5,6 +5,7 @@ import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '
 import { syncFeatureState, type MapFeatureStateById } from '../map-feature-state.js'
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_COLOR, SELECTION_WIDTH, BORDER_COLOR } from '../map-styles.js'
+import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 import { createClickPopup, featureClickEvent } from './feature-click.js'
 import {
   EMPTY_SELECTED_IDS,
@@ -242,6 +243,7 @@ export function MapFillLayer({
       const e = event as {
         features?: Array<{ id?: string | number; properties?: Record<string, unknown> }>
         lngLat?: MapLibreGL.LngLatLike
+        point?: MapLibreGL.PointLike
       }
 
       if (hoverEnabled) {
@@ -257,6 +259,11 @@ export function MapFillLayer({
 
       const formatter = hoverHtmlRef.current
       if (!formatter) return
+      // Where layers with cards overlap, only the topmost one under the pointer shows its card.
+      if (!isTopHoverLayer(map, e.point, fillLayerId)) {
+        removeTooltip()
+        return
+      }
       const properties = e.features?.[0]?.properties
       const html = properties ? formatter(properties) : null
       if (!html || !e.lngLat) {
@@ -293,6 +300,7 @@ export function MapFillLayer({
     map.on('mousemove', fillLayerId, handleMouseMove as never)
     map.on('mouseleave', fillLayerId, handleMouseLeave)
     const detachPointerDismiss = attachPointerDismiss(map, removeTooltip)
+    const unregisterHover = registerHoverLayer(map, fillLayerId, () => !!hoverHtmlRef.current)
 
     const releaseOrder = registerMapLayerOrder(map, [fillLayerId, lineLayerId, selectedLayerId], layerOrder)
 
@@ -304,6 +312,7 @@ export function MapFillLayer({
         map.off('mousemove', fillLayerId, handleMouseMove as never)
         map.off('mouseleave', fillLayerId, handleMouseLeave)
         detachPointerDismiss()
+        unregisterHover()
         if (boxZoomWasEnabledRef.current) {
           map.boxZoom.enable()
           boxZoomWasEnabledRef.current = false

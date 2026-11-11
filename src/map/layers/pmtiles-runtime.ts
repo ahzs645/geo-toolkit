@@ -1,6 +1,7 @@
 import type * as MapLibreGL from 'maplibre-gl'
 import * as MapLibreGLRuntime from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
+import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 
 let pmtilesProtocolRegistered = false
 
@@ -9,7 +10,6 @@ type SharedPmtilesTooltipState = {
   popup: MapLibreGLRuntime.Popup
 }
 
-const pmtilesHoverLayersByMap = new WeakMap<MapLibreGL.Map, Set<string>>()
 const pmtilesTooltipByMap = new WeakMap<MapLibreGL.Map, SharedPmtilesTooltipState>()
 
 export function ensurePmtilesProtocol() {
@@ -19,24 +19,13 @@ export function ensurePmtilesProtocol() {
   pmtilesProtocolRegistered = true
 }
 
+/** PMTiles layers share the map-wide hover registry with GeoJSON layers (`hover-arbiter.ts`). */
 export function registerPmtilesHoverLayer(map: MapLibreGL.Map, layerId: string) {
-  const layerIds = pmtilesHoverLayersByMap.get(map) ?? new Set<string>()
-  layerIds.add(layerId)
-  pmtilesHoverLayersByMap.set(map, layerIds)
-
-  return () => {
-    layerIds.delete(layerId)
-    if (layerIds.size === 0) pmtilesHoverLayersByMap.delete(map)
-  }
+  return registerHoverLayer(map, layerId)
 }
 
 export function isTopPmtilesHoverLayer(map: MapLibreGL.Map, point: MapLibreGL.PointLike, layerId: string) {
-  const registeredLayerIds = pmtilesHoverLayersByMap.get(map)
-  if (!registeredLayerIds) return true
-  const existingLayerIds = [...registeredLayerIds].filter((registeredLayerId) => map.getLayer(registeredLayerId))
-  if (existingLayerIds.length === 0) return true
-
-  return map.queryRenderedFeatures(point, { layers: existingLayerIds })[0]?.layer?.id === layerId
+  return isTopHoverLayer(map, point, layerId)
 }
 
 export function showPmtilesTooltip(

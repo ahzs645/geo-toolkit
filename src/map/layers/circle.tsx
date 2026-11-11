@@ -4,6 +4,7 @@ import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_COLOR } from '../map-styles.js'
+import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 import { createClickPopup, featureClickEvent } from './feature-click.js'
 import {
   type MapStyleExpression,
@@ -134,9 +135,15 @@ export function MapCircleLayer({
       const e = event as {
         features?: Array<{ properties?: Record<string, unknown> }>
         lngLat?: MapLibreGL.LngLatLike
+        point?: MapLibreGL.PointLike
         originalEvent?: MouseEvent
       }
       if (!hoverEnabledRef.current || e.originalEvent?.buttons || map.isMoving()) {
+        removeTooltip()
+        return
+      }
+      // Where layers with cards overlap, only the topmost one under the pointer shows its card.
+      if (!isTopHoverLayer(map, e.point, layerId)) {
         removeTooltip()
         return
       }
@@ -167,6 +174,7 @@ export function MapCircleLayer({
     map.on('mouseleave', layerId, handleMouseLeave)
     map.on('movestart', removeTooltip)
     const detachPointerDismiss = attachPointerDismiss(map, removeTooltip)
+    const unregisterHover = registerHoverLayer(map, layerId, () => !!hoverHtmlRef.current)
 
     const releaseOrder = registerMapLayerOrder(map, [layerId, selectedLayerId], layerOrder)
 
@@ -179,6 +187,7 @@ export function MapCircleLayer({
         map.off('mouseleave', layerId, handleMouseLeave)
         map.off('movestart', removeTooltip)
         detachPointerDismiss()
+        unregisterHover()
         removeTooltip()
         clickPopup.dispose()
         tooltipRef.current = null

@@ -4,6 +4,7 @@ import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_COLOR } from '../map-styles.js'
+import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 import { createClickPopup, featureClickEvent } from './feature-click.js'
 import {
   type MapFeatureClickHandler,
@@ -178,6 +179,11 @@ export function MapLineLayer({
       : null
     const handleHover = (event: MapLibreGL.MapLayerMouseEvent) => {
       if (!popup || !event.features?.[0]) return
+      // Where layers with cards overlap, only the topmost one under the pointer shows its card.
+      if (!isTopHoverLayer(map, event.point, layerId)) {
+        popup.remove()
+        return
+      }
       const html = hoverHtmlRef.current?.(event.features[0].properties ?? {})
       if (!html) {
         popup.remove()
@@ -186,6 +192,8 @@ export function MapLineLayer({
       popup.setLngLat(event.lngLat).setHTML(html).addTo(map)
     }
     const detachDismiss = popup ? attachPointerDismiss(map, () => popup.remove()) : undefined
+    const unregisterHover =
+      popup && interactive ? registerHoverLayer(map, layerId, () => !!hoverHtmlRef.current) : undefined
 
     if (interactive) {
       map.on('click', layerId, handleClick as never)
@@ -204,6 +212,7 @@ export function MapLineLayer({
         map.off('mouseleave', layerId, handleMouseLeave)
         if (popup) map.off('mousemove', layerId, handleHover)
         detachDismiss?.()
+        unregisterHover?.()
         popup?.remove()
         clickPopup.dispose()
 
