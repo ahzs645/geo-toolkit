@@ -30,8 +30,12 @@ export * from './picked-files.js'
 export * from './tool-page-header.js'
 export { DashboardToolbar } from './dashboard-toolbar.js'
 export { RangeControls } from './range-controls.js'
-export { PlaybackControls } from './playback-controls.js'
-export type { PlaybackControlsProps } from './playback-controls.js'
+export { PlaybackControls, clampPlaybackValue } from './playback-controls.js'
+export type {
+  PlaybackControlsProps,
+  FramePlaybackControlsProps,
+  ContinuousPlaybackControlsProps,
+} from './playback-controls.js'
 export type { RangeField, RangePreset } from './range-controls.js'
 export { SeriesLegend, SelectedSeriesList } from './series-controls.js'
 export type { SeriesControlItem } from './series-controls.js'
@@ -39,6 +43,7 @@ export { ScrubNumberField } from './scrub-number-field.js'
 export type { ScrubNumberFieldProps } from './scrub-number-field.js'
 export { parseScrubInput, scrubDragValue, scrubFraction, snapScrubValue } from './scrub-number.js'
 export type { ScrubBounds, ScrubDragOptions } from './scrub-number.js'
+export * from './color-field.js'
 export * from './form-field.js'
 export * from './number-field.js'
 export * from './clipboard-text.js'

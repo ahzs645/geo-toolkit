@@ -31,17 +31,50 @@ const overlayPositions = {
 
 export type MapOverlayPosition = keyof typeof overlayPositions
 
+// `clearChrome`: the same clearing MapControls, MapScaleBar and MapLegendPanel
+// use. Top edges clear a toolbar floating over the map on phones (the workspace
+// publishes how far it reaches as --map-mobile-toolbar-height; it is 0 on
+// desktop), keeping top-3 when there is none. Bottom edges clear the phone's
+// bottom sheet and safe area and a mounted map timeline; the corners also stack
+// above MapLibre's corner controls, and bottom-right above the legend panel,
+// with phones reserving the legend's footprint on the left too, where a wide
+// legend reaches. A centred overlay keeps clear of the corners by its width.
+const overlayChromePositions = {
+  'top-left': 'top-[max(0.75rem,calc(var(--map-mobile-toolbar-height,0px)_+_0.25rem))] left-3',
+  'top-right': 'top-[max(0.75rem,calc(var(--map-mobile-toolbar-height,0px)_+_0.25rem))] right-3',
+  'top-center': 'top-[max(0.75rem,calc(var(--map-mobile-toolbar-height,0px)_+_0.25rem))] left-1/2 -translate-x-1/2',
+  'bottom-left':
+    'left-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-stack-height,0px)_+_0.5rem,var(--map-bottom-left-controls-height,0px)_+_0.5rem))] workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-bottom-left-controls-height,0px)_+_0.5rem))]',
+  'bottom-right':
+    'right-3 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px)_+_var(--map-bottom-right-controls-height,0px)_+_0.5rem))] workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_max(0.75rem,var(--map-legend-panel-visible-height,0px)_+_var(--map-bottom-right-controls-height,0px)_+_0.5rem))]',
+  'bottom-center':
+    'left-1/2 -translate-x-1/2 bottom-[calc(var(--map-mobile-sheet-visible-height,0px)_+_var(--map-safe-bottom-offset,0px)_+_var(--map-timeline-height,0px)_+_0.75rem)] workspace-desktop:bottom-[calc(var(--map-timeline-height,0px)_+_0.75rem)]',
+} as const satisfies Record<MapOverlayPosition, string>
+
 type MapOverlayProps = ComponentPropsWithoutRef<'div'> & {
   position?: MapOverlayPosition
+  /**
+   * Keep clear of the map's chrome: on phones the floating toolbar above and
+   * the bottom sheet and safe area below, and everywhere a mounted map
+   * timeline, MapLibre's corner controls and the legend panel. Off by default,
+   * which keeps the fixed `top-3`/`bottom-3` insets.
+   */
+  clearChrome?: boolean
 }
 
-export function MapOverlay({ position = 'top-left', className, children, ...props }: MapOverlayProps) {
+export function MapOverlay({
+  position = 'top-left',
+  clearChrome = false,
+  className,
+  children,
+  ...props
+}: MapOverlayProps) {
   return (
     <div
       className={cn(
         'absolute rounded-md border border-border bg-background/90 shadow-sm backdrop-blur-sm',
         MAP_OVERLAY_Z.controls,
-        overlayPositions[position],
+        clearChrome ? overlayChromePositions[position] : overlayPositions[position],
         className,
       )}
       {...props}
@@ -496,6 +529,12 @@ type SidebarSectionProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
   actions?: ReactNode
   /** Heading level for the title. Use 3 when the section sits inside another headed block, e.g. a `StepSection`. */
   headingLevel?: 2 | 3
+  /**
+   * `'subsection'` is a titled block inside another section or a step: a
+   * lighter hairline above it and no rule of its own below, so consecutive
+   * blocks share one divider. Its heading defaults to level 3.
+   */
+  variant?: 'section' | 'subsection'
   children: ReactNode
 }
 
@@ -505,14 +544,23 @@ export function SidebarSection({
   icon: Icon,
   iconClassName,
   actions,
-  headingLevel = 2,
+  variant = 'section',
+  headingLevel = variant === 'subsection' ? 3 : 2,
   children,
   className,
   ...props
 }: SidebarSectionProps) {
   const compact = useContext(SidebarDensityContext) === 'compact'
   return (
-    <section className={cn('border-b border-border bg-background/95', compact ? 'p-3' : 'p-4', className)} {...props}>
+    <section
+      className={cn(
+        variant === 'subsection'
+          ? 'border-t border-border/60 bg-background/95 px-4 py-3'
+          : cn('border-b border-border bg-background/95', compact ? 'p-3' : 'p-4'),
+        className,
+      )}
+      {...props}
+    >
       {(title || actions) && (
         <div className={cn('flex items-center justify-between gap-2', compact ? 'mb-2' : 'mb-3')}>
           {title && (
