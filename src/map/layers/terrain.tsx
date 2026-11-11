@@ -40,6 +40,37 @@ export type MapTerrainProps = {
   terrainGroundColor?: string
 }
 
+type TerrainCleanupMap = Pick<
+  MapLibreGL.Map,
+  'getTerrain' | 'setTerrain' | 'getLayer' | 'removeLayer' | 'getSource' | 'removeSource'
+>
+
+/**
+ * Release what `MapTerrain` added: terrain before the source it reads from, then the hillshade.
+ * A map removed before this cleanup runs (React runs a removed tree's cleanups parent first, so a
+ * `Map` unmounted with its terrain is gone already) has nothing left to release, and its methods
+ * throw; that is not an error.
+ */
+export function releaseMapTerrain(
+  map: TerrainCleanupMap,
+  ids: { hillshadeLayerId: string; hillshadeSourceId: string; terrainSourceId: string },
+  options: { reliefOnly: boolean; terrainOnly: boolean },
+) {
+  try {
+    if (
+      !options.reliefOnly &&
+      (options.terrainOnly ? map.getTerrain()?.source === ids.terrainSourceId : map.getTerrain())
+    ) {
+      map.setTerrain(null)
+    }
+    if (map.getLayer(ids.hillshadeLayerId)) map.removeLayer(ids.hillshadeLayerId)
+    if (map.getSource(ids.hillshadeSourceId)) map.removeSource(ids.hillshadeSourceId)
+    if (!options.reliefOnly && map.getSource(ids.terrainSourceId)) map.removeSource(ids.terrainSourceId)
+  } catch {
+    // The map was removed first.
+  }
+}
+
 /** Labels read badly under a hillshade, so it goes below the first symbol layer. */
 function firstSymbolLayerId(map: MapLibreGL.Map): string | undefined {
   return map.getStyle()?.layers?.find((layer) => layer.type === 'symbol')?.id
@@ -99,15 +130,8 @@ export function MapTerrain({
         beforeId && map.getLayer(beforeId) ? beforeId : firstSymbolLayerId(map),
       )
     }
-    return () => {
-      // Terrain has to be released before the source it reads from.
-      if (!reliefOnly && (terrainOnly ? map.getTerrain()?.source === terrainSourceId : map.getTerrain())) {
-        map.setTerrain(null)
-      }
-      if (map.getLayer(hillshadeLayerId)) map.removeLayer(hillshadeLayerId)
-      if (map.getSource(hillshadeSourceId)) map.removeSource(hillshadeSourceId)
-      if (!reliefOnly && map.getSource(terrainSourceId)) map.removeSource(terrainSourceId)
-    }
+    return () =>
+      releaseMapTerrain(map, { hillshadeLayerId, hillshadeSourceId, terrainSourceId }, { reliefOnly, terrainOnly })
   }, [
     attribution,
     beforeId,
@@ -135,8 +159,12 @@ export function MapTerrain({
     }))
     for (const layer of backgrounds) map.setPaintProperty(layer.id, 'background-color', terrainGroundColor)
     return () => {
-      for (const layer of original)
-        if (map.getLayer(layer.id)) map.setPaintProperty(layer.id, 'background-color', layer.color)
+      try {
+        for (const layer of original)
+          if (map.getLayer(layer.id)) map.setPaintProperty(layer.id, 'background-color', layer.color)
+      } catch {
+        // The map was removed first.
+      }
     }
   }, [reliefOnly, terrain, terrainGroundColor, isLoaded, map])
 
