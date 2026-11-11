@@ -859,6 +859,38 @@ the user's position with a marker.
 `PlaybackControls` steps a host-owned frame index with play/pause,
 previous/next and a scrubber, for time-lapse maps.
 
+`mode="continuous"` seeks a continuous position instead — metres along a route,
+seconds into a recording — and runs no timer: the host's animation loop
+advances `value` while `playing`. It takes `value`, `min` (default 0), `max`,
+`step` (the scrubber's granularity), `onValueChange`, `playing` and
+`onPlayingChange`; `canPlay={false}` holds play while keeping pause. `skip`
+adds ‹ › buttons that move by it and pause ("Back {skipLabel}" /
+"Forward {skipLabel}"; hidden on `workspace-max-sm`). `formatValue` formats the
+default "value / max" label (the "/ max" hidden on narrow workspaces) and the
+spoken "value of max"; `valueLabel` and `valueText` replace them. `seekLabel`
+names the scrubber (default "Position"), `pauseOnScrub` (default true) pauses
+on a drag, `playButton="labelled"` draws a primary Play/Pause button with its
+word, and `actions` takes extra controls at the end of the row. `clampPlaybackValue`
+is the pure clamp it uses.
+
+```tsx
+<PlaybackControls
+  mode="continuous"
+  value={metres}
+  max={routeLength}
+  step={5}
+  onValueChange={seek}
+  playing={playing}
+  onPlayingChange={setPlaying}
+  skip={10}
+  skipLabel="10 m"
+  formatValue={(m) => `${(m / 1000).toFixed(2)} km`}
+  seekLabel="Route position"
+  playButton="labelled"
+  actions={<SpeedPicker />}
+/>
+```
+
 ### Map timeline
 
 `MapTimeline` (`/ui`) is the timeline for time-based map data: transport
@@ -933,6 +965,21 @@ Opening a legend therefore moves nothing below it.
 
 Zoom and compass default to the top right, below a floating phone toolbar,
 whose height the workspace publishes as `--map-mobile-toolbar-height`.
+
+`MapOverlay` sits at a fixed `top-3`/`bottom-3` inset by default. Pass
+`clearChrome` to keep it clear of the same chrome instead: top positions clear
+the phone toolbar (`max(0.75rem, toolbar + 0.25rem)`, so `top-3` when there is
+none); bottom positions clear the phone sheet, the safe area and a mounted
+timeline; the bottom corners also stack above MapLibre's corner controls, the
+right one above the legend panel and, on phones, the left one above the legend
+stack. `bottom-center` clears the sheet, safe area and timeline only. A
+`className` inset still overrides it.
+
+```tsx
+<MapOverlay position="bottom-left" clearChrome className="max-w-[15rem]">
+  …
+</MapOverlay>
+```
 
 ### Settled viewport observation
 
@@ -1087,6 +1134,31 @@ copies an input's files, then clears the input so the same file can be chosen ag
 
 `ToolPageHeader` heads a tool that is a scrolling page. `MapSidebarShell` takes
 `density="compact"` for a tighter sidebar; every `SidebarSection` inside follows it.
+`SidebarSection variant="subsection"` is a titled block nested in another section
+or a `StepSection`: a lighter hairline above, no rule below and a level-3 heading
+by default (`headingLevel` still overrides it).
+
+`ColorField` picks a colour or leaves it unset: `value: string | null`,
+`onChange(string | null)` and an accessible `label` for the colour input. The
+swatch opens the native colour input; `presets` show as a row of swatches and in
+the picker's own list (`presetDisplay="picker"` keeps them in the list only, for
+a dense row); unset draws striped with a dashed border, titled `unsetTitle`
+(default "Default colour: choose one"); while a colour is set, a reset button
+named `resetLabel` (default "Reset {label}") returns `null`. `size="sm"` is a
+14 px swatch for a list row. Colours are emitted as lower-case `#rrggbb`;
+`normalizeHexColor` is the pure normalizer and `pickerFallback` the colour the
+picker opens on while unset.
+
+```tsx
+<ColorField
+  value={block.color}
+  onChange={setColor}
+  label={`Colour for ${block.name}`}
+  resetLabel={`Reset colour of ${block.name}`}
+  presets={['#ffffff', '#facc15', '#f97316']}
+/>
+```
+
 Pass `size="lg"` on a hub page that lists tools.
 
 ## Clipboard feedback and transports
