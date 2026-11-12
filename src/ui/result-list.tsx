@@ -7,16 +7,34 @@ import { formatNumber } from '../format/index.js'
 
 export type ResultRowAccent = 'sky' | 'green' | 'cyan' | 'amber' | 'violet' | 'orange' | 'rose' | 'teal'
 
-// Selected rows get a tint plus a left bar, so selection does not rely on colour alone.
+// Selected rows get a tint plus a thin inset outline (not an accent stripe), so selection does not
+// rely on the fill's colour alone.
 const selectedClasses: Record<ResultRowAccent, string> = {
-  sky: 'bg-sky-50 shadow-[inset_3px_0_0_theme(colors.sky.500)] dark:bg-sky-950/30',
-  green: 'bg-green-50 shadow-[inset_3px_0_0_theme(colors.green.500)] dark:bg-green-950/30',
-  cyan: 'bg-cyan-50 shadow-[inset_3px_0_0_theme(colors.cyan.500)] dark:bg-cyan-950/30',
-  amber: 'bg-amber-50 shadow-[inset_3px_0_0_theme(colors.amber.500)] dark:bg-amber-950/30',
-  violet: 'bg-violet-50 shadow-[inset_3px_0_0_theme(colors.violet.500)] dark:bg-violet-950/30',
-  orange: 'bg-orange-50 shadow-[inset_3px_0_0_theme(colors.orange.500)] dark:bg-orange-950/30',
-  rose: 'bg-rose-50 shadow-[inset_3px_0_0_theme(colors.rose.500)] dark:bg-rose-950/30',
-  teal: 'bg-teal-50 shadow-[inset_3px_0_0_theme(colors.teal.500)] dark:bg-teal-950/30',
+  sky: 'bg-sky-50 ring-1 ring-inset ring-sky-300 dark:bg-sky-950/30 dark:ring-sky-800',
+  green: 'bg-green-50 ring-1 ring-inset ring-green-300 dark:bg-green-950/30 dark:ring-green-800',
+  cyan: 'bg-cyan-50 ring-1 ring-inset ring-cyan-300 dark:bg-cyan-950/30 dark:ring-cyan-800',
+  amber: 'bg-amber-50 ring-1 ring-inset ring-amber-300 dark:bg-amber-950/30 dark:ring-amber-800',
+  violet: 'bg-violet-50 ring-1 ring-inset ring-violet-300 dark:bg-violet-950/30 dark:ring-violet-800',
+  orange: 'bg-orange-50 ring-1 ring-inset ring-orange-300 dark:bg-orange-950/30 dark:ring-orange-800',
+  rose: 'bg-rose-50 ring-1 ring-inset ring-rose-300 dark:bg-rose-950/30 dark:ring-rose-800',
+  teal: 'bg-teal-50 ring-1 ring-inset ring-teal-300 dark:bg-teal-950/30 dark:ring-teal-800',
+}
+
+// A selected row's detail continues its outline down the sides and along the bottom, so the two read
+// as one box.
+const selectedDetailClasses: Record<ResultRowAccent, string> = {
+  sky: 'bg-sky-50 shadow-[inset_1px_0_0_theme(colors.sky.300),inset_-1px_-1px_0_theme(colors.sky.300)] dark:bg-sky-950/30 dark:shadow-[inset_1px_0_0_theme(colors.sky.800),inset_-1px_-1px_0_theme(colors.sky.800)]',
+  green:
+    'bg-green-50 shadow-[inset_1px_0_0_theme(colors.green.300),inset_-1px_-1px_0_theme(colors.green.300)] dark:bg-green-950/30 dark:shadow-[inset_1px_0_0_theme(colors.green.800),inset_-1px_-1px_0_theme(colors.green.800)]',
+  cyan: 'bg-cyan-50 shadow-[inset_1px_0_0_theme(colors.cyan.300),inset_-1px_-1px_0_theme(colors.cyan.300)] dark:bg-cyan-950/30 dark:shadow-[inset_1px_0_0_theme(colors.cyan.800),inset_-1px_-1px_0_theme(colors.cyan.800)]',
+  amber:
+    'bg-amber-50 shadow-[inset_1px_0_0_theme(colors.amber.300),inset_-1px_-1px_0_theme(colors.amber.300)] dark:bg-amber-950/30 dark:shadow-[inset_1px_0_0_theme(colors.amber.800),inset_-1px_-1px_0_theme(colors.amber.800)]',
+  violet:
+    'bg-violet-50 shadow-[inset_1px_0_0_theme(colors.violet.300),inset_-1px_-1px_0_theme(colors.violet.300)] dark:bg-violet-950/30 dark:shadow-[inset_1px_0_0_theme(colors.violet.800),inset_-1px_-1px_0_theme(colors.violet.800)]',
+  orange:
+    'bg-orange-50 shadow-[inset_1px_0_0_theme(colors.orange.300),inset_-1px_-1px_0_theme(colors.orange.300)] dark:bg-orange-950/30 dark:shadow-[inset_1px_0_0_theme(colors.orange.800),inset_-1px_-1px_0_theme(colors.orange.800)]',
+  rose: 'bg-rose-50 shadow-[inset_1px_0_0_theme(colors.rose.300),inset_-1px_-1px_0_theme(colors.rose.300)] dark:bg-rose-950/30 dark:shadow-[inset_1px_0_0_theme(colors.rose.800),inset_-1px_-1px_0_theme(colors.rose.800)]',
+  teal: 'bg-teal-50 shadow-[inset_1px_0_0_theme(colors.teal.300),inset_-1px_-1px_0_theme(colors.teal.300)] dark:bg-teal-950/30 dark:shadow-[inset_1px_0_0_theme(colors.teal.800),inset_-1px_-1px_0_theme(colors.teal.800)]',
 }
 
 const focusClasses: Record<ResultRowAccent, string> = {
@@ -107,7 +125,7 @@ export function ResultRowDetail({
   className?: string
   children: ReactNode
 }) {
-  return <div className={cn('pb-3 pl-8 pr-3 text-xs', selectedClasses[accent], className)}>{children}</div>
+  return <div className={cn('pb-3 pl-8 pr-3 text-xs', selectedDetailClasses[accent], className)}>{children}</div>
 }
 
 type ListHeaderProps = {

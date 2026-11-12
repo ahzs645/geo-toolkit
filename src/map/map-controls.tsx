@@ -9,6 +9,7 @@ import { cn } from '../utils.js'
 import { MAP_OVERLAY_Z } from '../ui/map-overlay.js'
 import { useMap } from './map-context.js'
 import { greatCircleMeters, scaleBarFor, type ScaleBar } from './map-scale.js'
+import { MapControlsSideContext } from './map-layers-control.js'
 
 type MapControlsProps = {
   /** Position of the controls on the map (default: "bottom-right") */
@@ -34,6 +35,11 @@ type MapControlsProps = {
    * and marks it on the map, instead of flying there once (default: false).
    */
   trackLocation?: boolean
+  /**
+   * More controls stacked after the built-in ones, e.g. a `MapLayersControl`.
+   * Popovers inside open towards the map's middle.
+   */
+  children?: React.ReactNode
 }
 
 // Top corners clear a toolbar floating over the map on phones (the workspace
@@ -122,6 +128,7 @@ function MapControls({
   className,
   onLocate,
   trackLocation = false,
+  children,
 }: MapControlsProps) {
   const { map, isLoaded } = useMap()
   const [waitingForLocation, setWaitingForLocation] = useState(false)
@@ -217,64 +224,68 @@ function MapControls({
 
   if (!isLoaded) return null
 
+  const side = (mobilePosition ?? position).endsWith('left') ? 'left' : 'right'
   return (
-    <div
-      className={cn(
-        'absolute flex flex-col gap-1.5',
-        MAP_OVERLAY_Z.controls,
-        positionClasses[mobilePosition ?? position],
-        mobilePosition ? desktopPositionClasses[position] : null,
-        (mobilePosition ?? position) in mobilePanelAwarePositionClasses
-          ? mobilePanelAwarePositionClasses[
-              (mobilePosition ?? position) as keyof typeof mobilePanelAwarePositionClasses
-            ]
-          : null,
-        className,
-      )}
-    >
-      {showZoom && (
-        <ControlGroup>
-          <ControlButton onClick={handleZoomIn} label="Zoom in">
-            <Plus className="size-4" />
-          </ControlButton>
-          <ControlButton onClick={handleZoomOut} label="Zoom out">
-            <Minus className="size-4" />
-          </ControlButton>
-        </ControlGroup>
-      )}
-      {showCompass && (
-        <ControlGroup>
-          <CompassButton onClick={handleResetBearing} draggable={draggableCompass} />
-        </ControlGroup>
-      )}
-      {showLocate && (
-        <ControlGroup>
-          <ControlButton
-            onClick={handleLocate}
-            label={
-              trackLocation ? (tracking ? 'Stop following my location' : 'Follow my location') : 'Find my location'
-            }
-            disabled={waitingForLocation && !trackLocation}
-            pressed={trackLocation ? tracking : undefined}
-          >
-            {waitingForLocation ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : tracking ? (
-              <LocateFixed className="size-4 text-sky-500" />
-            ) : (
-              <Locate className="size-4" />
-            )}
-          </ControlButton>
-        </ControlGroup>
-      )}
-      {showFullscreen && (
-        <ControlGroup>
-          <ControlButton onClick={handleFullscreen} label="Toggle fullscreen">
-            <Maximize className="size-4" />
-          </ControlButton>
-        </ControlGroup>
-      )}
-    </div>
+    <MapControlsSideContext.Provider value={side}>
+      <div
+        className={cn(
+          'absolute flex flex-col gap-1.5',
+          MAP_OVERLAY_Z.controls,
+          positionClasses[mobilePosition ?? position],
+          mobilePosition ? desktopPositionClasses[position] : null,
+          (mobilePosition ?? position) in mobilePanelAwarePositionClasses
+            ? mobilePanelAwarePositionClasses[
+                (mobilePosition ?? position) as keyof typeof mobilePanelAwarePositionClasses
+              ]
+            : null,
+          className,
+        )}
+      >
+        {showZoom && (
+          <ControlGroup>
+            <ControlButton onClick={handleZoomIn} label="Zoom in">
+              <Plus className="size-4" />
+            </ControlButton>
+            <ControlButton onClick={handleZoomOut} label="Zoom out">
+              <Minus className="size-4" />
+            </ControlButton>
+          </ControlGroup>
+        )}
+        {showCompass && (
+          <ControlGroup>
+            <CompassButton onClick={handleResetBearing} draggable={draggableCompass} />
+          </ControlGroup>
+        )}
+        {showLocate && (
+          <ControlGroup>
+            <ControlButton
+              onClick={handleLocate}
+              label={
+                trackLocation ? (tracking ? 'Stop following my location' : 'Follow my location') : 'Find my location'
+              }
+              disabled={waitingForLocation && !trackLocation}
+              pressed={trackLocation ? tracking : undefined}
+            >
+              {waitingForLocation ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : tracking ? (
+                <LocateFixed className="size-4 text-sky-500" />
+              ) : (
+                <Locate className="size-4" />
+              )}
+            </ControlButton>
+          </ControlGroup>
+        )}
+        {showFullscreen && (
+          <ControlGroup>
+            <ControlButton onClick={handleFullscreen} label="Toggle fullscreen">
+              <Maximize className="size-4" />
+            </ControlButton>
+          </ControlGroup>
+        )}
+        {children}
+      </div>
+    </MapControlsSideContext.Provider>
   )
 }
 

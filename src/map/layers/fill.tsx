@@ -84,6 +84,12 @@ export type MapFillLayerProps = {
    * Layers sharing a `sourceKey` share one state.
    */
   featureState?: MapFeatureStateById
+  /**
+   * Whether the layer takes pointer input (default: true). `false` registers no
+   * click or hover listeners: on a 3D-terrain map every hover query is a
+   * synchronous GPU readback, so a drawn-only layer should opt out. Fixed at mount.
+   */
+  interactive?: boolean
 }
 
 export function MapFillLayer({
@@ -110,6 +116,7 @@ export function MapFillLayer({
   hoverFillOpacity,
   filter,
   featureState,
+  interactive = true,
 }: MapFillLayerProps) {
   const { map, isLoaded } = useMap()
   const uid = useId().replace(/:/g, '')
@@ -295,22 +302,26 @@ export function MapFillLayer({
       removeTooltip()
     }
 
-    map.on('click', fillLayerId, handleClick as never)
-    map.on('mouseenter', fillLayerId, handleMouseEnter)
-    map.on('mousemove', fillLayerId, handleMouseMove as never)
-    map.on('mouseleave', fillLayerId, handleMouseLeave)
-    const detachPointerDismiss = attachPointerDismiss(map, removeTooltip)
-    const unregisterHover = registerHoverLayer(map, fillLayerId, () => !!hoverHtmlRef.current)
+    if (interactive) {
+      map.on('click', fillLayerId, handleClick as never)
+      map.on('mouseenter', fillLayerId, handleMouseEnter)
+      map.on('mousemove', fillLayerId, handleMouseMove as never)
+      map.on('mouseleave', fillLayerId, handleMouseLeave)
+    }
+    const detachPointerDismiss = interactive ? attachPointerDismiss(map, removeTooltip) : () => {}
+    const unregisterHover = interactive ? registerHoverLayer(map, fillLayerId, () => !!hoverHtmlRef.current) : () => {}
 
     const releaseOrder = registerMapLayerOrder(map, [fillLayerId, lineLayerId, selectedLayerId], layerOrder)
 
     return () => {
       releaseOrder()
       try {
-        map.off('click', fillLayerId, handleClick as never)
-        map.off('mouseenter', fillLayerId, handleMouseEnter)
-        map.off('mousemove', fillLayerId, handleMouseMove as never)
-        map.off('mouseleave', fillLayerId, handleMouseLeave)
+        if (interactive) {
+          map.off('click', fillLayerId, handleClick as never)
+          map.off('mouseenter', fillLayerId, handleMouseEnter)
+          map.off('mousemove', fillLayerId, handleMouseMove as never)
+          map.off('mouseleave', fillLayerId, handleMouseLeave)
+        }
         detachPointerDismiss()
         unregisterHover()
         if (boxZoomWasEnabledRef.current) {
