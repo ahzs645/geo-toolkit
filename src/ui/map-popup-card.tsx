@@ -38,7 +38,7 @@ export function MapPopupCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           {eyebrow && (
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{eyebrow}</div>
+            <div className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{eyebrow}</div>
           )}
           <div className="text-sm font-semibold leading-snug text-foreground">{title}</div>
           {subtitle && <div className="text-xs text-muted-foreground">{subtitle}</div>}

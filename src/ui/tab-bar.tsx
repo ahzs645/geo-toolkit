@@ -118,7 +118,7 @@ export function TabBar<T extends string>({
             className={cn(
               'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 touch:min-h-10',
               stretch && 'min-w-0 flex-1 justify-center',
-              stacked && 'flex-col gap-1 text-[11px]',
+              stacked && 'flex-col gap-1 text-2xs',
               orientation === 'responsive' && 'workspace-desktop:justify-start',
               variant === 'pill'
                 ? cn(
@@ -139,7 +139,7 @@ export function TabBar<T extends string>({
             {option.marker ?? (Icon && <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />)}
             <span className={cn(stretch && 'min-w-0 truncate')}>{option.label}</span>
             {option.badge != null && (
-              <span className="rounded-full bg-muted px-1.5 text-[10px] leading-4 text-muted-foreground">
+              <span className="rounded-full bg-muted px-1.5 text-3xs leading-4 text-muted-foreground">
                 {option.badge}
               </span>
             )}

@@ -5,10 +5,11 @@ export type BadgeTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 
 
 const softClasses: Record<BadgeTone, string> = {
   neutral: 'bg-muted text-muted-foreground',
-  info: 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200',
-  success: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
-  warning: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
-  danger: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+  // Status tones follow the theme's status colours (tailwind-theme.mjs); the rest are categories.
+  info: 'bg-info/15 text-info-foreground',
+  success: 'bg-success/15 text-success-foreground',
+  warning: 'bg-warning/15 text-warning-foreground',
+  danger: 'bg-danger/15 text-danger-foreground',
   violet: 'bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-300',
   cyan: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-200',
   orange: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300',
@@ -27,10 +28,10 @@ const solidClasses: Record<BadgeTone, string> = {
 
 const outlineClasses: Record<BadgeTone, string> = {
   neutral: 'border-border text-muted-foreground',
-  info: 'border-sky-300 text-sky-700 dark:border-sky-800 dark:text-sky-300',
-  success: 'border-green-300 text-green-700 dark:border-green-800 dark:text-green-300',
-  warning: 'border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300',
-  danger: 'border-red-300 text-red-700 dark:border-red-800 dark:text-red-300',
+  info: 'border-info-border text-info',
+  success: 'border-success-border text-success',
+  warning: 'border-warning-border text-warning',
+  danger: 'border-danger-border text-danger',
   violet: 'border-violet-300 text-violet-700 dark:border-violet-800 dark:text-violet-300',
   cyan: 'border-cyan-300 text-cyan-700 dark:border-cyan-800 dark:text-cyan-300',
   orange: 'border-orange-300 text-orange-700 dark:border-orange-800 dark:text-orange-300',
@@ -58,7 +59,7 @@ export function Badge({
     <span
       className={cn(
         'inline-flex shrink-0 items-center gap-1 whitespace-nowrap font-medium',
-        size === 'xs' ? 'px-1.5 py-0.5 text-[11px] leading-4' : 'px-2 py-0.5 text-xs',
+        size === 'xs' ? 'px-1.5 py-0.5 text-2xs leading-4' : 'px-2 py-0.5 text-xs',
         pill ? 'rounded-full' : 'rounded',
         variant === 'soft' && softClasses[tone],
         variant === 'solid' && solidClasses[tone],

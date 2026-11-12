@@ -222,7 +222,7 @@ export function MapPieClusterLayer({
             copy.appendChild(titleElement)
             if (subtitle) {
               const subtitleElement = document.createElement('span')
-              subtitleElement.className = 'block truncate text-[11px] text-muted-foreground'
+              subtitleElement.className = 'block truncate text-2xs text-muted-foreground'
               subtitleElement.textContent = subtitle
               copy.appendChild(subtitleElement)
             }

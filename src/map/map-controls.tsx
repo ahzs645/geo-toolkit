@@ -430,7 +430,7 @@ function MapScaleBar({ position = 'bottom-left', maxWidth = 100, hideAbovePitch 
   return (
     <div
       className={cn(
-        'pointer-events-none absolute rounded bg-background/80 px-1.5 pb-1 pt-0.5 text-[10px] leading-3 text-foreground shadow-sm',
+        'pointer-events-none absolute rounded bg-background/80 px-1.5 pb-1 pt-0.5 text-3xs leading-3 text-foreground shadow-sm',
         MAP_OVERLAY_Z.controls,
         positionClasses[position],
         mobilePanelAwarePositionClasses[position],

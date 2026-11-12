@@ -33,9 +33,9 @@ export interface StatItem {
 
 const toneClasses: Record<NonNullable<StatItem['tone']>, string> = {
   default: 'text-foreground',
-  danger: 'text-red-600 dark:text-red-400',
-  warning: 'text-amber-600 dark:text-amber-400',
-  success: 'text-green-600 dark:text-green-400',
+  danger: 'text-danger',
+  warning: 'text-warning',
+  success: 'text-success',
   muted: 'text-muted-foreground',
   primary: 'text-primary',
 }
@@ -109,7 +109,7 @@ export function StatTileBody({
           className="absolute inset-0 z-[1] cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
       )}
-      {item.note && <div className="text-[11px] leading-snug text-muted-foreground">{item.note}</div>}
+      {item.note && <div className="text-2xs leading-snug text-muted-foreground">{item.note}</div>}
       {/* Uppercase only for md tiles from sm up: tracked capitals overflow a quarter-width phone tile. */}
       {/* The label truncates in narrow tiles; the full text stays a hover away. */}
       <dt
