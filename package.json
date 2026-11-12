@@ -162,7 +162,7 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.4.0",
     "vitest": "^4.1.8",
-    "maplibre-gl": "^5.15.0",
+    "maplibre-gl": "^6.18.0",
     "@deck.gl/core": "^9.3.4",
     "@deck.gl/geo-layers": "^9.3.4",
     "@deck.gl/layers": "^9.3.4",
