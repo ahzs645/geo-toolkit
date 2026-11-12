@@ -578,7 +578,8 @@ export default {
 ```
 
 `Button` sizes `xs` (28 px), `2xs` (24 px), `icon-xs` and `icon-2xs` give dense
-tool panels their controls without height overrides.
+tool panels their controls without height overrides; `field` (32 px) matches a
+dense form field, for a button that shares a row with one.
 
 Responsive and dark variants use CSS `@scope` to stop at nested workspace
 boundaries. Plan for Chromium/Edge 118+, Firefox 146+, and Safari/iOS Safari
