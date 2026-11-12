@@ -554,6 +554,33 @@ Theme color variables use **space-separated HSL channels**, not complete
 Chart roles `--chart-1` through `--chart-5` are theme presentation colors and
 must not serve as stable category identities.
 
+Status colours `warning`, `danger`, `success` and `info` each have four roles:
+`--warning` for text and icons on the page background, and
+`--warning-foreground`, `--warning-surface` and `--warning-border` for the text,
+fill and edge of a tinted box. `InlineAlert`, `MapLegendNote`, notifications,
+status `Badge` tones, `StatGroup` and `TextButton tone="danger"` read them.
+`--destructive` stays the fill of a destructive action button.
+
+Every corner derives from `--radius`: `rounded-sm` and `rounded` are 4 px less,
+`rounded-md` 2 px less, `rounded-lg` equal, `rounded-xl` and `rounded-2xl` 4 and
+8 px more. `rounded-full` stays a pill. Setting `--radius: 0` squares them all.
+
+A host using Tailwind extends the same token names from
+`@pgmaps/geo-toolkit/tailwind-theme.mjs`, so its markup and the package's agree:
+
+```js
+import { toolkitTheme, touchVariant } from '@pgmaps/geo-toolkit/tailwind-theme.mjs'
+
+export default {
+  theme: { extend: toolkitTheme },
+  plugins: [touchVariant],
+}
+```
+
+`Button` sizes `xs` (28 px), `2xs` (24 px), `icon-xs` and `icon-2xs` give dense
+tool panels their controls without height overrides; `field` (32 px) matches a
+dense form field, for a button that shares a row with one.
+
 Responsive and dark variants use CSS `@scope` to stop at nested workspace
 boundaries. Plan for Chromium/Edge 118+, Firefox 146+, and Safari/iOS Safari
 26.4+ for that feature. Safari 17.4–18.x also implements it, but Safari

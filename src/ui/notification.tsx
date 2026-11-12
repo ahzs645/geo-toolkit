@@ -66,17 +66,17 @@ const TONE_ICON: Record<NotificationTone, ReactNode> = {
 const TONE_CARD: Record<NotificationTone, string> = {
   info: 'border-border',
   loading: 'border-border',
-  success: 'border-green-300 dark:border-green-900/60',
-  warning: 'border-amber-300 dark:border-amber-900/60',
-  error: 'border-destructive/30',
+  success: 'border-success-border',
+  warning: 'border-warning-border',
+  error: 'border-danger-border',
 }
 
 const TONE_BADGE: Record<NotificationTone, string> = {
   info: 'bg-primary/10 text-primary',
   loading: 'bg-primary/10 text-primary',
-  success: 'bg-green-500/15 text-green-700 dark:text-green-300',
-  warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-  error: 'bg-destructive/10 text-destructive',
+  success: 'bg-success/15 text-success',
+  warning: 'bg-warning/15 text-warning',
+  error: 'bg-danger/10 text-danger',
 }
 
 /** `error` interrupts as an alert; everything else waits its turn as a status. */

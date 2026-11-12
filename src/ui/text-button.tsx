@@ -5,7 +5,7 @@ import { cn } from '../utils.js'
 const toneClasses = {
   accent: 'text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300',
   muted: 'text-muted-foreground hover:text-foreground',
-  danger: 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300',
+  danger: 'text-danger hover:text-danger-foreground',
   primary: 'text-primary hover:text-primary/80',
 } as const
 

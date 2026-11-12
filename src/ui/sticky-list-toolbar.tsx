@@ -113,7 +113,7 @@ export function FilterToggleButton({
     >
       {label}
       {activeCount > 0 && (
-        <span className="rounded-full bg-sky-600 px-1.5 text-[10px] leading-4 text-white">{activeCount}</span>
+        <span className="rounded-full bg-sky-600 px-1.5 text-3xs leading-4 text-white">{activeCount}</span>
       )}
       <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden="true" />
     </button>

@@ -670,7 +670,7 @@ export function MapTimeline({
         {shownLabel}
       </div>
       {summaryContent && density !== 'full' ? (
-        <div className="truncate text-[11px] leading-tight text-muted-foreground">{summaryContent}</div>
+        <div className="truncate text-2xs leading-tight text-muted-foreground">{summaryContent}</div>
       ) : null}
     </div>
   )
@@ -728,7 +728,7 @@ export function MapTimeline({
                 }}
               >
                 {speedLabel && speedMs !== 1000 ? (
-                  <span className="text-[11px] font-semibold tabular-nums">{speedLabel}</span>
+                  <span className="text-2xs font-semibold tabular-nums">{speedLabel}</span>
                 ) : (
                   <SlidersHorizontal className="size-4" />
                 )}
@@ -749,13 +749,13 @@ export function MapTimeline({
         >
           {windowGroup ? (
             <div className="space-y-1">
-              <div className="text-[11px] font-medium text-muted-foreground">Window</div>
+              <div className="text-2xs font-medium text-muted-foreground">Window</div>
               {windowGroup}
             </div>
           ) : null}
           {speedGroup ? (
             <div className="space-y-1">
-              <div className="text-[11px] font-medium text-muted-foreground">Speed</div>
+              <div className="text-2xs font-medium text-muted-foreground">Speed</div>
               {speedGroup}
             </div>
           ) : null}
@@ -770,7 +770,7 @@ export function MapTimeline({
       >
         {tooltipBucket ? (
           <div
-            className="pointer-events-none absolute bottom-full z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-background shadow"
+            className="pointer-events-none absolute bottom-full z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-2xs font-medium tabular-nums text-background shadow"
             style={{
               left: `clamp(2.5rem, calc(${percent(tooltipIndex! + 0.5)}), calc(100% - 2.5rem))`,
             }}
@@ -868,7 +868,7 @@ export function MapTimeline({
           )}
         </div>
         {/* Axis labels */}
-        <div aria-hidden="true" className="relative mt-1 h-3.5 overflow-hidden text-[10px] leading-none">
+        <div aria-hidden="true" className="relative mt-1 h-3.5 overflow-hidden text-3xs leading-none">
           {ticks.map((i) => {
             const left = (i + 0.5) / count
             return (

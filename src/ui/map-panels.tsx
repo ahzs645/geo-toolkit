@@ -843,12 +843,10 @@ export function InlineAlert({ children, tone = 'info', title, loading = false, c
       className={cn(
         'rounded-md border p-2 text-xs leading-5',
         (loading || title) && 'flex items-start gap-2',
-        tone === 'success' &&
-          'border-green-300 bg-green-50 text-green-900 dark:border-green-900/60 dark:bg-green-950/35 dark:text-green-100',
+        tone === 'success' && 'border-success-border bg-success-surface text-success-foreground',
         tone === 'info' && 'border-border bg-muted/20 text-muted-foreground',
-        tone === 'warning' &&
-          'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-100',
-        tone === 'error' && 'border-destructive/30 bg-destructive/10 text-destructive',
+        tone === 'warning' && 'border-warning-border bg-warning-surface text-warning-foreground',
+        tone === 'error' && 'border-danger-border bg-danger-surface text-danger-foreground',
         className,
       )}
     >
@@ -1543,9 +1541,9 @@ export function MapLegendNote({ tone = 'muted', className, ...props }: MapLegend
         'px-1 text-xs leading-snug',
         tone === 'muted' && 'text-muted-foreground',
         tone === 'warning' &&
-          'rounded border border-amber-200 bg-amber-50 px-2 py-1 font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200',
+          'rounded border border-warning-border bg-warning-surface px-2 py-1 font-medium text-warning-foreground',
         tone === 'error' &&
-          'rounded border border-destructive/30 bg-destructive/10 px-2 py-1 font-medium text-destructive',
+          'rounded border border-danger-border bg-danger-surface px-2 py-1 font-medium text-danger-foreground',
         className,
       )}
       {...props}

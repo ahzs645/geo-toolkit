@@ -117,7 +117,7 @@ export function StepSection({
             {title}
           </span>
           {reference && (
-            <span id={referenceId} className="text-[11px] font-normal text-muted-foreground">
+            <span id={referenceId} className="text-2xs font-normal text-muted-foreground">
               {reference}
             </span>
           )}

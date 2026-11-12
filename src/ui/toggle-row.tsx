@@ -83,7 +83,7 @@ export function ToggleRow({
       {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
       <span className={cn('min-w-0', layout === 'row' && 'flex-1')}>
         <span className="block truncate font-medium">{label}</span>
-        {description && <span className="block truncate text-[11px] opacity-80">{description}</span>}
+        {description && <span className="block truncate text-2xs opacity-80">{description}</span>}
       </span>
       {trailing && <span className="shrink-0">{trailing}</span>}
     </button>
