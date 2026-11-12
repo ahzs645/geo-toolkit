@@ -194,7 +194,7 @@ export function MapLayersControl<T extends string = string>({
                     <span className="min-w-0">
                       <span className="block">{option.label}</span>
                       {option.description && (
-                        <span className="block text-[11px] leading-4 text-muted-foreground">{option.description}</span>
+                        <span className="block text-2xs leading-4 text-muted-foreground">{option.description}</span>
                       )}
                     </span>
                   </label>
@@ -224,7 +224,7 @@ export function MapLayersControl<T extends string = string>({
                     <span className="min-w-0">
                       <span className="block">{overlay.label}</span>
                       {overlay.description && (
-                        <span className="block text-[11px] leading-4 text-muted-foreground">{overlay.description}</span>
+                        <span className="block text-2xs leading-4 text-muted-foreground">{overlay.description}</span>
                       )}
                     </span>
                   </label>
