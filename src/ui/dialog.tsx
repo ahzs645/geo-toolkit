@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 
 import { cn } from '../utils.js'
 import { useWorkspace, useWorkspacePresentation } from '../workspace/workspace-context.js'
+import { usePanelPortalContainer } from './panel-portal.js'
 
 const Dialog = DialogPrimitive.Root
 const DialogTrigger = DialogPrimitive.Trigger
@@ -91,6 +92,7 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
     ref,
   ) => {
     const workspace = useWorkspace()
+    const panelContainer = usePanelPortalContainer()
     const presentation = useWorkspacePresentation()
     const theme = themeInput ?? workspace?.theme ?? 'light'
     const effect = onOpenEffect ?? workspace?.onDialogOpenChange
@@ -98,7 +100,7 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
     const position = embedded ? 'absolute' : 'fixed'
     const layer = elevated ? 'z-[1200]' : 'z-50'
     return (
-      <DialogPortal container={portalContainer ?? workspace?.root}>
+      <DialogPortal container={portalContainer ?? panelContainer ?? workspace?.root}>
         <div
           // Radix Portal watches this node's animation. Its no-op exit animation
           // keeps the theme wrapper around until the inner surfaces finish.
