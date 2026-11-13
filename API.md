@@ -734,8 +734,9 @@ still loads without React. Import `DashboardToolbar`, `RangeControls`,
   `label`, numeric axis formatters/labels, configurable `yAxis.width` and a height. They keep zoom locally
   unless `zoom` / `onZoom` control it. Drag selects a rectangle, `+` zooms and
   `Home` resets. Zoom and fullscreen preserve the mounted chart instance.
-- `ChartViewport` reports the available height of a host-styled slot;
-  `SizedChart` observes width. For custom renderers, `XYPlot` and canvas points
+- `ChartViewport` reports the available height of a host-styled slot, committed
+  before paint, so a sibling opening or folding beside the chart never leaves it
+  drawn at the old height; `SizedChart` observes width. For custom renderers, `XYPlot` and canvas points
   accept plot insets, including axis sizes, to align pointer and draw coordinates.
 - `captureChartSvg(element, { title?, subtitle?, series? })` resolves theme CSS
   and captures SVG plots/axes and canvas observations in a standalone SVG Blob,
