@@ -252,7 +252,7 @@ function MapSectionLayoutInner({
       data-desktop-right-open={showDesktopRightSidebar}
       data-panel-resizing={sidebarResizing || bottomPaneResizing}
       className={cn(
-        'geo-map-layout relative flex h-full w-full overflow-clip bg-slate-100 dark:bg-slate-950',
+        'geo-map-layout relative flex h-full w-full overflow-clip bg-map-surround',
         // Padding (not a wrapper element) keeps the existing flex row untouched
         // for every page that does not use a bottom pane. Desktop only — the
         // mobile table renders as a sheet instead.

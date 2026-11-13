@@ -59,6 +59,15 @@ export const toolkitTheme = {
     danger: status('danger'),
     success: status('success'),
     info: status('info'),
+    // UI state colours a host theme can recolour: a selected row's fill (whose alpha is its own
+    // token, 0.3 in the dark theme), its edge and focus ring; text links; the band round a map.
+    selected: {
+      DEFAULT: 'hsl(var(--selected) / var(--selected-alpha))',
+      border: color('selected-border'),
+      focus: color('selected-focus'),
+    },
+    link: { DEFAULT: color('link'), hover: color('link-hover') },
+    'map-surround': color('map-surround'),
     border: color('border'),
     input: color('input'),
     ring: color('ring'),

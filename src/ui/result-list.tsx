@@ -5,11 +5,16 @@ import { InlineAlert } from './map-panels.js'
 import { TextButton } from './text-button.js'
 import { formatNumber } from '../format/index.js'
 
-export type ResultRowAccent = 'sky' | 'green' | 'cyan' | 'amber' | 'violet' | 'orange' | 'rose' | 'teal'
+/**
+ * `theme` (the default) reads the `selected` tokens, which a host theme can recolour; their defaults
+ * are sky's. The named palettes stay fixed, for a list that keeps its page's own colour.
+ */
+export type ResultRowAccent = 'theme' | 'sky' | 'green' | 'cyan' | 'amber' | 'violet' | 'orange' | 'rose' | 'teal'
 
 // Selected rows get a tint plus a thin inset outline (not an accent stripe), so selection does not
 // rely on the fill's colour alone.
 const selectedClasses: Record<ResultRowAccent, string> = {
+  theme: 'bg-selected ring-1 ring-inset ring-selected-border',
   sky: 'bg-sky-50 ring-1 ring-inset ring-sky-300 dark:bg-sky-950/30 dark:ring-sky-800',
   green: 'bg-green-50 ring-1 ring-inset ring-green-300 dark:bg-green-950/30 dark:ring-green-800',
   cyan: 'bg-cyan-50 ring-1 ring-inset ring-cyan-300 dark:bg-cyan-950/30 dark:ring-cyan-800',
@@ -23,6 +28,8 @@ const selectedClasses: Record<ResultRowAccent, string> = {
 // A selected row's detail continues its outline down the sides and along the bottom, so the two read
 // as one box.
 const selectedDetailClasses: Record<ResultRowAccent, string> = {
+  theme:
+    'bg-selected shadow-[inset_1px_0_0_theme(colors.selected.border),inset_-1px_-1px_0_theme(colors.selected.border)]',
   sky: 'bg-sky-50 shadow-[inset_1px_0_0_theme(colors.sky.300),inset_-1px_-1px_0_theme(colors.sky.300)] dark:bg-sky-950/30 dark:shadow-[inset_1px_0_0_theme(colors.sky.800),inset_-1px_-1px_0_theme(colors.sky.800)]',
   green:
     'bg-green-50 shadow-[inset_1px_0_0_theme(colors.green.300),inset_-1px_-1px_0_theme(colors.green.300)] dark:bg-green-950/30 dark:shadow-[inset_1px_0_0_theme(colors.green.800),inset_-1px_-1px_0_theme(colors.green.800)]',
@@ -38,6 +45,7 @@ const selectedDetailClasses: Record<ResultRowAccent, string> = {
 }
 
 const focusClasses: Record<ResultRowAccent, string> = {
+  theme: 'focus-visible:ring-selected-focus',
   sky: 'focus-visible:ring-sky-500',
   green: 'focus-visible:ring-green-500',
   cyan: 'focus-visible:ring-cyan-500',
@@ -75,7 +83,7 @@ export function ResultRow({
   dotColor,
   trailing,
   selected = false,
-  accent = 'sky',
+  accent = 'theme',
   className,
   type = 'button',
   ...props
@@ -117,7 +125,7 @@ export function ResultRow({
  * lines its content up with the row's title. Assumes the row has a marker.
  */
 export function ResultRowDetail({
-  accent = 'sky',
+  accent = 'theme',
   className,
   children,
 }: {

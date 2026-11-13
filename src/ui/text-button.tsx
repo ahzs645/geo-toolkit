@@ -3,7 +3,7 @@ import { ExternalLink as ExternalLinkIcon } from 'lucide-react'
 import { cn } from '../utils.js'
 
 const toneClasses = {
-  accent: 'text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300',
+  accent: 'text-link hover:text-link-hover',
   muted: 'text-muted-foreground hover:text-foreground',
   danger: 'text-danger hover:text-danger-foreground',
   primary: 'text-primary hover:text-primary/80',

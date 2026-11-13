@@ -415,7 +415,9 @@ back to the former end. Retained focused items preserve their position.
 so a row that grew to show its detail ends up fully visible. Render a selection's
 detail under its row in `children`, not above the list: rows are re-measured, and
 the clicked row stays where it is. `ResultRowDetail` continues the row's selected
-tint and left bar under it, so the two read as one item. Scrolling to a row allows for a sticky
+tint and left bar under it, so the two read as one item. The default
+`accent="theme"` reads the `selected` tokens, so a host theme recolours it; a named
+palette (`sky`, `teal`, `green`, …) stays that colour whatever the theme. Scrolling to a row allows for a sticky
 `ListHeader` placed directly above the list.
 
 Import the toolkit stylesheet once. Give the workspace a definite height and
@@ -560,6 +562,15 @@ Status colours `warning`, `danger`, `success` and `info` each have four roles:
 fill and edge of a tinted box. `InlineAlert`, `MapLegendNote`, notifications,
 status `Badge` tones, `StatGroup` and `TextButton tone="danger"` read them.
 `--destructive` stays the fill of a destructive action button.
+
+UI-state tokens let a host theme recolour what used to be fixed sky and
+slate: `--selected`, `--selected-border` and `--selected-focus` are a selected
+result row's fill, edge and focus ring (`ResultRow` and `ResultRowDetail` with
+the default `accent="theme"`), with `--selected-alpha` as the fill's opacity
+(1 in light, 0.3 in dark, so the dark tint shows the surface under it);
+`--link` and `--link-hover` colour `TextButton tone="accent"`; and
+`--map-surround` is the band `MapSectionLayout` shows round its map. Their
+defaults are Tailwind's sky and slate, the colours these parts had before.
 
 Every corner derives from `--radius`: `rounded-sm` and `rounded` are 4 px less,
 `rounded-md` 2 px less, `rounded-lg` equal, `rounded-xl` and `rounded-2xl` 4 and
