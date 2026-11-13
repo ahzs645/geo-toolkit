@@ -147,8 +147,10 @@ export function DialogShell({
         {...contentProps}
         aria-hidden={!effectiveOpen || undefined}
         {...(!effectiveOpen ? { inert: '' } : {})}
-        onOpenAutoFocus={() => {
-          returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        onOpenAutoFocus={(event) => {
+          const document = (event.target as HTMLElement).ownerDocument
+          const active = document.activeElement
+          returnFocus.current = active?.nodeType === 1 ? (active as HTMLElement) : null
         }}
         onCloseAutoFocus={(event) => {
           if (trigger || !returnFocus.current?.isConnected) return

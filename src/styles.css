@@ -273,7 +273,8 @@
  * a bordered, shadowed card it reads as a separate shape with the card's border line between them.
  * The tip takes the card's fill, overlaps the card's border by 1px so the border breaks where they
  * join, and draws its own two edges in the border colour. The card grows out of the tip on entry,
- * rather than from its centre, so the two stay joined while it animates.
+ * rather than from its centre, so the two stay joined while it animates. Corner anchors square
+ * the inner card's joining corner too: MapLibre only squares its transparent content wrapper.
  */
 .mapcn-popup .maplibregl-popup-content,
 .mapcn-tooltip .maplibregl-popup-content {
@@ -318,18 +319,22 @@
   transform-origin: bottom center;
 }
 .mapcn-popup.maplibregl-popup-anchor-bottom-left .geo-motion-map-popup {
+  border-bottom-left-radius: 0;
   transform-origin: bottom left;
 }
 .mapcn-popup.maplibregl-popup-anchor-bottom-right .geo-motion-map-popup {
+  border-bottom-right-radius: 0;
   transform-origin: bottom right;
 }
 .mapcn-popup.maplibregl-popup-anchor-top .geo-motion-map-popup {
   transform-origin: top center;
 }
 .mapcn-popup.maplibregl-popup-anchor-top-left .geo-motion-map-popup {
+  border-top-left-radius: 0;
   transform-origin: top left;
 }
 .mapcn-popup.maplibregl-popup-anchor-top-right .geo-motion-map-popup {
+  border-top-right-radius: 0;
   transform-origin: top right;
 }
 .mapcn-popup.maplibregl-popup-anchor-left .geo-motion-map-popup {

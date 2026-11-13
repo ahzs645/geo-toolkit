@@ -762,6 +762,47 @@ still loads without React. Import `DashboardToolbar`, `RangeControls`,
   spinner and marks the panel busy. No export formats or data policy are assumed.
   `dialogOptions` can inject a standalone host's theme and `onOpenEffect` chrome
   integration; otherwise the nearest workspace supplies them.
+- `FullscreenPanel heading` replaces the visible title with the host's node, such
+  as a view picker whose value already names the panel. `title` remains the
+  panel's accessible name, a visually hidden `h2`, and the window/tab title.
+- `FullscreenPanel detachable` adds a header chooser for **Open in new window**
+  and **Open in new tab**. Each view is a React portal in the same live state
+  tree, so controlled selections and edits update the host immediately.
+  Outside a managed layout a compact **Show panel** / **Return to workspace**
+  row replaces the panel. Closing or
+  reloading the child returns the panel; unmounting or leaving the host closes
+  its children. Keep the host open. Browser preferences ultimately choose the
+  window/tab presentation, and blocked pop-ups show an inline retry message.
+  Host styles, ancestor classes, theme variables and branding follow the panel;
+  nested toolkit dialogs use its document. The view remounts on detach/return,
+  so keep state that must survive above the panel and use `ownerDocument` for
+  custom DOM listeners and portals. The render child's expanded flag is true
+  while detached, so a view fills its window and hides workspace resize grips.
+  `/ui` also exports `usePanelWindow(title)` and `PanelWindowButton` for custom
+  frames: call `open(mode, sourceElement)` synchronously from the user's click,
+  render a portal into `container` while non-null, and use `close`/`focus` for
+  host controls. Each hook owns one child, independently of other panels.
+- Wrap a reclaiming layout in `PanelWindowProvider`, and each stable pane in
+  `PanelWindowSlot id="plan"`. `usePanelWindows()?.panels` reports the detached
+  panels and their `slot` ids, so the layout excludes those slots from sizing
+  and separators while keeping their React trees mounted. Managed panels render
+  no placeholder. `PanelWindowControls` supplies one compact **Detached panels**
+  button with Show/Return actions even if every pane is detached. Registries are
+  independent per provider; detaching never changes saved layout preferences.
+  Custom frames can join through `usePanelWindowRegistration` with `title`,
+  `detached`, `focus` and `restore` from their window controller.
+  Pass `open`, `mode`, `snapshot`, `place` and `error` too to support saved
+  window arrangements. `snapshot()` on the registry returns serializable
+  `PanelWindowLayout` entries (`slot`, `mode`, optional `width`/`height` and
+  `left`/`top`). `parsePanelWindowLayouts` strictly validates them without a DOM.
+  `applyLayout(entries, key?, force?)` reuses matching windows, requests their
+  saved bounds, returns other panels, and queues missing ones in the shared
+  controls. `PanelWindowLayoutRestore layout={entries} layoutKey="…"` restores
+  once for that key and configuration, independently of a hidden picker.
+  Missing panels open only from a button click, one per gesture; blocked attempts
+  remain retryable. `openSaved(slot)` and `skipSaved(slot)` serve custom controls.
+  The host owns persistence. Keys prevent rerenders or duplicate control mounts
+  from reopening a panel the user closed; `force` explicitly reapplies a layout.
 - `RangeControls` accepts two controlled string fields (date, number, time or
   datetime), field constraints, preset descriptors and reset/onChange callbacks.
   Hosts validate edits and calculate presets; no default date or domain policy

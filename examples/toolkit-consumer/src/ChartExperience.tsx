@@ -13,6 +13,8 @@ import {
   Button,
   DashboardToolbar,
   FullscreenPanel,
+  PanelWindowProvider,
+  PanelWindowControls,
   RangeControls,
   SelectedSeriesList,
   SeriesLegend,
@@ -65,124 +67,131 @@ function EnergyWorkspace({ name }: { name: string }) {
   const toggle = (id: string) =>
     setItems((old) => old.map((item) => (item.id === id ? { ...item, visible: !item.visible } : item)))
   return (
-    <section aria-label={name} className="energy-workspace geo-toolkit" style={{ width: narrow ? '340px' : '100%' }}>
-      <DashboardToolbar title={name} className="energy-toolbar">
-        <RangeControls
-          start={{ label: `${name} start hour`, value: String(active[0]), min: 0, max: active[1] }}
-          end={{ label: `${name} end hour`, value: String(active[1]), min: active[0], max: 48 }}
-          onChange={(field, value) => {
-            if (value !== '' && Number.isFinite(Number(value)))
-              setRange(field === 'start' ? [Number(value), active[1]] : [active[0], Number(value)])
-          }}
-          presets={[{ id: 'day', label: '24h' }]}
-          onPreset={() => setRange([24, 48])}
-          reset={{ label: 'All', disabled: !range, onClick: () => setRange(null) }}
-        />
-        <Button variant="outline" size="sm" onClick={() => setNarrow(!narrow)}>
-          {narrow ? 'Expand embed' : 'Narrow embed'}
-        </Button>
-      </DashboardToolbar>
-      <div className="energy-summary">
-        <SelectedSeriesList
-          items={items}
-          onToggle={toggle}
-          onRemove={(id) => setItems((old) => old.filter((item) => item.id !== id))}
-        />
-        <output aria-label={`${name} observations`}>
-          {points.length} hours · {scatter.reduce((n, item) => n + item.points.length, 0)} points
-        </output>
-      </div>
-      <div className="energy-charts">
-        <FullscreenPanel
-          title="Energy timeline"
-          compact
-          className="energy-panel"
-          actions={<SeriesLegend items={items} onToggle={toggle} compact />}
-        >
-          {(full) => (
-            <ChartViewport className={full ? 'energy-chart-full' : 'energy-chart'}>
-              {(height) => (
-                <TimeSeriesChart
-                  rows={observations}
-                  series={visible}
-                  range={range}
-                  onRange={setRange}
-                  height={height}
-                  label={`${name} linked energy timeline`}
-                  xAxis={{ format: hourly }}
-                  yAxis={{ label: 'kWh' }}
-                  formatValue={energy}
-                />
-              )}
-            </ChartViewport>
-          )}
-        </FullscreenPanel>
-        <FullscreenPanel title="Energy envelope" compact className="energy-panel">
-          {(full) => (
-            <ChartViewport className={full ? 'energy-chart-full' : 'energy-chart'}>
-              {(height) => (
-                <LineBandChart
-                  series={lines}
-                  extent={extent}
-                  height={height}
-                  label={`${name} energy envelope`}
-                  xAxis={{ format: hourly }}
-                  yAxis={{ label: 'kWh', format: (value) => value.toFixed(1), width: 80 }}
-                  renderTooltip={(point, item) => (
-                    <>
-                      {item.label}: {hourly(point.x)} · {energy(Number(point.y))}
-                    </>
-                  )}
-                />
-              )}
-            </ChartViewport>
-          )}
-        </FullscreenPanel>
-        <FullscreenPanel
-          title="Energy observations"
-          compact
-          className="energy-panel"
-          help="Hover a point for its source and hour. Drag a rectangle to zoom both axes."
-          menuActions={(['svg', 'png'] as const).map((format) => ({
-            id: format,
-            label: `Download ${format.toUpperCase()}`,
-            onSelect: async (panel: HTMLElement) => {
-              const snapshot = captureChartSvg(panel.querySelector<HTMLElement>('.energy-chart, .energy-chart-full')!, {
-                title: `${name} observations`,
-                series: visible,
-              })
-              const blob = format === 'svg' ? snapshot.blob : await rasterizeChart(snapshot, 'image/png')
-              const url = URL.createObjectURL(blob)
-              const link = document.createElement('a')
-              link.href = url
-              link.download = `${name}.${format}`
-              link.click()
-              URL.revokeObjectURL(url)
-            },
-          }))}
-        >
-          {(full) => (
-            <ChartViewport className={full ? 'energy-chart-full' : 'energy-chart'}>
-              {(height) => (
-                <ScatterPlot
-                  series={scatter}
-                  extent={extent}
-                  height={height}
-                  label={`${name} energy observations`}
-                  xAxis={{ label: 'Elapsed hours', format: hourly }}
-                  yAxis={{ label: 'kWh', format: (value) => value.toFixed(1), width: 80 }}
-                  renderTooltip={(point) => (
-                    <>
-                      {point.source} · Hour {point.hour} · {energy(point.y)}
-                    </>
-                  )}
-                />
-              )}
-            </ChartViewport>
-          )}
-        </FullscreenPanel>
-      </div>
-    </section>
+    <PanelWindowProvider>
+      <section aria-label={name} className="energy-workspace geo-toolkit" style={{ width: narrow ? '340px' : '100%' }}>
+        <DashboardToolbar title={name} className="energy-toolbar">
+          <RangeControls
+            start={{ label: `${name} start hour`, value: String(active[0]), min: 0, max: active[1] }}
+            end={{ label: `${name} end hour`, value: String(active[1]), min: active[0], max: 48 }}
+            onChange={(field, value) => {
+              if (value !== '' && Number.isFinite(Number(value)))
+                setRange(field === 'start' ? [Number(value), active[1]] : [active[0], Number(value)])
+            }}
+            presets={[{ id: 'day', label: '24h' }]}
+            onPreset={() => setRange([24, 48])}
+            reset={{ label: 'All', disabled: !range, onClick: () => setRange(null) }}
+          />
+          <Button variant="outline" size="sm" onClick={() => setNarrow(!narrow)}>
+            {narrow ? 'Expand embed' : 'Narrow embed'}
+          </Button>
+          <PanelWindowControls />
+        </DashboardToolbar>
+        <div className="energy-summary">
+          <SelectedSeriesList
+            items={items}
+            onToggle={toggle}
+            onRemove={(id) => setItems((old) => old.filter((item) => item.id !== id))}
+          />
+          <output aria-label={`${name} observations`}>
+            {points.length} hours · {scatter.reduce((n, item) => n + item.points.length, 0)} points
+          </output>
+        </div>
+        <div className="energy-charts">
+          <FullscreenPanel
+            detachable
+            title="Energy timeline"
+            compact
+            className="energy-panel"
+            actions={<SeriesLegend items={items} onToggle={toggle} compact />}
+          >
+            {(full) => (
+              <ChartViewport className={full ? 'energy-chart-full' : 'energy-chart'}>
+                {(height) => (
+                  <TimeSeriesChart
+                    rows={observations}
+                    series={visible}
+                    range={range}
+                    onRange={setRange}
+                    height={height}
+                    label={`${name} linked energy timeline`}
+                    xAxis={{ format: hourly }}
+                    yAxis={{ label: 'kWh' }}
+                    formatValue={energy}
+                  />
+                )}
+              </ChartViewport>
+            )}
+          </FullscreenPanel>
+          <FullscreenPanel title="Energy envelope" compact className="energy-panel">
+            {(full) => (
+              <ChartViewport className={full ? 'energy-chart-full' : 'energy-chart'}>
+                {(height) => (
+                  <LineBandChart
+                    series={lines}
+                    extent={extent}
+                    height={height}
+                    label={`${name} energy envelope`}
+                    xAxis={{ format: hourly }}
+                    yAxis={{ label: 'kWh', format: (value) => value.toFixed(1), width: 80 }}
+                    renderTooltip={(point, item) => (
+                      <>
+                        {item.label}: {hourly(point.x)} · {energy(Number(point.y))}
+                      </>
+                    )}
+                  />
+                )}
+              </ChartViewport>
+            )}
+          </FullscreenPanel>
+          <FullscreenPanel
+            title="Energy observations"
+            compact
+            className="energy-panel"
+            help="Hover a point for its source and hour. Drag a rectangle to zoom both axes."
+            menuActions={(['svg', 'png'] as const).map((format) => ({
+              id: format,
+              label: `Download ${format.toUpperCase()}`,
+              onSelect: async (panel: HTMLElement) => {
+                const snapshot = captureChartSvg(
+                  panel.querySelector<HTMLElement>('.energy-chart, .energy-chart-full')!,
+                  {
+                    title: `${name} observations`,
+                    series: visible,
+                  },
+                )
+                const blob = format === 'svg' ? snapshot.blob : await rasterizeChart(snapshot, 'image/png')
+                const url = URL.createObjectURL(blob)
+                const link = document.createElement('a')
+                link.href = url
+                link.download = `${name}.${format}`
+                link.click()
+                URL.revokeObjectURL(url)
+              },
+            }))}
+          >
+            {(full) => (
+              <ChartViewport className={full ? 'energy-chart-full' : 'energy-chart'}>
+                {(height) => (
+                  <ScatterPlot
+                    series={scatter}
+                    extent={extent}
+                    height={height}
+                    label={`${name} energy observations`}
+                    xAxis={{ label: 'Elapsed hours', format: hourly }}
+                    yAxis={{ label: 'kWh', format: (value) => value.toFixed(1), width: 80 }}
+                    renderTooltip={(point) => (
+                      <>
+                        {point.source} · Hour {point.hour} · {energy(point.y)}
+                      </>
+                    )}
+                  />
+                )}
+              </ChartViewport>
+            )}
+          </FullscreenPanel>
+        </div>
+      </section>
+    </PanelWindowProvider>
   )
 }
 
