@@ -62,7 +62,9 @@ function ReadingExamples({ id }: { id: string }) {
 function Probe({ id }: { id: string }) {
   const mobile = useIsMobile()
   return (
-    <div data-presentation-probe={id} className="bg-slate-100 dark:bg-slate-950">
+    // A `dark:` pair the package's own source uses (ExternalLink, DialogShell's context line), so its
+    // build emits both; a class only this fixture used would never be generated.
+    <div data-presentation-probe={id} className="text-sky-700 dark:text-sky-400">
       {mobile ? 'mobile' : 'desktop'}
     </div>
   )

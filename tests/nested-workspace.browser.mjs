@@ -30,10 +30,10 @@ try {
     false,
     'outer desktop scope stops at compact child',
   )
-  const outerBackground = await page
+  const outerColor = await page
     .locator('[data-presentation-probe="outer"]')
-    .evaluate((element) => getComputedStyle(element).backgroundColor)
-  assert.equal(outerBackground, 'rgb(2, 6, 23)', 'dark scoped utility positively applies to outer workspace')
+    .evaluate((element) => getComputedStyle(element).color)
+  assert.equal(outerColor, 'rgb(56, 189, 248)', 'dark scoped utility positively applies to outer workspace')
   const bounds = await page.locator('[data-compact-fixture="true"]').boundingBox()
   const handle = page.locator('[data-map-mobile-sheet-handle="true"]')
   assert.equal(await handle.isVisible(), true, 'inner mobile handle remains visible inside a desktop provider')
