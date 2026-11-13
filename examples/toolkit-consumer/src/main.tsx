@@ -1,3 +1,4 @@
+import './maplibreWorker'
 import { ChartExperience } from './ChartExperience'
 import { ControlExperience } from './ControlExperience'
 import { TimelineExperience } from './TimelineExperience'

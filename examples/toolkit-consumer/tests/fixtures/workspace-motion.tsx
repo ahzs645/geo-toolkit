@@ -1,3 +1,4 @@
+import '../../src/maplibreWorker'
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Map as MapLibreMap, StyleSpecification } from 'maplibre-gl'
