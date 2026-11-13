@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@pgmaps/geo-toolkit": "file:../..",
-    "maplibre-gl": "^5.15.0",
+    "maplibre-gl": "^6.18.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
