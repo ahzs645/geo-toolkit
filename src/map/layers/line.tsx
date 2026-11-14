@@ -3,7 +3,7 @@ import { useMap, dispatchMobileMapFeatureClick } from '../map-context.js'
 import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
 import { attachPointerDismiss } from '../map-pointer.js'
-import { SELECTION_COLOR } from '../map-styles.js'
+import { useSelectionColor } from '../selection-color.js'
 import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 import { createClickPopup, featureClickEvent } from './feature-click.js'
 import {
@@ -49,7 +49,7 @@ export type MapLineLayerProps = {
   idProperty?: string
   /** Currently selected feature ID */
   selectedId?: string | number | null
-  /** Selection highlight color (default: SELECTION_COLOR) */
+  /** Selection highlight colour (default: SELECTION_COLOR, in the host theme's tint when it sets one) */
   selectionColor?: string
   /** Selection highlight line width (default: computed from width) */
   selectionWidth?: number
@@ -77,12 +77,13 @@ export function MapLineLayer({
   lineCap = 'round',
   idProperty = 'id',
   selectedId = null,
-  selectionColor = SELECTION_COLOR,
+  selectionColor: selectionColorProp,
   selectionWidth,
   visible = true,
   onFeatureClick,
 }: MapLineLayerProps) {
   const { map, isLoaded } = useMap()
+  const selectionColor = useSelectionColor(selectionColorProp)
   const uid = useId().replace(/:/g, '')
   const sourceId = sourceKey ? `line-shared-${sourceKey}` : `line-src-${uid}`
   const layerId = `line-layer-${uid}`
@@ -247,6 +248,12 @@ export function MapLineLayer({
     map.setPaintProperty(layerId, 'line-width', width as never)
     map.setPaintProperty(layerId, 'line-opacity', opacity as never)
   }, [color, isLoaded, layerId, map, opacity, width])
+
+  // The highlight follows the host theme, which can change while the layer is mounted.
+  useEffect(() => {
+    if (!isLoaded || !map || !map.getLayer(selectedLayerId)) return
+    map.setPaintProperty(selectedLayerId, 'line-color', selectionColor)
+  }, [isLoaded, map, selectedLayerId, selectionColor])
 
   // Update visibility
   useEffect(() => {

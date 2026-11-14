@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef } from 'react'
 import { useMap, dispatchMobileMapFeatureClick } from '../map-context.js'
 import { registerMapLayerOrder } from '../map-layer-order.js'
-import { SELECTION_COLOR, SELECTION_WIDTH, BORDER_COLOR } from '../map-styles.js'
+import { SELECTION_WIDTH, BORDER_COLOR } from '../map-styles.js'
+import { useSelectionColor } from '../selection-color.js'
 import {
   EMPTY_SELECTED_IDS,
   type MapStyleExpression,
@@ -59,7 +60,7 @@ export function MapPmtilesFillLayer({
   idSource = 'property',
   selectedId = null,
   selectedIds = EMPTY_SELECTED_IDS,
-  selectionColor = SELECTION_COLOR,
+  selectionColor: selectionColorProp,
   selectionWidth = SELECTION_WIDTH,
   visible = true,
   onFeatureClick,
@@ -67,6 +68,7 @@ export function MapPmtilesFillLayer({
   filter,
 }: MapPmtilesFillLayerProps) {
   const { map, isLoaded } = useMap()
+  const selectionColor = useSelectionColor(selectionColorProp)
   const uid = useId().replace(/:/g, '')
   const sourceId = `pmtiles-src-${uid}`
   const fillLayerId = `pmtiles-fill-${uid}`

@@ -4,7 +4,8 @@ import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
 import { syncFeatureState, type MapFeatureStateById } from '../map-feature-state.js'
 import { attachPointerDismiss } from '../map-pointer.js'
-import { SELECTION_COLOR, SELECTION_WIDTH, BORDER_COLOR } from '../map-styles.js'
+import { SELECTION_WIDTH, BORDER_COLOR } from '../map-styles.js'
+import { useSelectionColor } from '../selection-color.js'
 import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 import { createClickPopup, featureClickEvent } from './feature-click.js'
 import {
@@ -45,7 +46,7 @@ export type MapFillLayerProps = {
   selectedId?: string | number | null
   /** Multiple selected feature IDs — combined with selectedId for the selection highlight */
   selectedIds?: readonly MapFeatureId[]
-  /** Selection highlight color (default: SELECTION_COLOR) */
+  /** Selection highlight colour (default: SELECTION_COLOR, in the host theme's tint when it sets one) */
   selectionColor?: string
   /** Selection highlight line width (default: SELECTION_WIDTH) */
   selectionWidth?: number
@@ -104,7 +105,7 @@ export function MapFillLayer({
   idProperty = 'id',
   selectedId = null,
   selectedIds = EMPTY_SELECTED_IDS,
-  selectionColor = SELECTION_COLOR,
+  selectionColor: selectionColorProp,
   selectionWidth = SELECTION_WIDTH,
   selectionStyle = 'line',
   selectionFillOpacity = 0.5,
@@ -119,6 +120,7 @@ export function MapFillLayer({
   interactive = true,
 }: MapFillLayerProps) {
   const { map, isLoaded } = useMap()
+  const selectionColor = useSelectionColor(selectionColorProp)
   const uid = useId().replace(/:/g, '')
   const sourceId = sourceKey ? `fill-shared-${sourceKey}` : `fill-src-${uid}`
   const fillLayerId = `fill-layer-${uid}`
@@ -388,6 +390,12 @@ export function MapFillLayer({
     const timer = setTimeout(() => setVis([fillLayerId, lineLayerId], 'none'), fadeMs)
     return () => clearTimeout(timer)
   }, [visible, fadeEnabled, fadeMs, isLoaded, map, fillLayerId, lineLayerId, selectedLayerId])
+
+  // The outline highlight follows the host theme, which can change while the layer is mounted.
+  useEffect(() => {
+    if (!isLoaded || !map || selectionStyle !== 'line' || !map.getLayer(selectedLayerId)) return
+    map.setPaintProperty(selectedLayerId, 'line-color', selectionColor)
+  }, [isLoaded, map, selectedLayerId, selectionColor, selectionStyle])
 
   // Update paint when caller changes choropleth styling without remounting the layer.
   useEffect(() => {

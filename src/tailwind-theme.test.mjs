@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import colors from 'tailwindcss/colors'
-import { toolkitTheme } from './tailwind-theme.mjs'
+import { pageAccentPalette, themeablePalette, toolkitTheme } from './tailwind-theme.mjs'
 
 const css = readFileSync(new URL('./styles.css', import.meta.url), 'utf8')
 
@@ -72,5 +72,27 @@ describe('toolkit Tailwind theme', () => {
     // ResultRow's dark selected fill was sky-950 at 30%.
     expect(lightValues.get('--selected-alpha')).toBe('1')
     expect(darkValues.get('--selected-alpha')).toBe('0.3')
+  })
+
+  it('falls back to Tailwind for every recolourable palette shade', () => {
+    const shades = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
+    const channels = (hexColour) => [1, 3, 5].map((at) => parseInt(hexColour.slice(at, at + 2), 16)).join(' ')
+    for (const [ramp, families] of Object.entries(themeablePalette)) {
+      for (const family of Object.keys(families)) {
+        for (const shade of shades) {
+          // Unset, the variable leaves the class exactly Tailwind's colour.
+          expect(toolkitTheme.colors[family][shade], `${family}-${shade}`).toBe(
+            `rgb(var(--palette-${ramp}-${shade}, ${channels(colors[family][shade])}) / <alpha-value>)`,
+          )
+        }
+      }
+    }
+    for (const family of Object.keys(pageAccentPalette)) {
+      for (const shade of shades) {
+        expect(toolkitTheme.colors[family][shade], `${family}-${shade}`).toBe(
+          `rgb(var(--palette-${family}-${shade}, ${channels(colors[family][shade])}) / <alpha-value>)`,
+        )
+      }
+    }
   })
 })

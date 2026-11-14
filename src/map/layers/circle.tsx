@@ -3,7 +3,7 @@ import { useMap, dispatchMobileMapFeatureClick } from '../map-context.js'
 import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
 import { attachPointerDismiss } from '../map-pointer.js'
-import { SELECTION_COLOR } from '../map-styles.js'
+import { useSelectionColor } from '../selection-color.js'
 import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 import { createClickPopup, featureClickEvent } from './feature-click.js'
 import {
@@ -50,7 +50,7 @@ export function MapCircleLayer({
   strokeWidth = 1.25,
   idProperty = 'id',
   selectedId = null,
-  selectionColor = SELECTION_COLOR,
+  selectionColor: selectionColorProp,
   visible = true,
   onFeatureClick,
   hoverHtml,
@@ -59,6 +59,7 @@ export function MapCircleLayer({
   filter,
 }: MapCircleLayerProps) {
   const { map, isLoaded } = useMap()
+  const selectionColor = useSelectionColor(selectionColorProp)
   const uid = useId().replace(/:/g, '')
   const sourceId = sourceKey ? `circle-shared-${sourceKey}` : `circle-src-${uid}`
   const layerId = `circle-layer-${uid}`
@@ -228,6 +229,12 @@ export function MapCircleLayer({
     map.setPaintProperty(layerId, 'circle-stroke-color', strokeColor as never)
     map.setPaintProperty(layerId, 'circle-stroke-width', strokeWidth as never)
   }, [color, isLoaded, layerId, map, opacity, radius, strokeColor, strokeWidth])
+
+  // The highlight follows the host theme, which can change while the layer is mounted.
+  useEffect(() => {
+    if (!isLoaded || !map || !map.getLayer(selectedLayerId)) return
+    map.setPaintProperty(selectedLayerId, 'circle-stroke-color', selectionColor)
+  }, [isLoaded, map, selectedLayerId, selectionColor])
 
   useEffect(() => {
     if (!isLoaded || !map || !map.getLayer(selectedLayerId)) return

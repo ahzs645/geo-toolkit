@@ -270,11 +270,14 @@
 
 /*
  * MapPopup's arrow. MapLibre draws the tip as a bare CSS triangle beside the content box, so beside
- * a bordered, shadowed card it reads as a separate shape with the card's border line between them.
- * The tip takes the card's fill, overlaps the card's border by 1px so the border breaks where they
- * join, and draws its own two edges in the border colour. The card grows out of the tip on entry,
- * rather than from its centre, so the two stay joined while it animates. Corner anchors square
- * the inner card's joining corner too: MapLibre only squares its transparent content wrapper.
+ * a bordered, shadowed card it reads as a separate shape: the triangle has no edge of its own. Here
+ * the tip is a clipped box holding a rotated square (a rotated bar on the corner anchors) in the
+ * card's fill, whose outer edges are real borders in the card's border colour. The box overlaps the
+ * card's border by 1px, so the border breaks where they join and the outline runs round both. The
+ * point stays on the box's far edge, which is where MapLibre places the anchor. The card grows out
+ * of the tip on entry, rather than from its centre, so the two stay joined while it animates. Corner
+ * anchors square the inner card's joining corner too: MapLibre only squares its transparent content
+ * wrapper.
  */
 .mapcn-popup .maplibregl-popup-content,
 .mapcn-tooltip .maplibregl-popup-content {
@@ -290,30 +293,122 @@
   display: block !important;
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
+  flex: none;
+  overflow: hidden;
+  border: 0 solid hsl(var(--border)) !important;
+}
+.mapcn-popup .maplibregl-popup-tip::before {
+  content: '';
+  position: absolute;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  background: hsl(var(--popover));
+  border: 0 solid hsl(var(--border));
+  transform: rotate(45deg);
+}
+/* Side anchors: a square on its point, its centre on the card's outer edge. */
+.mapcn-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  width: 14px;
+  height: 8px;
+}
+.mapcn-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  width: 8px;
+  height: 14px;
+}
+.mapcn-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip::before {
+  left: 2px;
+  top: -4px;
+  border-right-width: 1px;
+  border-bottom-width: 1px;
+  border-bottom-right-radius: min(2px, calc(var(--radius, 0.5rem) / 4));
+}
+.mapcn-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip::before {
+  left: 2px;
+  top: 2px;
+  border-top-width: 1px;
+  border-left-width: 1px;
+  border-top-left-radius: min(2px, calc(var(--radius, 0.5rem) / 4));
+}
+.mapcn-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip::before {
+  left: 2px;
+  top: 2px;
+  border-left-width: 1px;
+  border-bottom-width: 1px;
+  border-bottom-left-radius: min(2px, calc(var(--radius, 0.5rem) / 4));
+}
+.mapcn-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip::before {
+  left: -4px;
+  top: 2px;
+  border-top-width: 1px;
+  border-right-width: 1px;
+  border-top-right-radius: min(2px, calc(var(--radius, 0.5rem) / 4));
+}
+/* Corner anchors: a right triangle. The box's own border continues the card's side, and a bar
+ * turned onto the diagonal closes it. */
+.mapcn-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  width: 8px;
+  height: 9px;
+}
+.mapcn-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip {
+  border-left-width: 1px !important;
+}
+.mapcn-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip,
+.mapcn-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-right-width: 1px !important;
+}
+.mapcn-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip::before,
+.mapcn-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip::before,
+.mapcn-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip::before,
+.mapcn-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip::before {
+  width: 16px;
+  height: 9px;
+  border-top-width: 1px;
+  transform-origin: 0 0;
+}
+.mapcn-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip::before {
+  left: 8px;
+  top: 0;
+  transform: rotate(135deg);
+}
+.mapcn-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip::before {
+  left: 9px;
+  top: 10px;
+  transform: rotate(225deg);
+}
+.mapcn-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip::before {
+  left: -2px;
+  top: -1px;
+  transform: rotate(45deg);
+}
+.mapcn-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip::before {
+  left: -1px;
+  top: 9px;
+  transform: rotate(-45deg);
 }
 .mapcn-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
 .mapcn-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
 .mapcn-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
-  border-top-color: hsl(var(--popover)) !important;
   margin-top: -1px;
-  filter: drop-shadow(0 1px 0 hsl(var(--border))) drop-shadow(0 2px 2px rgb(0 0 0 / 0.08));
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.08));
 }
 .mapcn-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
 .mapcn-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
 .mapcn-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
-  border-bottom-color: hsl(var(--popover)) !important;
   margin-bottom: -1px;
-  filter: drop-shadow(0 -1px 0 hsl(var(--border)));
 }
 .mapcn-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
-  border-right-color: hsl(var(--popover)) !important;
   margin-right: -1px;
-  filter: drop-shadow(-1px 0 0 hsl(var(--border)));
 }
 .mapcn-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
-  border-left-color: hsl(var(--popover)) !important;
   margin-left: -1px;
-  filter: drop-shadow(1px 0 0 hsl(var(--border)));
 }
 .mapcn-popup.maplibregl-popup-anchor-bottom .geo-motion-map-popup {
   transform-origin: bottom center;
@@ -565,7 +660,8 @@
 .map-loader-bloom circle {
   r: 0;
   fill: none;
-  stroke: rgb(56 189 248 / 0.82);
+  /* sky-400, or the host theme's tint (tailwind-theme.mjs, themeablePalette). */
+  stroke: rgb(var(--palette-tint-400, 56 189 248) / 0.82);
   stroke-width: 4;
   vector-effect: non-scaling-stroke;
   animation: map-loader-bloom-out 1700ms linear forwards;
