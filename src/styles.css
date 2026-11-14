@@ -75,6 +75,17 @@
   opacity: 1;
   transform: translateY(0) scale(1);
 }
+/* Radix popovers (`PopoverContent`): the content scales in from its trigger's side. */
+.geo-popover {
+  transform-origin: var(--radix-popover-content-transform-origin);
+  animation: geo-popover-in var(--geo-motion-feedback, 150ms) var(--geo-motion-easing, ease-out);
+}
+@keyframes geo-popover-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
 .geo-motion-disclosure {
   display: grid;
   grid-template-rows: 0fr;
@@ -413,6 +424,9 @@
   .geo-motion-popover,
   .geo-motion-disclosure {
     transition: none;
+  }
+  .geo-popover {
+    animation: none;
   }
   .geo-motion-dialog-overlay,
   .geo-motion-dialog-content {

@@ -1,18 +1,11 @@
-import { useId, type CSSProperties } from 'react'
 import { X } from 'lucide-react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { cn } from '../utils.js'
+import { ColorPickerPanel, normalizeHexColor } from './color-picker.js'
+import { Popover, PopoverContent, PopoverTrigger } from './popover.js'
+import { rememberColor, useRecentColors } from './recent-colors.js'
 
-/**
- * The `#rrggbb` form of a hex colour (`#abc` expands, case folds to lower), or
- * `null` for anything a native colour input cannot hold — a name, `rgb()`, an
- * alpha channel.
- */
-export function normalizeHexColor(value: string | null | undefined): string | null {
-  const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value?.trim() ?? '')
-  if (!match) return null
-  const hex = match[1].toLowerCase()
-  return `#${hex.length === 3 ? [...hex].map((digit) => digit + digit).join('') : hex}`
-}
+export { normalizeHexColor } from './color-picker.js'
 
 /** Unset reads as "default", not as a colour: light stripes behind a dashed border. */
 export const COLOR_FIELD_UNSET_STYLE: CSSProperties = {
@@ -23,22 +16,43 @@ export const COLOR_FIELD_UNSET_STYLE: CSSProperties = {
 export interface ColorFieldProps {
   /** The chosen colour, or `null` for none chosen (the host's default applies). */
   value: string | null
-  /** A colour from the picker or a preset (lower-case `#rrggbb`), or `null` from the reset button. */
+  /**
+   * A settled colour (lower-case `#rrggbb`): the end of a drag in the picker, a typed hex, a
+   * swatch, or `null` from the reset button. A drag reports once, so this is the place to save.
+   */
   onChange: (value: string | null) => void
-  /** Accessible name of the colour input, e.g. "Colour for Block 12". */
+  /** Every colour a drag passes through, for a live preview on a map. Optional; never the place to save. */
+  onPreview?: (value: string) => void
+  /** Accessible name of the colour button, e.g. "Colour for Block 12". */
   label: string
-  /** Suggested colours: a row of swatches beside the field and the native picker's own list. */
+  /** Suggested colours: a row of swatches beside the field and in the picker. */
   presets?: readonly string[]
-  /** `'picker'` keeps presets in the native picker's list only, for a field inside a dense row (default `'row'`). */
+  /** `'picker'` keeps presets inside the picker only, for a field in a dense row (default `'row'`). */
   presetDisplay?: 'row' | 'picker'
   /** Accessible name of the reset button (default "Reset {label}"). */
   resetLabel?: string
+  /** `false` leaves out the reset button, for a colour that cannot be unset (default true). */
+  resettable?: boolean
   /** Tooltip while a colour is set (default: `label`). */
   title?: string
   /** Tooltip while none is set (default "Default colour: choose one"). */
   unsetTitle?: string
-  /** The colour the native picker opens on while none is set (default white). */
+  /** The colour the picker opens on while none is set (default white). */
   pickerFallback?: string
+  /** Opacity 0–1, kept as its own value. With `onOpacityChange` the picker adds an opacity rail. */
+  opacity?: number
+  onOpacityChange?: (opacity: number) => void
+  onOpacityPreview?: (opacity: number) => void
+  /** Offer the colours picked on this page as a second row of swatches (default true). */
+  recents?: boolean
+  /** Offer picking from the screen where the browser can (default true). */
+  eyeDropper?: boolean
+  /** Drawn inside the button in place of the plain colour, e.g. a map symbol in that colour. */
+  swatch?: ReactNode
+  /** Classes for the swatch button, for a host whose swatches have their own shape (`rounded-full`). */
+  swatchClassName?: string
+  /** Which side of the swatch the picker prefers; it still flips to stay on screen (default `'bottom'`). */
+  side?: 'top' | 'right' | 'bottom' | 'left'
   /** `'sm'` is a 14 px swatch for a list row; `'md'` a 24 px one for a form (default). */
   size?: 'sm' | 'md'
   disabled?: boolean
@@ -49,60 +63,99 @@ const swatchSize = { sm: 'h-3.5 w-3.5', md: 'h-6 w-6' } as const
 const presetSize = { sm: 'h-3 w-3', md: 'h-5 w-5' } as const
 
 /**
- * Pick a colour or leave it unset. The swatch opens the native colour input;
- * presets set a colour in one click; while a colour is set, a reset button
- * returns it to `null`. Unset is drawn striped with a dashed border, so it
- * never reads as white.
+ * Pick a colour or leave it unset. The swatch opens the colour picker (a saturation and value
+ * plane, a hue rail, a hex box, pick-from-screen and swatches); presets set a colour in one
+ * click; while a colour is set, a reset button returns it to `null`. Unset is drawn striped with
+ * a dashed border, so it never reads as white. Dragging in the picker previews, and `onChange`
+ * reports once when the drag ends.
  */
 export function ColorField({
   value,
   onChange,
+  onPreview,
   label,
   presets,
   presetDisplay = 'row',
   resetLabel,
+  resettable = true,
   title,
   unsetTitle = 'Default colour: choose one',
   pickerFallback = '#ffffff',
+  opacity,
+  onOpacityChange,
+  onOpacityPreview,
+  recents = true,
+  eyeDropper = true,
+  swatch,
+  swatchClassName,
+  side = 'bottom',
   size = 'md',
   disabled = false,
   className,
 }: ColorFieldProps) {
-  const listId = useId()
+  const [open, setOpen] = useState(false)
+  /** The colour under the pointer during a drag; the button shows it before it is committed. */
+  const [preview, setPreview] = useState<string | null>(null)
+  const [opened, setOpened] = useState<string | null>(null)
+  const recent = useRecentColors()
   const swatches = (presets ?? []).map(normalizeHexColor).filter((color): color is string => color !== null)
   const current = normalizeHexColor(value)
+  const shown = preview ?? value
+
+  const onOpenChange = (next: boolean) => {
+    setOpen(next)
+    setPreview(null)
+    if (next) setOpened(current)
+    // The colour the person settled on joins the page's recent colours when the picker closes.
+    else if (current && current !== opened) rememberColor(current)
+  }
+
   return (
     <span
       className={cn('inline-flex shrink-0 items-center', size === 'sm' ? 'gap-0.5' : 'gap-1.5', className)}
       data-color-field=""
       data-unset={value === null || undefined}
     >
-      <label
-        className={cn(
-          'relative block shrink-0 overflow-hidden rounded-sm border border-border',
-          swatchSize[size],
-          disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
-        )}
-        style={value === null ? COLOR_FIELD_UNSET_STYLE : { backgroundColor: value }}
-        title={value === null ? unsetTitle : (title ?? label)}
-      >
-        <input
-          type="color"
-          aria-label={label}
-          list={swatches.length > 0 ? listId : undefined}
-          className="absolute inset-0 h-full w-full cursor-[inherit] opacity-0"
-          value={current ?? normalizeHexColor(pickerFallback) ?? '#ffffff'}
-          disabled={disabled}
-          onChange={(event) => onChange(event.target.value.toLowerCase())}
-        />
-        {swatches.length > 0 && (
-          <datalist id={listId}>
-            {swatches.map((color) => (
-              <option key={color} value={color} />
-            ))}
-          </datalist>
-        )}
-      </label>
+      <Popover open={open} onOpenChange={onOpenChange}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={label}
+            title={value === null ? unsetTitle : (title ?? label)}
+            disabled={disabled}
+            data-color-value={current ?? undefined}
+            className={cn(
+              'relative block shrink-0 overflow-hidden rounded-sm border border-border outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50',
+              !swatch && swatchSize[size],
+              swatchClassName,
+            )}
+            style={swatch ? undefined : shown === null ? COLOR_FIELD_UNSET_STYLE : { backgroundColor: shown }}
+          >
+            {swatch}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-2.5" side={side} aria-label={label}>
+          <ColorPickerPanel
+            value={value}
+            fallback={pickerFallback}
+            label={label}
+            presets={swatches}
+            recent={recents ? recent : undefined}
+            opacity={opacity}
+            onOpacityCommit={onOpacityChange}
+            onOpacityPreview={onOpacityPreview}
+            eyeDropper={eyeDropper}
+            onPreview={(hex) => {
+              setPreview(hex)
+              onPreview?.(hex)
+            }}
+            onCommit={(hex) => {
+              setPreview(null)
+              onChange(hex)
+            }}
+          />
+        </PopoverContent>
+      </Popover>
       {presetDisplay === 'row' && swatches.length > 0 && (
         <span className="flex items-center gap-1" role="group" aria-label={`${label}: presets`}>
           {swatches.map((color) => (
@@ -119,12 +172,15 @@ export function ColorField({
               aria-pressed={current === color}
               title={color}
               disabled={disabled}
-              onClick={() => onChange(color)}
+              onClick={() => {
+                onChange(color)
+                rememberColor(color)
+              }}
             />
           ))}
         </span>
       )}
-      {value !== null && (
+      {resettable && value !== null && (
         <button
           type="button"
           className="inline-flex shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
