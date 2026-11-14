@@ -1258,9 +1258,22 @@ two layer stacks do not see each other, and a popover inside a modal dialog
 stops taking clicks. Move both together.
 
 `RampField` picks a colour ramp from a list that draws each one as its gradient:
-`value` (a ramp id), `onChange(id)`, `ramps` (`{ id, label, colors, group? }`),
-`label`, and `reverse` with `onReverseChange` for a flip button. An id it is
-not given shows as its own text, never as another ramp.
+`value` (a ramp id), `onChange(id, colors)`, `ramps` (`{ id, label, colors,
+group? }`), `label`, and `reverse` with `onReverseChange` for a Reverse switch
+in the list's footer. An id it is not given shows as its own text, never as
+another ramp. `custom={{ ramps, onSave, onDelete }}` lets a person make
+gradients of their own: "+ New gradient" swaps the list for an editor (a name,
+`GradientStopsEditor`, a preview and a hex list), a saved one is listed under
+"Yours" with a pencil, and it is picked as `customRampId(name)` with its
+anchors in `colors`. `GradientStopsEditor` (`stops`, `at`, `onChange(stops,
+at)`, `label`) is the bar of draggable stops with the colour picker for the
+selected one. `createCustomRampStore(storageKey)` keeps a person's ramps in
+this browser (`get`, `subscribe`, `save(ramp, editing?)`, `remove(name)`), and
+`useCustomRamps(store)` reads them. `/scales` has the model: `CustomRamp`,
+`customRampColors` (stops and their positions resampled to nine anchors, in
+Lab), `customRampColorAt`, `customRampCss`, `parseCustomRamp`,
+`parseRampStops`, `cleanRampOffsets`, `customRampNameProblem` and
+`freeCustomRampName`.
 
 `/scales` exports `COLOR_RAMPS` (20 ramps read from d3's schemes, each `{ id,
 label, kind, colors }` with nine anchors low to high), `colorRamp(id)`,
