@@ -1257,6 +1257,24 @@ another popover, follows a detached panel into its window, and carries
 two layer stacks do not see each other, and a popover inside a modal dialog
 stops taking clicks. Move both together.
 
+`RampField` picks a colour ramp from a list that draws each one as its gradient:
+`value` (a ramp id), `onChange(id)`, `ramps` (`{ id, label, colors, group? }`),
+`label`, and `reverse` with `onReverseChange` for a flip button. An id it is
+not given shows as its own text, never as another ramp.
+
+`/scales` exports `COLOR_RAMPS` (20 ramps read from d3's schemes, each `{ id,
+label, kind, colors }` with nine anchors low to high), `colorRamp(id)`,
+`colorRampCss(colors, reverse)` and `COLOR_RAMP_KIND_LABELS`. Ramp ids are
+saved in styles: rename a label, never an id.
+
+`resolvePaletteScale` classes by `equal-interval`, `quantile`, `natural-breaks`,
+`standard-deviation`, `geometric-interval` or `manual`. `naturalBreaks`,
+`standardDeviationBreaks` and `geometricBreaks` (`/scales`) take observations
+sorted ascending and return interior boundaries. Natural breaks is Fisher–Jenks
+on every observation (a sample past `NATURAL_BREAKS_MAX_VALUES` is thinned
+evenly) and may end on the maximum; a geometric scale needs a positive minimum
+and falls back to equal intervals without one.
+
 `/scales` exports the colour spaces the picker is drawn in: `hexToOkhsv`,
 `okhsvToHex`, `okhsvToLinearSrgb`, `findCusp`, `cuspForHue`, `okhsvSwatches`
 (a generated swatch grid), `hexToOklch`, `oklchToHex` (out-of-gamut colours

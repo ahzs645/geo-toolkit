@@ -1,6 +1,13 @@
 import { bisectRight, color, interpolateLab, interpolateRgb, quantileSorted } from 'd3'
+import { geometricBreaks, naturalBreaks, standardDeviationBreaks } from './classBreaks.js'
 
-export type PaletteClassification = 'equal-interval' | 'quantile' | 'manual'
+export type PaletteClassification =
+  | 'equal-interval'
+  | 'quantile'
+  | 'natural-breaks'
+  | 'standard-deviation'
+  | 'geometric-interval'
+  | 'manual'
 export interface PaletteSampling {
   colors: readonly string[]
   /** Optional source stop coordinates; unequal spacing is preserved. */
@@ -73,6 +80,9 @@ export interface PaletteScaleOptions extends PaletteSampling {
   missingColor: string
 }
 
+const equalIntervals = (min: number, max: number, classes: number) =>
+  Array.from({ length: classes - 1 }, (_, i) => min + ((max - min) * (i + 1)) / classes)
+
 /** Boundary values enter the upper bin. Out-of-domain values clamp to end bins. */
 export function resolvePaletteScale(options: PaletteScaleOptions) {
   const {
@@ -89,18 +99,32 @@ export function resolvePaletteScale(options: PaletteScaleOptions) {
     breaks = [...(options.breaks ?? [])]
     if (breaks.some((v, i) => !Number.isFinite(v) || v <= min || v >= max || (i > 0 && v <= breaks[i - 1])))
       throw new Error('Manual breaks must increase strictly inside the data domain.')
-  } else if (min !== max && classification === 'quantile') {
+  } else if (min !== max && classification !== 'equal-interval') {
     const values = (options.values ?? [])
       .filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max)
       .sort((a, b) => a - b)
-    if (!values.length) throw new Error('Quantiles need numeric observations within the data domain.')
-    if (values[0] !== values[values.length - 1]) {
-      breaks = Array.from({ length: classes - 1 }, (_, i) => quantileSorted(values, (i + 1) / classes)!).filter(
-        (v, i, all) => v > min && v < max && (i === 0 || v !== all[i - 1]),
+    if (!values.length)
+      throw new Error(
+        classification === 'quantile'
+          ? 'Quantiles need numeric observations within the data domain.'
+          : 'Classes read from the data need numeric observations within the data domain.',
       )
+    if (values[0] !== values[values.length - 1]) {
+      const found =
+        classification === 'quantile'
+          ? Array.from({ length: classes - 1 }, (_, i) => quantileSorted(values, (i + 1) / classes)!)
+          : classification === 'natural-breaks'
+            ? naturalBreaks(values, classes)
+            : classification === 'standard-deviation'
+              ? standardDeviationBreaks(values, classes)
+              : // A range that reaches zero has no constant ratio: equal intervals stand in.
+                (geometricBreaks(values, classes) ?? equalIntervals(min, max, classes))
+      // Natural breaks may end on the maximum: an outlier at the top is a class of its own.
+      const top = classification === 'natural-breaks' ? (v: number) => v <= max : (v: number) => v < max
+      breaks = found.filter((v, i, all) => v > min && top(v) && (i === 0 || v !== all[i - 1]))
     }
   } else if (min !== max) {
-    breaks = Array.from({ length: classes - 1 }, (_, i) => min + ((max - min) * (i + 1)) / classes)
+    breaks = equalIntervals(min, max, classes)
   }
   const colors = samplePalette(options, breaks.length + 1)
   const indexForValue = (value: number | null | undefined) =>
