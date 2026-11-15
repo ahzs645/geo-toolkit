@@ -13,6 +13,30 @@ import { DialogShell } from '@pgmaps/geo-toolkit/ui/dialog-shell'
 import { RecordDialog } from '@pgmaps/geo-toolkit/ui/record-dialog'
 import '@pgmaps/geo-toolkit/styles.css'
 
+/** A host that lays its children out with a gap and takes its dialogs inside itself. */
+function GapHost() {
+  const [host, setHost] = useState<HTMLDivElement | null>(null)
+  const [open, setOpen] = useState(false)
+  return (
+    <div ref={setHost} data-testid="gap-host" style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 160 }}>
+      <div data-testid="gap-host-pane" style={{ flex: 1, minHeight: 0 }} />
+      <button data-testid="gap-host-bar" onClick={() => setOpen(true)}>
+        Open hosted shell
+      </button>
+      {open && (
+        <DialogShell
+          title="Hosted shell"
+          portalContainer={host}
+          onClose={() => setOpen(false)}
+          closeLabel="Dismiss hosted shell"
+        >
+          <p>Mounted inside its host.</p>
+        </DialogShell>
+      )}
+    </div>
+  )
+}
+
 function Fixture() {
   const [open, setOpen] = useState(false)
   const [chromeHidden, setChromeHidden] = useState(false)
@@ -75,6 +99,7 @@ function Fixture() {
       </button>
       <output data-testid="chrome-state">{chromeHidden ? 'hidden' : 'visible'}</output>
       <button>Background action</button>
+      <GapHost />
     </WorkspaceProvider>
   )
 }

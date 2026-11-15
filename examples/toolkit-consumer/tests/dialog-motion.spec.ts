@@ -150,3 +150,28 @@ test('controlled reopening cancels a pending close and preserves the edit', asyn
   await expect(page.getByTestId('close-count')).toHaveText('1')
   await expect(trigger).toBeFocused()
 })
+
+test('a dialog mounted inside a host with a layout gap leaves the host where it was', async ({ page }) => {
+  await page.goto('/tests/fixtures/dialog-motion.html')
+  const pane = page.getByTestId('gap-host-pane')
+  const bar = page.getByTestId('gap-host-bar')
+  const layout = async () => ({ pane: await pane.boundingBox(), bar: await bar.boundingBox() })
+  const before = await layout()
+  await bar.click()
+  const dialog = page.getByRole('dialog', { name: 'Hosted shell' })
+  await expect(dialog).toBeVisible()
+  // The dialog's wrapper is a child of the host, where an in-flow box takes one of its gaps.
+  expect(await dialog.evaluate((node) => node.parentElement?.parentElement?.dataset.testid)).toBe('gap-host')
+  expect(await layout()).toEqual(before)
+  await dialog.evaluate(async (node) => {
+    await Promise.all(node.getAnimations().map((animation) => animation.finished))
+  })
+  const bounds = (await dialog.boundingBox())!
+  const viewport = page.viewportSize()!
+  expect(Math.abs(bounds.x + bounds.width / 2 - viewport.width / 2)).toBeLessThan(1)
+  expect(Math.abs(bounds.y + bounds.height / 2 - viewport.height / 2)).toBeLessThan(1)
+  await topLayerReady(dialog)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  expect(await layout()).toEqual(before)
+})

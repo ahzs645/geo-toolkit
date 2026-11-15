@@ -109,7 +109,13 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
           data-workspace-responsive={presentation.responsive}
           {...presentation.responsiveAttributes}
           style={{
-            ...(embedded ? { position: 'absolute', inset: 0, pointerEvents: 'none' } : {}),
+            // Out of flow in both placements. Its surfaces are fixed, so in the viewport placement
+            // it has no height, but in flow it is still a child of whatever it is mounted in, and a
+            // flex or grid host gave it one of its gaps: the host's content moved while a dialog was
+            // open. It keeps the host's width for the reading container below.
+            ...(embedded
+              ? { position: 'absolute', inset: 0, pointerEvents: 'none' }
+              : { position: 'absolute', left: 0, right: 0 }),
             ...(presentation.responsive === 'container'
               ? { containerType: 'inline-size', containerName: 'geo-reading' }
               : {}),
