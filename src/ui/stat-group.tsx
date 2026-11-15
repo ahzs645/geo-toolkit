@@ -179,15 +179,25 @@ export function StatGroup({
   }
 
   return (
-    <dl aria-label={ariaLabel} className={cn('flex items-center justify-around gap-2 text-center', className)}>
+    // So a narrow sidebar never scrolls sideways: a label wraps (balanced) once
+    // the row is wider than its column, and values, which stay on one line,
+    // step down in a narrow row. The row is a size container (it takes its
+    // parent's full width), and the step is a zoom so it scales a page's own
+    // `valueClassName` size rather than replacing it. Items align by their tops
+    // so a two-line label does not lift its value out of the row.
+    <dl
+      aria-label={ariaLabel}
+      className={cn('flex items-start justify-around gap-2 text-center [container-type:inline-size]', className)}
+    >
       {items.map((item, index) => (
-        <div key={itemKey(item, index)} className={cn('flex flex-col-reverse whitespace-nowrap', item.className)}>
-          <dt className="text-xs text-muted-foreground">
+        <div key={itemKey(item, index)} className={cn('flex flex-col-reverse', item.className)}>
+          <dt className="text-balance text-xs leading-tight text-muted-foreground">
             <StatLabel item={item} />
           </dt>
           <dd
             className={cn(
-              'text-base font-bold tabular-nums workspace-desktop:text-lg',
+              'whitespace-nowrap text-base font-bold tabular-nums workspace-desktop:text-lg',
+              '[@container(min-width:14rem)_and_(max-width:18rem)]:[zoom:0.8] [@container(max-width:14rem)]:[zoom:0.7]',
               toneClasses[item.tone ?? 'default'],
               item.valueClassName,
             )}
