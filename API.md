@@ -1219,15 +1219,80 @@ or a `StepSection`: a lighter hairline above, no rule below and a level-3 headin
 by default (`headingLevel` still overrides it).
 
 `ColorField` picks a colour or leaves it unset: `value: string | null`,
-`onChange(string | null)` and an accessible `label` for the colour input. The
-swatch opens the native colour input; `presets` show as a row of swatches and in
-the picker's own list (`presetDisplay="picker"` keeps them in the list only, for
-a dense row); unset draws striped with a dashed border, titled `unsetTitle`
-(default "Default colour: choose one"); while a colour is set, a reset button
-named `resetLabel` (default "Reset {label}") returns `null`. `size="sm"` is a
-14 px swatch for a list row. Colours are emitted as lower-case `#rrggbb`;
-`normalizeHexColor` is the pure normalizer and `pickerFallback` the colour the
-picker opens on while unset.
+`onChange(string | null)` and an accessible `label` for the swatch button. The
+swatch opens the colour picker in a popover: a saturation and value plane and a
+hue rail drawn in Okhsv, a hex box, pick-from-screen where the browser has an
+EyeDropper, the `presets` and the colours picked on this page. `onChange` is the
+commit: it fires once when a drag ends, a key is let go, a hex is entered or a
+swatch is clicked. `onPreview(hex)` reports every colour a drag passes through,
+for a live preview only. `presets` also show as a row of swatches beside the
+field (`presetDisplay="picker"` keeps them in the picker only, for a dense row);
+unset draws striped with a dashed border, titled `unsetTitle` (default "Default
+colour: choose one"); while a colour is set, a reset button named `resetLabel`
+(default "Reset {label}") returns `null`, unless `resettable={false}`.
+`size="sm"` is a 14 px swatch for a list row. Colours are emitted as lower-case
+`#rrggbb`; `normalizeHexColor` is the pure normalizer and `pickerFallback` the
+colour the picker opens on while unset. Opacity is a separate value: `opacity`
+with `onOpacityChange` (and optional `onOpacityPreview`) adds an opacity rail.
+`swatch` draws a node in the button in place of the colour, `swatchClassName`
+restyles the button, `side` is the popover's preferred side, and `recents` and
+`eyeDropper` (both default true) turn those rows off.
+
+`ColorPickerPanel` is the picker without the popover (`value`, `fallback`,
+`onCommit`, `onPreview`, `label`, `presets`, `recent`, `opacity`,
+`onOpacityCommit`, `onOpacityPreview`, `eyeDropper`). `rememberColor`,
+`recentColors`, `useRecentColors` and `clearRecentColors` are the in-memory
+recent colours; `useEyeDropper(onPick)` returns a pick callback or `null`;
+`usePointerDrag(onMove, onEnd)` reports a captured drag as 0–1 fractions of the
+element's box.
+
+`Popover`, `PopoverTrigger`, `PopoverAnchor`, `PopoverClose` and
+`PopoverContent` are Radix Popover with the toolkit's surface: the content
+flips and shifts to stay on screen, works inside a modal `Dialog` and inside
+another popover, follows a detached panel into its window, and carries
+`data-floating-layer`.
+`@radix-ui/react-popover` is pinned to the release whose layer packages
+(`react-dismissable-layer`, `react-focus-scope`) are the ones
+`@radix-ui/react-dialog` resolves. A newer popover brings its own copies, the
+two layer stacks do not see each other, and a popover inside a modal dialog
+stops taking clicks. Move both together.
+
+`RampField` picks a colour ramp from a list that draws each one as its gradient:
+`value` (a ramp id), `onChange(id, colors)`, `ramps` (`{ id, label, colors,
+group? }`), `label`, and `reverse` with `onReverseChange` for a Reverse switch
+in the list's footer. An id it is not given shows as its own text, never as
+another ramp. `custom={{ ramps, onSave, onDelete }}` lets a person make
+gradients of their own: "+ New gradient" swaps the list for an editor (a name,
+`GradientStopsEditor`, a preview and a hex list), a saved one is listed under
+"Yours" with a pencil, and it is picked as `customRampId(name)` with its
+anchors in `colors`. `GradientStopsEditor` (`stops`, `at`, `onChange(stops,
+at)`, `label`) is the bar of draggable stops with the colour picker for the
+selected one. `createCustomRampStore(storageKey)` keeps a person's ramps in
+this browser (`get`, `subscribe`, `save(ramp, editing?)`, `remove(name)`), and
+`useCustomRamps(store)` reads them. `/scales` has the model: `CustomRamp`,
+`customRampColors` (stops and their positions resampled to nine anchors, in
+Lab), `customRampColorAt`, `customRampCss`, `parseCustomRamp`,
+`parseRampStops`, `cleanRampOffsets`, `customRampNameProblem` and
+`freeCustomRampName`.
+
+`/scales` exports `COLOR_RAMPS` (20 ramps read from d3's schemes, each `{ id,
+label, kind, colors }` with nine anchors low to high), `colorRamp(id)`,
+`colorRampCss(colors, reverse)` and `COLOR_RAMP_KIND_LABELS`. Ramp ids are
+saved in styles: rename a label, never an id.
+
+`resolvePaletteScale` classes by `equal-interval`, `quantile`, `natural-breaks`,
+`standard-deviation`, `geometric-interval` or `manual`. `naturalBreaks`,
+`standardDeviationBreaks` and `geometricBreaks` (`/scales`) take observations
+sorted ascending and return interior boundaries. Natural breaks is Fisher–Jenks
+on every observation (a sample past `NATURAL_BREAKS_MAX_VALUES` is thinned
+evenly) and may end on the maximum; a geometric scale needs a positive minimum
+and falls back to equal intervals without one.
+
+`/scales` exports the colour spaces the picker is drawn in: `hexToOkhsv`,
+`okhsvToHex`, `okhsvToLinearSrgb`, `findCusp`, `cuspForHue`, `okhsvSwatches`
+(a generated swatch grid), `hexToOklch`, `oklchToHex` (out-of-gamut colours
+lose chroma, holding lightness and hue) and `isOklchInGamut`. Okhsv follows
+Björn Ottosson's published method (MIT; see `NOTICE-OKHSV.md`).
 
 ```tsx
 <ColorField
