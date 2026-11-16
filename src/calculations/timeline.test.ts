@@ -10,6 +10,7 @@ import {
 } from './timeline.js'
 import {
   isTimelinePicker,
+  timelineDensityAfter,
   timelineDensityForWidth,
   timelineTickIndices,
   timelineWindowOptions,
@@ -117,6 +118,23 @@ describe('timeline layout', () => {
     expect(timelineDensityForWidth(560, false, true)).toBe('full')
     expect(timelineDensityForWidth(540, true, true)).toBe('compact')
     expect(timelineDensityForWidth(560, true, true)).toBe('full')
+  })
+
+  it('drops a density at its minimum width and takes it back only past the gap', () => {
+    expect(timelineDensityAfter('full', 879)).toBe('compact')
+    expect(timelineDensityAfter('compact', 880)).toBe('compact')
+    expect(timelineDensityAfter('compact', 896)).toBe('full')
+    expect(timelineDensityAfter('compact', 419)).toBe('mini')
+    expect(timelineDensityAfter('mini', 430)).toBe('mini')
+    expect(timelineDensityAfter('mini', 436)).toBe('compact')
+    expect(timelineDensityAfter('mini', 1200)).toBe('full')
+    expect(timelineDensityAfter('full', 300)).toBe('mini')
+  })
+
+  it('agrees with the plain density wherever the width is clear of a line', () => {
+    for (const width of [300, 500, 700, 1000, 1400])
+      for (const previous of ['full', 'compact', 'mini'] as const)
+        expect(timelineDensityAfter(previous, width)).toBe(timelineDensityForWidth(width))
   })
 
   it('treats a dozen buckets as a picker and anything longer as a scrubber', () => {

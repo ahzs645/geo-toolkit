@@ -61,6 +61,8 @@ export * from './form-field.js'
 export * from './number-field.js'
 export * from './clipboard-text.js'
 export * from './use-clipboard-text.js'
+export * from './use-element-size.js'
+export * from './use-size-fold.js'
 export * from './copy-button.js'
 export * from './notification.js'
 export * from './numeric-range-field.js'
@@ -70,6 +72,8 @@ export {
   DEFAULT_TIMELINE_SPEEDS,
   isTimelinePicker,
   timelineDensityForWidth,
+  timelineDensityAfter,
+  TIMELINE_DENSITY_GAP_PX,
   timelineTickIndices,
   timelineWindowOptions,
 } from './map-timeline.js'

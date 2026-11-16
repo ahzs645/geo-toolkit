@@ -11,6 +11,8 @@ import {
 } from 'react'
 import { ChevronLeft, ChevronRight, Pause, Play, SkipBack, SkipForward, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '../utils.js'
+import { useElementSize } from './use-element-size.js'
+import { nextFold } from './use-size-fold.js'
 import {
   formatTimelineWindow,
   timelineMaxIndex,
@@ -108,18 +110,41 @@ const NICE_STRIDES = [1, 2, 5, 10, 20, 25, 50, 100]
 const HOLD_DELAY_MS = 400
 const HOLD_REPEAT_MS = 120
 
+const fullMinWidthFor = (touch: boolean, picker: boolean) =>
+  picker ? (touch ? PICKER_FULL_MIN_WIDTH_TOUCH : PICKER_FULL_MIN_WIDTH) : touch ? FULL_MIN_WIDTH_TOUCH : FULL_MIN_WIDTH
+
 /** The density a timeline of this width gets with `density="auto"`. */
 export function timelineDensityForWidth(width: number, touch = false, picker = false): MapTimelineDensity {
-  const fullMinWidth = picker
-    ? touch
-      ? PICKER_FULL_MIN_WIDTH_TOUCH
-      : PICKER_FULL_MIN_WIDTH
-    : touch
-      ? FULL_MIN_WIDTH_TOUCH
-      : FULL_MIN_WIDTH
-  if (width >= fullMinWidth) return 'full'
+  if (width >= fullMinWidthFor(touch, picker)) return 'full'
   if (width >= COMPACT_MIN_WIDTH) return 'compact'
   return 'mini'
+}
+
+/**
+ * How far past a density's minimum width a timeline grows before it takes that density back. Each
+ * density needs its minimum width to fit, so a timeline drops a density at the minimum and returns
+ * to it only past this gap: a width resting on the line (a dragged pane, a scrollbar coming and
+ * going) then does not switch layouts every frame (`nextFold`).
+ */
+export const TIMELINE_DENSITY_GAP_PX = 16
+
+/** `timelineDensityForWidth` for a timeline that had `previous`, with `TIMELINE_DENSITY_GAP_PX` on the way up. */
+export function timelineDensityAfter(
+  previous: MapTimelineDensity,
+  width: number,
+  touch = false,
+  picker = false,
+): MapTimelineDensity {
+  const fullMinWidth = fullMinWidthFor(touch, picker)
+  const belowFull = nextFold(previous !== 'full', width, {
+    foldBelow: fullMinWidth,
+    unfoldFrom: fullMinWidth + TIMELINE_DENSITY_GAP_PX,
+  })
+  const belowCompact = nextFold(previous === 'mini', width, {
+    foldBelow: COMPACT_MIN_WIDTH,
+    unfoldFrom: COMPACT_MIN_WIDTH + TIMELINE_DENSITY_GAP_PX,
+  })
+  return !belowFull ? 'full' : belowCompact ? 'mini' : 'compact'
 }
 
 /** Whether a timeline of this length picks buckets directly rather than scrubbing. */
@@ -164,22 +189,6 @@ export function timelineTickIndices(
     if (round.length) return round
   }
   return candidates.filter((_, ordinal) => ordinal % stride === 0)
-}
-
-function useElementWidth<T extends HTMLElement>() {
-  const ref = useRef<T>(null)
-  const [width, setWidth] = useState(0)
-  useLayoutEffect(() => {
-    const element = ref.current
-    if (!element) return
-    const sync = () => setWidth(element.getBoundingClientRect().width)
-    sync()
-    if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(sync)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [])
-  return [ref, width] as const
 }
 
 /** Step once on press, then keep stepping while held, like a map's own arrows. */
@@ -286,8 +295,8 @@ export function MapTimeline({
   className,
 }: MapTimelineProps) {
   const rootRef = useRef<HTMLDivElement>(null)
-  const [trackRef, trackWidth] = useElementWidth<HTMLDivElement>()
-  const [rootWidth, setRootWidth] = useState(0)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const trackWidth = useElementSize(trackRef).width
   const [containerHeight, setContainerHeight] = useState(0)
   const isMobile = useIsMobile()
   const interactions = useWorkspaceInteractions()
@@ -329,29 +338,25 @@ export function MapTimeline({
     const root = rootRef.current
     if (!root) return
     const container = root.offsetParent instanceof HTMLElement ? root.offsetParent : root.parentElement
-    const sync = () => {
-      setRootWidth(root.getBoundingClientRect().width)
-      setContainerHeight(container?.getBoundingClientRect().height ?? 0)
-    }
+    if (!container) return
+    const sync = () => setContainerHeight(container.getBoundingClientRect().height)
     sync()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(sync)
-    observer.observe(root)
-    if (container) observer.observe(container)
+    observer.observe(container)
     return () => observer.disconnect()
   }, [])
+  const rootWidth = useElementSize(rootRef).width
   const coarsePointer = useMediaQuery('(pointer: coarse)')
   // Phones and touch tablets get 44px targets, whatever layout the width picks.
   const touch = isMobile || coarsePointer
   const shortMap = containerHeight > 0 && containerHeight < SHORT_MAP_HEIGHT
-  const density: MapTimelineDensity =
-    densityProp === 'auto'
-      ? rootWidth
-        ? timelineDensityForWidth(rootWidth, touch, picker)
-        : isMobile
-          ? 'mini'
-          : 'full'
-      : densityProp
+  // The auto density follows the width with a gap on the way up (`timelineDensityAfter`), kept from
+  // the last render by React's set-during-render pattern.
+  const [lastDensity, setLastDensity] = useState<MapTimelineDensity>(() => (isMobile ? 'mini' : 'full'))
+  const autoDensity = rootWidth ? timelineDensityAfter(lastDensity, rootWidth, touch, picker) : lastDensity
+  if (autoDensity !== lastDensity) setLastDensity(autoDensity)
+  const density: MapTimelineDensity = densityProp === 'auto' ? autoDensity : densityProp
 
   // Publish the footprint (height plus the gap below it) on every enclosing
   // layout root, so chrome rendered beside the map stacks above it too.

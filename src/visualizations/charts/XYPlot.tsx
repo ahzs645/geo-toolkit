@@ -1,20 +1,12 @@
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { Button } from '../../ui/button.js'
+import { useElementSize } from '../../ui/use-element-size.js'
 
 import { plotBounds, type XYDomain, type XYSelection, type PlotInsets } from './geometry.js'
 
 export function SizedChart({ height, children }: { height: number; children: (width: number) => ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(0)
-  useEffect(() => {
-    const element = ref.current
-    if (!element) return
-    const resize = () => setWidth(Math.max(0, Math.floor(element.getBoundingClientRect().width)))
-    resize()
-    const observer = new ResizeObserver(resize)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [])
+  const width = Math.floor(useElementSize(ref).width)
   return (
     <div ref={ref} className="w-full min-w-0" style={{ height, overflow: 'clip' }}>
       {width > 0 && children(width)}

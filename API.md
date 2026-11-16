@@ -1003,6 +1003,10 @@ const range = timelineWindow(buckets.length, value, size, 'end') // filter your 
   - two rows with window and speed under an options button from 420 px;
   - a phone layout below that.
 
+  A timeline drops a layout at these widths and takes it back only
+  `TIMELINE_DENSITY_GAP_PX` (16 px) wider (`timelineDensityAfter`), so a width
+  resting on a line does not switch layouts every frame.
+
   On short maps (a landscape phone) the track gets shorter. Touch screens get
   44 px controls. `density` fixes a layout. The options swap in for the track at
   the track's height, so chrome stacked above doesn't jump.
@@ -1305,6 +1309,27 @@ Björn Ottosson's published method (MIT; see `NOTICE-OKHSV.md`).
 ```
 
 Pass `size="lg"` on a hub page that lists tools.
+
+## Measured sizes and folds
+
+A component that draws at an element's size, or changes its layout by it, keeps
+that size through `useElementSize(ref, options?)` (`/ui`): measured before the
+first paint, no re-render for an unchanged size, and a hidden element (0 × 0)
+keeps its last size. Options: `box` (`border`, the default, or `content`, inside
+padding), `initial` (the size before the first measurement), `accept` (which
+measurements count; a viewer that needs an area passes one requiring both
+sides) and `immediate` (re-render inside the resize with `flushSync`, so a
+canvas or SVG never shows a stretched frame; `ChartViewport` uses it). The
+target may be the element itself, for one the host does not render.
+
+A layout that folds, wraps or hides something below a size takes
+`useSizeFold(size, { foldBelow, unfoldFrom }, initial?)`, or `nextFold` where
+no hook fits. A switch nearly always changes the size it was measured on (a
+chart hiding its readouts gives its panel back padding and reads taller), and
+without a gap it flips every frame with nothing reported. Keep `unfoldFrom`
+above `foldBelow` by more than the switch moves the size; `nextFold` refuses the
+reverse. `DashboardToolbar` keeps its row from `inlineAt` until 16 px narrower,
+and `MapTimeline`'s densities take the same gap on the way up.
 
 ## Clipboard feedback and transports
 

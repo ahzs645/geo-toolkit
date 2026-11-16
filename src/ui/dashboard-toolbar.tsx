@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { cn } from '../utils.js'
+import { useElementSize } from './use-element-size.js'
+import { useSizeFold } from './use-size-fold.js'
+
+const TOOLBAR_FOLD_GAP_PX = 16
 
 /** A single row at the supplied container width; narrow embeds wrap without depending on the viewport. */
 export function DashboardToolbar({
@@ -16,16 +20,14 @@ export function DashboardToolbar({
   inlineAt?: number
 }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [inline, setInline] = useState(false)
-  useEffect(() => {
-    const element = ref.current
-    if (!element) return
-    const resize = () => setInline(element.getBoundingClientRect().width >= inlineAt)
-    resize()
-    const observer = new ResizeObserver(resize)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [inlineAt])
+  // One row from `inlineAt`; once there it keeps the row until 16 px narrower (its title truncates), so a
+  // width on the line does not switch the toolbar back and forth (`useSizeFold`).
+  const wrapped = useSizeFold(
+    useElementSize(ref).width,
+    { foldBelow: inlineAt - TOOLBAR_FOLD_GAP_PX, unfoldFrom: inlineAt },
+    true,
+  )
+  const inline = !wrapped
   return (
     <div
       ref={ref}
