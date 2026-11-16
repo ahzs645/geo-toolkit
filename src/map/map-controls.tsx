@@ -429,6 +429,7 @@ function MapScaleBar({ position = 'bottom-left', maxWidth = 100, hideAbovePitch 
   if (!bar) return null
   return (
     <div
+      data-map-chrome=""
       className={cn(
         'pointer-events-none absolute rounded bg-background/80 px-1.5 pb-1 pt-0.5 text-3xs leading-3 text-foreground shadow-sm',
         MAP_OVERLAY_Z.controls,

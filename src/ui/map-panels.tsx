@@ -71,6 +71,7 @@ export function MapOverlay({
 }: MapOverlayProps) {
   return (
     <div
+      data-map-chrome=""
       className={cn(
         'absolute rounded-md border border-border bg-background/90 shadow-sm backdrop-blur-sm',
         MAP_OVERLAY_Z.controls,

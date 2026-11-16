@@ -239,12 +239,16 @@ export function MapLoader({
           <span className="absolute h-24 w-24 rounded-full border border-sky-500/20" />
           <span className="absolute h-20 w-20 animate-ping rounded-full border border-sky-500/25" />
           <span className="absolute h-16 w-16 rounded-full border-2 border-sky-500/45 border-t-transparent animate-spin" />
-          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-background/95 shadow-lg">
+          <div
+            data-map-chrome=""
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-background/95 shadow-lg"
+          >
             <Loader2 className="h-5 w-5 animate-spin text-sky-600 dark:text-sky-400" aria-hidden="true" />
           </div>
         </div>
       )}
       <span
+        data-map-chrome=""
         className={cn(
           'absolute translate-y-20 rounded-md border border-border bg-background/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-[opacity,transform] duration-300',
           exiting && 'translate-y-16 opacity-0',

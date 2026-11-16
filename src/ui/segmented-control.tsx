@@ -70,7 +70,10 @@ export function SegmentedControl<T extends string>({
             className={cn(
               'inline-flex items-center justify-center gap-1.5 whitespace-nowrap font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 touch:min-h-10',
               fullWidth && 'flex-1',
-              size === 'md' ? 'rounded-md px-3 py-2 text-xs' : 'rounded px-2 py-1 text-xs',
+              // One chip shape at both sizes, and `md` the TabBar pill's: a 28 px chip in a
+              // 36 px track, the height of the sidebar's search field. `sm` is a 24 px chip in
+              // a 28 px track, the height of the `xs` buttons it sits among in toolbars.
+              size === 'md' ? 'rounded-md px-3 py-1.5 text-xs' : 'rounded-md px-2 py-1 text-xs',
               selected
                 ? cn(
                     variant === 'solid'
