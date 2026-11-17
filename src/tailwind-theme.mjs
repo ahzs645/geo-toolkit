@@ -63,7 +63,8 @@ export const themeablePalette = {
 
 /**
  * Families that are a status or category colour almost everywhere, but one page's accent
- * (a parks page in green, a census page in amber). Each reads its own variables
+ * (a parks page in green, a census page in amber, the LiDAR and drought tool pages in
+ * emerald). Each reads its own variables
  * (`--palette-green-50` …), which nothing sets by default; a host sets them on that page's
  * panel alone, so the family follows its theme there and stays fixed everywhere else.
  */
@@ -72,6 +73,8 @@ export const pageAccentPalette = {
     '240 253 244, 220 252 231, 187 247 208, 134 239 172, 74 222 128, 34 197 94, 22 163 74, 21 128 61, 22 101 52, 20 83 45, 5 46 22',
   amber:
     '255 251 235, 254 243 199, 253 230 138, 252 211 77, 251 191 36, 245 158 11, 217 119 6, 180 83 9, 146 64 14, 120 53 15, 69 26 3',
+  emerald:
+    '236 253 245, 209 250 229, 167 243 208, 110 231 183, 52 211 153, 16 185 129, 5 150 105, 4 120 87, 6 95 70, 6 78 59, 2 44 34',
 }
 
 const themeableColors = Object.fromEntries(
