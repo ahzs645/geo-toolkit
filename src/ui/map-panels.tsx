@@ -505,9 +505,9 @@ export function MapSidebarHeader({
   return (
     <div className={cn('border-b border-border bg-background/95 p-4', className)}>
       <div className={cn(actions && 'flex items-start justify-between gap-3')}>
-        {/* A title on its own line centres on the back button and icon; with a subtitle they sit beside the title line. */}
-        <div className={cn('flex min-w-0 gap-3', subtitle ? 'items-start' : 'items-center')}>
-          {back && <div className={cn('-ml-2 -mr-1 flex shrink-0 items-center', subtitle && 'mt-0.5')}>{back}</div>}
+        {/* The back button and icon centre on the title block, whether or not it has a subtitle. */}
+        <div className="flex min-w-0 items-center gap-3">
+          {back && <div className="-ml-2 -mr-1 flex shrink-0 items-center">{back}</div>}
           {Icon && (
             <div
               className={cn(
