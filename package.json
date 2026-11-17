@@ -32,6 +32,10 @@
       "types": "./dist/grids/index.d.ts",
       "default": "./dist/grids/index.js"
     },
+    "./terrain": {
+      "types": "./dist/terrain/index.d.ts",
+      "default": "./dist/terrain/index.js"
+    },
     "./visualizations": {
       "types": "./dist/visualizations/index.d.ts",
       "default": "./dist/visualizations/index.js"

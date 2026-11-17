@@ -21,6 +21,7 @@ not a promise that every historical module is stable.
 | `/visualizations/react`              | `TimeSeriesChart`, `LineBandChart`, `ScatterPlot`, `ChartViewport`, `XYPlot`, `SizedChart`, `DonutRingMap`, canvas points and typed series/axis contracts                                                                                                                                                                                                                                                                      | React, React DOM                                               |
 | `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                                                                                                                                                                                                                                                                                            | None                                                           |
 | `/grids/map-raster-grid`             | `createRasterGridLayer`, `RasterGridPick`                                                                                                                                                                                                                                                                                                                                                                                      | `@deck.gl/core`, `@deck.gl/geo-layers`, `@deck.gl/layers`      |
+| `/terrain`                           | Terrarium DEM tiles: `ElevationGrid` (bilinear, `NaN` for missing ground), `loadElevationGrid` with an injectable decoder and `createTerrainTileStore`, `createTerrainTileCache`, tile ranges, Web Mercator and pixel conversions, `ElevationSource`, `CanopySource`                                                                                                                                                           | None                                                           |
 | `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), `resizeMap`, `ensureRtlTextPlugin`, settled viewport observation and screen-point clustering, `captureMapImage`, offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants                                                                    | React, React DOM, MapLibre                                     |
 | `/map/persistent-map`                | `PersistentMapProvider`, `PersistentMapHost`, `SharedMap`, `usePersistentMap`, `useMapBasemap`                                                                                                                                                                                                                                                                                                                                 | React, React DOM, MapLibre                                     |
 | `/map/map-deck`                      | Shared deck.gl overlay integration                                                                                                                                                                                                                                                                                                                                                                                             | React, React DOM, MapLibre, `@deck.gl/core`, `@deck.gl/mapbox` |
@@ -1309,6 +1310,18 @@ Björn Ottosson's published method (MIT; see `NOTICE-OKHSV.md`).
 ```
 
 Pass `size="lg"` on a hub page that lists tools.
+
+## DEM terrain
+
+`/terrain` turns Terrarium tiles into an elevation mosaic for analysis
+(sightlines, profiles, viewsheds). Pick a range with `demTileRange(bounds, zoom)`,
+load it with `loadElevationGrid({ range })` and sample `grid.elevationAt(lng, lat)`.
+A tile that fails to load leaves its ground `NaN`, never sea level, and the result
+reports `missingTileCount`. Decoding is injectable (`decode`), so the same loader
+runs in a worker (`createImageBitmap`, the default) and in Node with its own PNG
+reader. Validated PNGs persist in Cache Storage through `store`: pass
+`createTerrainTileStore('your-app-terrain-v1')` to keep your tiles apart from
+another app's on the same origin.
 
 ## Measured sizes and folds
 
