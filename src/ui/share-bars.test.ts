@@ -29,6 +29,29 @@ describe('share bars', () => {
     expect(html).toContain('bg-blue-500')
   })
 
+  it('makes keyed rows toggle buttons when onSelect is given', () => {
+    const html = renderToStaticMarkup(
+      createElement(ShareBars, {
+        items: [
+          { key: '2019', label: 2019, values: [10] },
+          { key: '2020', label: 2020, values: [20] },
+          { label: 'Unkeyed', values: [5] },
+        ],
+        onSelect: () => {},
+        selectedKey: '2020',
+      }),
+    )
+    expect(html.match(/<button/g)).toHaveLength(2)
+    expect(html).toContain('aria-pressed="true"')
+    expect(html).toContain('aria-pressed="false"')
+    expect(html).toContain('opacity-50')
+  })
+
+  it('keeps rows plain without onSelect', () => {
+    const html = renderToStaticMarkup(createElement(ShareBars, { items: [{ key: 'a', label: 'A', values: [1] }] }))
+    expect(html).not.toContain('<button')
+  })
+
   it('splits a stacked bar by share of the total', () => {
     const html = renderToStaticMarkup(
       createElement(StackedShareBar, {

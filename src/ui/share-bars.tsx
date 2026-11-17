@@ -19,7 +19,7 @@ export interface ShareBarItem {
   display?: ReactNode
 }
 
-export type ShareBarsProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
+export type ShareBarsProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'onSelect'> & {
   items: readonly ShareBarItem[]
   /** Defaults to a single primary series. */
   series?: readonly ShareBarSeries[]
@@ -30,6 +30,14 @@ export type ShareBarsProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & 
   formatValue?: (value: number) => ReactNode
   /** Width of the label column in the `inline` layout. */
   labelWidth?: string
+  /**
+   * Makes each row a toggle button that filters by its `key`: clicking a row
+   * selects it, clicking the selected row again clears the filter (`null`).
+   * Rows without a `key` stay plain.
+   */
+  onSelect?: (key: string | null) => void
+  /** The selected row's `key`; the other rows are dimmed while one is selected. */
+  selectedKey?: string | null
 }
 
 const DEFAULT_SERIES: readonly ShareBarSeries[] = [{}]
@@ -47,6 +55,8 @@ export function ShareBars({
   max = 100,
   formatValue = percent,
   labelWidth = '3.25rem',
+  onSelect,
+  selectedKey = null,
   className,
   ...props
 }: ShareBarsProps) {
@@ -74,27 +84,43 @@ export function ShareBars({
   )
   return (
     <div className={cn('space-y-2 text-3xs', className)} {...props}>
-      {items.map((item, row) =>
-        layout === 'inline' ? (
-          <div
+      {items.map((item, row) => {
+        const selectable = onSelect != null && item.key != null
+        const selected = selectable && item.key === selectedKey
+        const Row = selectable ? 'button' : 'div'
+        const rowProps = selectable
+          ? {
+              type: 'button' as const,
+              'aria-pressed': selected,
+              onClick: () => onSelect(selected ? null : item.key!),
+              className: cn(
+                '-mx-1 w-[calc(100%+0.5rem)] rounded px-1 py-0.5 text-left transition-opacity hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                selected && 'bg-muted font-medium text-foreground',
+                selectedKey != null && !selected && 'opacity-50 hover:opacity-100',
+              ),
+            }
+          : { className: undefined }
+        return layout === 'inline' ? (
+          <Row
             key={item.key ?? row}
-            className="grid items-center gap-2"
+            {...rowProps}
+            className={cn('grid items-center gap-2', rowProps.className)}
             style={{ gridTemplateColumns: `${labelWidth} minmax(0,1fr) auto` }}
           >
             <span className="min-w-0 truncate">{item.label}</span>
             <span className="space-y-0.5">{series.map((entry, index) => bar(item, index, entry))}</span>
             <span className="text-right tabular-nums">{text(item)}</span>
-          </div>
+          </Row>
         ) : (
-          <div key={item.key ?? row}>
-            <div className="flex justify-between gap-2">
+          <Row key={item.key ?? row} {...rowProps} className={cn(selectable && 'block', rowProps.className)}>
+            <span className="flex justify-between gap-2">
               <span className="min-w-0 truncate">{item.label}</span>
               <span className="shrink-0 tabular-nums">{text(item)}</span>
-            </div>
-            <div className="mt-1 space-y-0.5">{series.map((entry, index) => bar(item, index, entry))}</div>
-          </div>
-        ),
-      )}
+            </span>
+            <span className="mt-1 block space-y-0.5">{series.map((entry, index) => bar(item, index, entry))}</span>
+          </Row>
+        )
+      })}
     </div>
   )
 }

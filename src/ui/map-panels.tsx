@@ -404,6 +404,8 @@ export function MapNumberedMarker({ color, label, className, style, ...props }: 
 export type MapSidebarShellProps = HTMLAttributes<HTMLDivElement> & {
   title: ReactNode
   subtitle?: ReactNode
+  /** The way back out of the section (a link or button), drawn first, left of the icon and title. */
+  back?: ReactNode
   actions?: ReactNode
   /** Host-rendered provenance, metadata or source actions. */
   metadata?: ReactNode
@@ -431,6 +433,7 @@ const SidebarDensityContext = createContext<SidebarDensity>('comfortable')
 export function MapSidebarShell({
   title,
   subtitle,
+  back,
   actions,
   metadata,
   children,
@@ -458,6 +461,7 @@ export function MapSidebarShell({
       <MapSidebarHeader
         title={title}
         subtitle={subtitle}
+        back={back}
         actions={actions}
         className={cn(hideTitleOnMobile && 'workspace-mobile:px-3 workspace-mobile:py-2', headerClassName)}
         titleClassName={cn(hideTitleOnMobile && 'workspace-mobile:sr-only', titleClassName)}
@@ -479,6 +483,8 @@ export function MapSidebarShell({
 type MapSidebarHeaderProps = {
   title: ReactNode
   subtitle?: ReactNode
+  /** The way back out of the section, drawn first, left of the icon and title. */
+  back?: ReactNode
   actions?: ReactNode
   className?: string
   titleClassName?: string
@@ -489,6 +495,7 @@ type MapSidebarHeaderProps = {
 export function MapSidebarHeader({
   title,
   subtitle,
+  back,
   actions,
   className,
   titleClassName,
@@ -498,7 +505,9 @@ export function MapSidebarHeader({
   return (
     <div className={cn('border-b border-border bg-background/95 p-4', className)}>
       <div className={cn(actions && 'flex items-start justify-between gap-3')}>
-        <div className="flex min-w-0 items-start gap-3">
+        {/* A title on its own line centres on the back button and icon; with a subtitle they sit beside the title line. */}
+        <div className={cn('flex min-w-0 gap-3', subtitle ? 'items-start' : 'items-center')}>
+          {back && <div className={cn('-ml-2 -mr-1 flex shrink-0 items-center', subtitle && 'mt-0.5')}>{back}</div>}
           {Icon && (
             <div
               className={cn(
@@ -1197,7 +1206,14 @@ export function MapLegendPanel({
                 type="button"
                 aria-expanded={!isCollapsed}
                 onClick={toggleCollapsed}
-                className="flex min-w-0 flex-1 items-start gap-1.5 text-left hover:text-foreground"
+                className={cn(
+                  'flex min-w-0 flex-1 items-start gap-1.5 text-left hover:text-foreground',
+                  // Collapsed, the whole pill (its padding and the chevron
+                  // included) is this one click target; the actions stay
+                  // above it.
+                  isCollapsed &&
+                    'cursor-pointer after:absolute after:inset-0 after:rounded-[inherit] after:content-[""]',
+                )}
               >
                 {icon ? <span className="mt-px shrink-0 text-muted-foreground">{icon}</span> : null}
                 <span className="min-w-0 flex-1">
@@ -1208,13 +1224,13 @@ export function MapLegendPanel({
                 </span>
               </button>
               <span className="flex shrink-0 items-center gap-2">
-                {actions ? <span className="text-xs">{actions}</span> : null}
+                {actions ? <span className="relative text-xs">{actions}</span> : null}
                 <button
                   type="button"
                   aria-label={isCollapsed ? 'Expand legend' : 'Collapse legend'}
                   aria-expanded={!isCollapsed}
                   onClick={toggleCollapsed}
-                  className="mt-0.5 text-muted-foreground hover:text-foreground"
+                  className="relative mt-0.5 text-muted-foreground hover:text-foreground"
                 >
                   <ChevronDown className={cn('size-3.5 transition-transform', isCollapsed && '-rotate-90')} />
                 </button>
