@@ -1424,3 +1424,13 @@ and each place's slot, chosen by `assignRing` so leaders keep the places'
 angular order and do not cross. Values are drawn counter-clockwise from the
 top in legend order; pass `emphasized` for legend hover and `itemProps` for
 host tooltips and data attributes.
+
+### Raster tile URL templates
+
+`xyzTileTemplate(template)` from `/map` converts ArcGIS
+`{level}/{row}/{col}` to `{z}/{y}/{x}` and accepts WMTS
+`{TileMatrix}`, `{TileRow}` and `{TileCol}` in paths or query parameters.
+Pass the returned template in the `tiles` prop of `MapRasterLayer`. Existing XYZ
+templates pass through. A missing zoom, column or row placeholder raises an error.
+Supply a Web Mercator matrix set with numeric zoom levels and a northern row
+origin. The caller chooses the matrix set, tile size, zoom limits and attribution.
