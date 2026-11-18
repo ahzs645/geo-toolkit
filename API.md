@@ -855,6 +855,15 @@ plain HTML popup at the click, pass `clickHtml` instead; it mirrors `hoverHtml`
 and, like it, inserts the returned string as HTML, so escape interpolated data
 (`escapeHtml` or `mapTooltipHtml` from `/ui`).
 
+A click that does something (`clickHtml` or `onFeatureClick`) takes the layer's
+hover card down. Where interactive layers overlap, the topmost one under the
+pointer shows its hover card and every layer receives the click. `pickPriority`
+(fill, circle, line, PMTiles fill and `MapGeoJsonLayer`; default 0) changes that
+where a layer is outranked: the layer of higher priority shows its card and takes
+the click, whatever the draw order, and a lower one under it neither shows a card
+nor fires. Give a large area that holds smaller things (a study area) a negative
+priority, so a point, line or block inside it answers first.
+
 `layerOrder` places a layer's group among the other ordered layers (higher draws
 on top) whatever order their data arrives in. Fill, circle, line, raster,
 heatmap, canvas and image layers all accept it; layers without it draw where

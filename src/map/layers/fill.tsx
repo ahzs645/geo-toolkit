@@ -6,7 +6,7 @@ import { syncFeatureState, type MapFeatureStateById } from '../map-feature-state
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_WIDTH, BORDER_COLOR } from '../map-styles.js'
 import { useSelectionColor } from '../selection-color.js'
-import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
+import { isClickOutranked, isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 import { createClickPopup, featureClickEvent } from './feature-click.js'
 import {
   EMPTY_SELECTED_IDS,
@@ -31,6 +31,13 @@ export type MapFillLayerProps = {
   sourceKey?: string
   /** Fill color — static string or MapLibre expression (e.g. ['get', 'color']) */
   layerOrder?: number
+  /**
+   * Where this layer overlaps others that answer the pointer, the higher priority shows its hover card and takes the
+   * click; a layer outranked under the pointer shows no card and its click does not fire. Default 0, and layers of
+   * equal priority behave as before (the topmost card shows, every layer gets the click). Give a large area that holds
+   * smaller things, such as a study area, a lower one, so what sits inside it answers first.
+   */
+  pickPriority?: number
   fillColor: MapStyleValue<string>
   /** Fill opacity (default: 0.72) — number or MapLibre expression */
   fillOpacity?: MapStyleValue<number>
@@ -95,6 +102,7 @@ export type MapFillLayerProps = {
 
 export function MapFillLayer({
   layerOrder,
+  pickPriority = 0,
   data,
   sourceKey,
   fillColor,
@@ -131,6 +139,8 @@ export function MapFillLayer({
   onClickRef.current = onFeatureClick
   const hoverHtmlRef = useRef(hoverHtml)
   hoverHtmlRef.current = hoverHtml
+  const pickPriorityRef = useRef(pickPriority)
+  pickPriorityRef.current = pickPriority
   const clickHtmlRef = useRef(clickHtml)
   clickHtmlRef.current = clickHtml
   const idPropRef = useRef(idProperty)
@@ -215,12 +225,16 @@ export function MapFillLayer({
 
     const clickPopup = createClickPopup(map, () => clickHtmlRef.current)
     const handleClick = (event: unknown) => {
-      const e = event as Parameters<typeof featureClickEvent>[0] & { preventDefault?: () => void }
-      const properties = e.features?.[0]?.properties
-      if (clickHtmlRef.current) {
-        tooltipRef.current?.remove()
-        clickPopup.open(e)
+      const e = event as Parameters<typeof featureClickEvent>[0] & {
+        preventDefault?: () => void
+        point?: MapLibreGL.PointLike
       }
+      if (isClickOutranked(map, e.point, fillLayerId)) return
+      const properties = e.features?.[0]?.properties
+      // A click that does something takes the hover card down: a card the page opens from `onFeatureClick` would
+      // otherwise sit over it until the pointer moves.
+      if (clickHtmlRef.current || onClickRef.current) tooltipRef.current?.remove()
+      if (clickHtmlRef.current) clickPopup.open(e)
       const id = properties?.[idPropRef.current]
       if (id != null) {
         e.preventDefault?.()
@@ -311,7 +325,12 @@ export function MapFillLayer({
       map.on('mouseleave', fillLayerId, handleMouseLeave)
     }
     const detachPointerDismiss = interactive ? attachPointerDismiss(map, removeTooltip) : () => {}
-    const unregisterHover = interactive ? registerHoverLayer(map, fillLayerId, () => !!hoverHtmlRef.current) : () => {}
+    const unregisterHover = interactive
+      ? registerHoverLayer(map, fillLayerId, () => !!hoverHtmlRef.current, {
+          clickable: () => !!onClickRef.current || !!clickHtmlRef.current,
+          priority: () => pickPriorityRef.current,
+        })
+      : () => {}
 
     const releaseOrder = registerMapLayerOrder(map, [fillLayerId, lineLayerId, selectedLayerId], layerOrder)
 

@@ -1,7 +1,7 @@
 import type * as MapLibreGL from 'maplibre-gl'
 import * as MapLibreGLRuntime from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
-import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
+import { isClickOutranked, isTopHoverLayer, registerHoverLayer, type PickLayerOptions } from './hover-arbiter.js'
 
 let pmtilesProtocolRegistered = false
 
@@ -20,8 +20,13 @@ export function ensurePmtilesProtocol() {
 }
 
 /** PMTiles layers share the map-wide hover registry with GeoJSON layers (`hover-arbiter.ts`). */
-export function registerPmtilesHoverLayer(map: MapLibreGL.Map, layerId: string) {
-  return registerHoverLayer(map, layerId)
+export function registerPmtilesHoverLayer(map: MapLibreGL.Map, layerId: string, options: PickLayerOptions = {}) {
+  return registerHoverLayer(map, layerId, () => true, options)
+}
+
+/** Whether a click on a PMTiles layer belongs to a layer of higher pick priority (`hover-arbiter.ts`). */
+export function isPmtilesClickOutranked(map: MapLibreGL.Map, point: MapLibreGL.PointLike | undefined, layerId: string) {
+  return isClickOutranked(map, point, layerId)
 }
 
 export function isTopPmtilesHoverLayer(map: MapLibreGL.Map, point: MapLibreGL.PointLike, layerId: string) {

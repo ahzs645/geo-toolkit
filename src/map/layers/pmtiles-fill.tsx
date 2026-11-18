@@ -13,6 +13,7 @@ import {
 import {
   ensurePmtilesProtocol,
   registerPmtilesHoverLayer,
+  isPmtilesClickOutranked,
   isTopPmtilesHoverLayer,
   showPmtilesTooltip,
   removePmtilesTooltip,
@@ -23,6 +24,13 @@ export type MapPmtilesFillLayerProps = {
   url: string
   sourceLayer: string
   layerOrder?: number
+  /**
+   * Where this layer overlaps others that answer the pointer, the higher priority shows its hover card and takes the
+   * click; a layer outranked under the pointer shows no card and its click does not fire. Default 0, and layers of
+   * equal priority behave as before (the topmost card shows, every layer gets the click). Give a large area that holds
+   * smaller things, such as a study area, a lower one, so what sits inside it answers first.
+   */
+  pickPriority?: number
   fillColor: MapStyleValue<string>
   fillOpacity?: MapStyleValue<number>
   lineColor?: MapStyleValue<string>
@@ -49,6 +57,7 @@ export type MapPmtilesFillLayerProps = {
 
 export function MapPmtilesFillLayer({
   layerOrder,
+  pickPriority = 0,
   url,
   sourceLayer,
   fillColor,
@@ -75,6 +84,8 @@ export function MapPmtilesFillLayer({
   const lineLayerId = `pmtiles-line-${uid}`
   const selectedLayerId = `pmtiles-sel-${uid}`
   const onClickRef = useRef(onFeatureClick)
+  const pickPriorityRef = useRef(pickPriority)
+  pickPriorityRef.current = pickPriority
   const hoverHtmlRef = useRef(hoverHtml)
   const idPropRef = useRef(idProperty)
   const idSourceRef = useRef(idSource)
@@ -185,7 +196,10 @@ export function MapPmtilesFillLayer({
       },
     })
 
-    const unregisterHoverLayer = registerPmtilesHoverLayer(map, fillLayerId)
+    const unregisterHoverLayer = registerPmtilesHoverLayer(map, fillLayerId, {
+      clickable: () => !!onClickRef.current,
+      priority: () => pickPriorityRef.current,
+    })
 
     const removeTooltip = () => {
       removePmtilesTooltip(map, fillLayerId)
@@ -202,11 +216,15 @@ export function MapPmtilesFillLayer({
           metaKey?: boolean
         }
         preventDefault?: () => void
+        point?: MapLibreGL.PointLike
       }
+      if (isPmtilesClickOutranked(map, e.point, fillLayerId)) return
       const feature = e.features?.[0]
       const properties = feature?.properties
       const id = idSourceRef.current === 'feature' ? feature?.id : properties?.[idPropRef.current]
       if (id != null && properties) {
+        // The click acts on the feature, so its hover card comes down rather than sitting under whatever it opens.
+        if (onClickRef.current) removeTooltip()
         e.preventDefault?.()
         e.originalEvent?.preventDefault()
         dispatchMobileMapFeatureClick(map)
