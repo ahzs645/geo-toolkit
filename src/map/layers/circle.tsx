@@ -4,7 +4,7 @@ import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
 import { attachPointerDismiss } from '../map-pointer.js'
 import { useSelectionColor } from '../selection-color.js'
-import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
+import { isClickOutranked, isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 import { createClickPopup, featureClickEvent } from './feature-click.js'
 import {
   type MapStyleExpression,
@@ -20,6 +20,13 @@ export type MapCircleLayerProps = {
   /** Opt-in sharing for layers with identical data and feature identity. */
   sourceKey?: string
   layerOrder?: number
+  /**
+   * Where this layer overlaps others that answer the pointer, the higher priority shows its hover card and takes the
+   * click; a layer outranked under the pointer shows no card and its click does not fire. Default 0, and layers of
+   * equal priority behave as before (the topmost card shows, every layer gets the click). Give a large area that holds
+   * smaller things, such as a study area, a lower one, so what sits inside it answers first.
+   */
+  pickPriority?: number
   color: MapStyleValue<string>
   radius?: MapStyleValue<number>
   opacity?: MapStyleValue<number>
@@ -41,6 +48,7 @@ export type MapCircleLayerProps = {
 
 export function MapCircleLayer({
   layerOrder,
+  pickPriority = 0,
   data,
   sourceKey,
   color,
@@ -71,6 +79,8 @@ export function MapCircleLayer({
   const filterRef = useRef(filter)
   const tooltipRef = useRef<MapLibreGLRuntime.Popup | null>(null)
   const hoverEnabledRef = useRef(hoverEnabled)
+  const pickPriorityRef = useRef(pickPriority)
+  pickPriorityRef.current = pickPriority
 
   useEffect(() => {
     hoverEnabledRef.current = hoverEnabled
@@ -115,12 +125,16 @@ export function MapCircleLayer({
     const removeTooltip = () => tooltipRef.current?.remove()
     const clickPopup = createClickPopup(map, () => clickHtmlRef.current)
     const handleClick = (event: unknown) => {
-      const e = event as Parameters<typeof featureClickEvent>[0] & { preventDefault?: () => void }
-      const properties = e.features?.[0]?.properties
-      if (clickHtmlRef.current) {
-        removeTooltip()
-        clickPopup.open(e)
+      const e = event as Parameters<typeof featureClickEvent>[0] & {
+        preventDefault?: () => void
+        point?: MapLibreGL.PointLike
       }
+      if (isClickOutranked(map, e.point, layerId)) return
+      const properties = e.features?.[0]?.properties
+      // A click that does something takes the hover card down: a card the page opens from `onFeatureClick` would
+      // otherwise sit over it until the pointer moves.
+      if (clickHtmlRef.current || onClickRef.current) removeTooltip()
+      if (clickHtmlRef.current) clickPopup.open(e)
       const id = properties?.[idPropRef.current]
       if (id == null) return
       e.preventDefault?.()
@@ -175,7 +189,10 @@ export function MapCircleLayer({
     map.on('mouseleave', layerId, handleMouseLeave)
     map.on('movestart', removeTooltip)
     const detachPointerDismiss = attachPointerDismiss(map, removeTooltip)
-    const unregisterHover = registerHoverLayer(map, layerId, () => !!hoverHtmlRef.current)
+    const unregisterHover = registerHoverLayer(map, layerId, () => !!hoverHtmlRef.current, {
+      clickable: () => !!onClickRef.current || !!clickHtmlRef.current,
+      priority: () => pickPriorityRef.current,
+    })
 
     const releaseOrder = registerMapLayerOrder(map, [layerId, selectedLayerId], layerOrder)
 

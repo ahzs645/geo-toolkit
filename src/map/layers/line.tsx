@@ -4,7 +4,7 @@ import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
 import { attachPointerDismiss } from '../map-pointer.js'
 import { useSelectionColor } from '../selection-color.js'
-import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
+import { isClickOutranked, isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 import { createClickPopup, featureClickEvent } from './feature-click.js'
 import {
   type MapFeatureClickHandler,
@@ -29,6 +29,13 @@ export type MapLineLayerProps = {
   clickHtml?: MapFeatureHtml
   /** Draw-order slot shared with the other vector layers; higher draws on top. */
   layerOrder?: number
+  /**
+   * Where this layer overlaps others that answer the pointer, the higher priority shows its hover card and takes the
+   * click; a layer outranked under the pointer shows no card and its click does not fire. Default 0, and layers of
+   * equal priority behave as before (the topmost card shows, every layer gets the click). Give a large area that holds
+   * smaller things, such as a study area, a lower one, so what sits inside it answers first.
+   */
+  pickPriority?: number
   /** Optional MapLibre filter, e.g. to draw only the line features of a mixed collection. */
   filter?: MapStyleExpression | null
   /** Line color — static string or MapLibre expression */
@@ -67,6 +74,7 @@ export function MapLineLayer({
   hoverHtml,
   clickHtml,
   layerOrder,
+  pickPriority = 0,
   filter,
   color,
   width = 2.2,
@@ -97,6 +105,8 @@ export function MapLineLayer({
   hoverHtmlRef.current = hoverHtml
   const clickHtmlRef = useRef(clickHtml)
   clickHtmlRef.current = clickHtml
+  const pickPriorityRef = useRef(pickPriority)
+  pickPriorityRef.current = pickPriority
   const filterRef = useRef(filter)
   filterRef.current = filter
 
@@ -147,12 +157,16 @@ export function MapLineLayer({
 
     const clickPopup = createClickPopup(map, () => clickHtmlRef.current)
     const handleClick = (event: unknown) => {
-      const e = event as Parameters<typeof featureClickEvent>[0] & { preventDefault?: () => void }
-      const properties = e.features?.[0]?.properties
-      if (clickHtmlRef.current) {
-        popup?.remove()
-        clickPopup.open(e)
+      const e = event as Parameters<typeof featureClickEvent>[0] & {
+        preventDefault?: () => void
+        point?: MapLibreGL.PointLike
       }
+      if (isClickOutranked(map, e.point, layerId)) return
+      const properties = e.features?.[0]?.properties
+      // A click that does something takes the hover card down: a card the page opens from `onFeatureClick` would
+      // otherwise sit over it until the pointer moves.
+      if (clickHtmlRef.current || onClickRef.current) popup?.remove()
+      if (clickHtmlRef.current) clickPopup.open(e)
       const id = properties?.[idPropRef.current]
       if (id != null) {
         e.preventDefault?.()
@@ -193,8 +207,12 @@ export function MapLineLayer({
       popup.setLngLat(event.lngLat).setHTML(html).addTo(map)
     }
     const detachDismiss = popup ? attachPointerDismiss(map, () => popup.remove()) : undefined
-    const unregisterHover =
-      popup && interactive ? registerHoverLayer(map, layerId, () => !!hoverHtmlRef.current) : undefined
+    const unregisterHover = interactive
+      ? registerHoverLayer(map, layerId, () => !!popup && !!hoverHtmlRef.current, {
+          clickable: () => !!onClickRef.current || !!clickHtmlRef.current,
+          priority: () => pickPriorityRef.current,
+        })
+      : undefined
 
     if (interactive) {
       map.on('click', layerId, handleClick as never)

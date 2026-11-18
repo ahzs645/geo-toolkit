@@ -1,6 +1,6 @@
 import type * as MapLibreGL from 'maplibre-gl'
 import { describe, expect, it, vi } from 'vitest'
-import { isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
+import { isClickOutranked, isTopHoverLayer, registerHoverLayer } from './hover-arbiter.js'
 
 /** A map whose rendered features at any point are `stack`, topmost first. */
 function fakeMap(stack: string[], existing = stack) {
@@ -45,5 +45,48 @@ describe('hover arbiter', () => {
     registerHoverLayer(map, 'polygons')
     registerHoverLayer(map, 'lines')
     expect(isTopHoverLayer(map, [10, 10], 'polygons')).toBe(true)
+  })
+
+  it('lets a layer of higher pick priority show its card from under a lower one', () => {
+    // A study area drawn over an arrow it holds: the arrow answers, though it is drawn below.
+    const { map } = fakeMap(['area', 'arrow'])
+    registerHoverLayer(map, 'area', () => true, { priority: () => -1 })
+    registerHoverLayer(map, 'arrow')
+    expect(isTopHoverLayer(map, [10, 10], 'arrow')).toBe(true)
+    expect(isTopHoverLayer(map, [10, 10], 'area')).toBe(false)
+  })
+})
+
+describe('click arbiter', () => {
+  const clickable = () => true
+
+  it('gives the click to a layer of higher pick priority with a feature under it', () => {
+    const { map } = fakeMap(['point', 'area'])
+    registerHoverLayer(map, 'point', () => true, { clickable })
+    registerHoverLayer(map, 'area', () => true, { clickable, priority: () => -1 })
+    expect(isClickOutranked(map, [10, 10], 'area')).toBe(true)
+    expect(isClickOutranked(map, [10, 10], 'point')).toBe(false)
+  })
+
+  it('leaves the click to the lower layer where nothing above it is under the pointer, or does nothing on a click', () => {
+    const { map } = fakeMap(['area'], ['area', 'point', 'labels'])
+    registerHoverLayer(map, 'point', () => true, { clickable })
+    registerHoverLayer(map, 'labels')
+    registerHoverLayer(map, 'area', () => true, { clickable, priority: () => -1 })
+    expect(isClickOutranked(map, [10, 10], 'area')).toBe(false)
+
+    const covered = fakeMap(['labels', 'area'])
+    registerHoverLayer(covered.map, 'labels', () => true, { clickable: () => false })
+    registerHoverLayer(covered.map, 'area', () => true, { clickable, priority: () => -1 })
+    expect(isClickOutranked(covered.map, [10, 10], 'area')).toBe(false)
+  })
+
+  it('gives every layer of equal priority the click, without a query', () => {
+    const { map, queryRenderedFeatures } = fakeMap(['point', 'polygons'])
+    registerHoverLayer(map, 'point', () => true, { clickable })
+    registerHoverLayer(map, 'polygons', () => true, { clickable })
+    expect(isClickOutranked(map, [10, 10], 'polygons')).toBe(false)
+    expect(isClickOutranked(map, [10, 10], 'point')).toBe(false)
+    expect(queryRenderedFeatures).not.toHaveBeenCalled()
   })
 })

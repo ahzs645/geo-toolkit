@@ -1,6 +1,8 @@
 export const MAP_OVERLAY_Z = {
   controls: 'z-10',
   legend: 'z-10',
+  /** MapLibre popups, set in `styles.css` (`.maplibregl-popup`): over the chrome, under overlays. */
+  popup: 'z-[15]',
   passiveOverlay: 'z-20',
   activeOverlay: 'z-50',
   modal: 'z-[1200]',

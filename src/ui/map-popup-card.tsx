@@ -25,8 +25,9 @@ type MapPopupCardProps = {
   /**
    * The card's buttons, in a footer under a rule that runs to the card's edges. A `primary` action
    * is filled and full width; the others are equal outline buttons side by side, each on its own
-   * row when the labels do not fit. The rule reaches the edges of a container with the popup's
-   * default padding (`p-3`), which is what `MapPopup` gives.
+   * row when the labels do not fit. A label too long for a row of its own ends in an ellipsis, with
+   * the whole label as the button's tooltip; it is never cut off at both ends. The rule reaches the
+   * edges of a container with the popup's default padding (`p-3`), which is what `MapPopup` gives.
    */
   footerActions?: MapPopupFooterAction[]
   /** Small controls beside the close button, e.g. a feature actions menu. */
@@ -87,8 +88,15 @@ export function MapPopupCard({
       {footerActions && footerActions.length > 0 && (
         <div className="-mx-3 -mb-3 !mt-3 space-y-1.5 border-t px-3 py-2" data-map-popup-footer="">
           {primaryActions.map((action) => (
-            <Button key={action.label} size="xs" className="w-full" disabled={action.disabled} onClick={action.onClick}>
-              {action.label}
+            <Button
+              key={action.label}
+              size="xs"
+              className="w-full"
+              title={action.label}
+              disabled={action.disabled}
+              onClick={action.onClick}
+            >
+              <span className="min-w-0 truncate">{action.label}</span>
             </Button>
           ))}
           {openActions.length > 0 && (
@@ -98,11 +106,14 @@ export function MapPopupCard({
                   key={action.label}
                   size="xs"
                   variant="outline"
-                  className="flex-1"
+                  // Equal widths (`flex-1`); `max-w-full` keeps their automatic minimum, so a label that does not fit
+                  // beside the others takes a row of its own, and only one too long for a row is shortened.
+                  className="max-w-full flex-1"
+                  title={action.label}
                   disabled={action.disabled}
                   onClick={action.onClick}
                 >
-                  {action.label}
+                  <span className="min-w-0 truncate">{action.label}</span>
                 </Button>
               ))}
             </div>

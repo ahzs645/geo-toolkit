@@ -280,6 +280,16 @@
 }
 
 /*
+ * Map popups (click cards and hover cards) sit over the map's own chrome, the legend and controls
+ * (`MAP_OVERLAY_Z.legend`, `controls`: z-10), so a card opened near the legend is never half under
+ * it, and under the overlays that hold a task (`passiveOverlay` and up: z-20). MapLibre gives a popup
+ * no z-index, and the map container makes no stacking context, so it painted under the legend.
+ */
+.maplibregl-map .maplibregl-popup {
+  z-index: 15;
+}
+
+/*
  * MapPopup's arrow. MapLibre draws the tip as a bare CSS triangle beside the content box, so beside
  * a bordered, shadowed card it reads as a separate shape: the triangle has no edge of its own. Here
  * the tip is a clipped box holding a rotated square (a rotated bar on the corner anchors) in the

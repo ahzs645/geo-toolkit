@@ -24,6 +24,13 @@ export type MapGeoJsonLayerProps = {
   pointStrokeColor?: MapStyleValue<string>
   /** Draw-order slot for the group; polygons, then lines, then points draw in that order. */
   layerOrder?: number
+  /**
+   * Where this layer overlaps others that answer the pointer, the higher priority shows its hover card and takes the
+   * click; a layer outranked under the pointer shows no card and its click does not fire. Default 0, and layers of
+   * equal priority behave as before (the topmost card shows, every layer gets the click). Give a large area that holds
+   * smaller things, such as a study area, a lower one, so what sits inside it answers first.
+   */
+  pickPriority?: number
   idProperty?: string
   visible?: boolean
   hoverHtml?: (properties: Record<string, unknown>) => string | null
@@ -45,13 +52,14 @@ export function MapGeoJsonLayer({
   pointRadius = 4,
   pointStrokeColor = '#ffffff',
   layerOrder,
+  pickPriority,
   idProperty,
   visible = true,
   hoverHtml,
   clickHtml,
   onFeatureClick,
 }: MapGeoJsonLayerProps) {
-  const shared = { data, idProperty, visible, hoverHtml, clickHtml, onFeatureClick, layerOrder }
+  const shared = { data, idProperty, visible, hoverHtml, clickHtml, onFeatureClick, layerOrder, pickPriority }
   return (
     <>
       <MapFillLayer
