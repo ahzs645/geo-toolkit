@@ -1219,6 +1219,12 @@ copies an input's files, then clears the input so the same file can be chosen ag
 
 `ToolPageHeader` heads a tool that is a scrolling page. `MapSidebarShell` takes
 `density="compact"` for a tighter sidebar; every `SidebarSection` inside follows it.
+Its content scrolls under an overlay scrollbar: no gutter, a thin thumb that fades in
+while scrolling or hovering and can be dragged by mouse, pen or touch (the mobile sheet
+ignores touches that start on it). Pass `scrollbar="native"` to keep the browser's bar.
+`useOverlayScrollbar(scrollRef, enabled?)` gives any other scroller the same thumb: add
+the `geo-overlay-scroll` class to the scroller and render the returned element beside it
+in a positioned container.
 `SidebarSection variant="subsection"` is a titled block nested in another section
 or a `StepSection`: a lighter hairline above, no rule below and a level-3 heading
 by default (`headingLevel` still overrides it).

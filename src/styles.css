@@ -166,6 +166,61 @@
 .geo-motion-dialog-root:has(> .geo-motion-dialog-content[data-state='closed']) {
   animation: geo-motion-presence-out var(--geo-motion-panel, 350ms) linear;
 }
+/* Overlay scrollbar (useOverlayScrollbar, MapSidebarShell): the native bar is hidden so it takes
+   no width; a thin thumb over the content fades in while scrolling or hovering. */
+.geo-overlay-scroll {
+  scrollbar-width: none;
+}
+.geo-overlay-scroll::-webkit-scrollbar {
+  display: none;
+}
+.geo-overlay-scrollbar {
+  position: absolute;
+  right: 0;
+  width: 14px;
+  z-index: 4;
+  pointer-events: none;
+}
+.geo-overlay-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  right: 3px;
+  width: 6px;
+  border-radius: 9999px;
+  background: hsl(var(--foreground));
+  opacity: 0;
+  /* Only grabbable while shown, so a hidden thumb never swallows taps on the content under it. */
+  pointer-events: none;
+  touch-action: none;
+  cursor: grab;
+  transition:
+    opacity 250ms ease,
+    width var(--geo-motion-feedback, 150ms) ease;
+}
+/* A wider invisible hit area so the thin thumb is easy to grab, especially by finger. */
+.geo-overlay-scrollbar-thumb::before {
+  content: '';
+  position: absolute;
+  inset: 0 -6px 0 -8px;
+}
+.geo-overlay-scrollbar[data-active] .geo-overlay-scrollbar-thumb {
+  opacity: 0.35;
+  pointer-events: auto;
+}
+.geo-overlay-scrollbar[data-active] .geo-overlay-scrollbar-thumb:hover,
+.geo-overlay-scrollbar[data-dragging] .geo-overlay-scrollbar-thumb {
+  opacity: 0.6;
+  width: 9px;
+}
+.geo-overlay-scrollbar[data-dragging] .geo-overlay-scrollbar-thumb {
+  cursor: grabbing;
+}
+@media (prefers-reduced-motion: reduce) {
+  .geo-overlay-scrollbar-thumb {
+    transition: none;
+  }
+}
+
 .geo-map-layout-bottom-pane {
   display: contents;
 }

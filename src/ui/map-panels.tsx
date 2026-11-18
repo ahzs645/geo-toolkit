@@ -17,6 +17,7 @@ import {
 import { Check, ChevronDown, Loader2, Search, X } from 'lucide-react'
 import { cn } from '../utils.js'
 import { MAP_OVERLAY_Z } from './map-overlay.js'
+import { useOverlayScrollbar } from './overlay-scrollbar.js'
 import { StatGroup, StatTileBody } from './stat-group.js'
 import { useIsMobile } from '../workspace/useIsMobile.js'
 
@@ -425,6 +426,12 @@ export type MapSidebarShellProps = HTMLAttributes<HTMLDivElement> & {
   iconClassName?: string
   /** `compact` tightens every `SidebarSection` inside, for tools that fit a lot on screen. */
   density?: SidebarDensity
+  /**
+   * `overlay` (default) hides the native scrollbar and draws a thin thumb over the content that
+   * fades in while scrolling or hovering and can be dragged by mouse, pen or touch. `native`
+   * keeps the browser's scrollbar.
+   */
+  scrollbar?: 'overlay' | 'native'
 }
 
 export type SidebarDensity = 'comfortable' | 'compact'
@@ -446,14 +453,18 @@ export function MapSidebarShell({
   icon,
   iconClassName,
   density = 'comfortable',
+  scrollbar = 'overlay',
   ...props
 }: MapSidebarShellProps) {
   const { className: contentClassName, ...restContentProps } = contentProps ?? {}
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const overlay = scrollbar === 'overlay'
+  const overlayScrollbar = useOverlayScrollbar(scrollRef, overlay)
 
   return (
     <div
       className={cn(
-        'z-10 flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-border bg-background/95 shadow-xl backdrop-blur',
+        'relative z-10 flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-border bg-background/95 shadow-xl backdrop-blur',
         className,
       )}
       {...props}
@@ -470,12 +481,19 @@ export function MapSidebarShell({
       />
       {metadata}
       <div
+        ref={scrollRef}
         data-map-sidebar-scroll="true"
-        className={cn('min-h-0 flex-1 overflow-y-auto', scrollClassName, contentClassName)}
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto',
+          overlay && 'geo-overlay-scroll',
+          scrollClassName,
+          contentClassName,
+        )}
         {...restContentProps}
       >
         <SidebarDensityContext.Provider value={density}>{children}</SidebarDensityContext.Provider>
       </div>
+      {overlayScrollbar}
     </div>
   )
 }

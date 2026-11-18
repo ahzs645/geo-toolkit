@@ -72,8 +72,13 @@ export function useMobileSheetGestures({
       return null
     }
 
+    // A touch that starts on an overlay scrollbar thumb scrolls the content, never the sheet.
+    let onScrollbar = false
+
     function onTouchStart(e: TouchEvent) {
       if (!isMobile) return
+      onScrollbar = !!(e.target as HTMLElement | null)?.closest('[data-overlay-scrollbar="true"]')
+      if (onScrollbar) return
       if ((e.target as HTMLElement | null)?.closest('[data-map-mobile-sheet-peek-action="true"]')) return
       const t = e.touches[0]
       const isHandle = handle!.contains(e.target as Node)
@@ -100,7 +105,7 @@ export function useMobileSheetGestures({
     }
 
     function onTouchMove(e: TouchEvent) {
-      if (!isMobile) return
+      if (!isMobile || onScrollbar) return
       const t = e.touches[0]
       const now = performance.now()
       const dt = now - prevTouchTime.current
@@ -167,6 +172,10 @@ export function useMobileSheetGestures({
 
     function onTouchEnd(e: TouchEvent) {
       if (!isMobile) return
+      if (onScrollbar) {
+        onScrollbar = false
+        return
+      }
       sheet!.style.willChange = ''
 
       if (!draggingRef.current) return
