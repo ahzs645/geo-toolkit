@@ -407,6 +407,11 @@ shows as a blank flash. Hosts that own a raw MapLibre map should call
 closure. `RecordDialog`'s footer uses the same close lifecycle. Keep this callback
 timing in mind when a host conditionally mounts dialogs.
 
+`DialogShell expandable` (and `PanelDialog`) adds a *Full screen* button beside
+the close button. The panel then fills the window, or the embedding workspace,
+whatever height and width classes the host passed; each opening starts at the
+dialog's own size.
+
 When filtering removes the keyboard-focused item in `VirtualResultList`, it
 cancels the previous keyboard scroll target and resets the results viewport to
 the top. An older virtualizer reconciliation cannot scroll the filtered list
@@ -1301,7 +1306,10 @@ legend strip.
 walking dropped folders. It calls `onFiles` with `PickedFile` entries that keep each
 file's relative path, and does not filter drops by `accept`; filter in `onFiles` if the
 workspace needs to. `multiple={false}` makes the button pick one file, for an import;
-a drop still hands over every file, so take the first. `filesFromInput` and
+a drop still hands over every file, so take the first. `iconsBelow` (pixels) is for a
+narrow pane: below that width the buttons show only their icons, each named by its
+label as `aria-label` and hover tip, and the hint sits beside them on one row; the
+field unfolds 16 px above it. `filesFromInput` and
 `filesFromDrop` are the same reads without React.
 
 `FileButton` is the single-button form for a toolbar or panel import: a `Button` (outline,

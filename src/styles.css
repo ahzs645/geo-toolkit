@@ -307,6 +307,21 @@
     transform: translate(-50%, -50%);
   }
 }
+/* `DialogShell expandable`: the panel fills the window, or the embedding workspace, past any
+ * height or width class the host gave it. A sheet on a phone loses its rounded top. */
+.geo-motion-dialog-content[data-dialog-expanded='true'] {
+  width: calc(100% - 1rem) !important;
+  max-width: none !important;
+  height: calc(100% - 1rem) !important;
+  max-height: none !important;
+}
+@scope (.geo-toolkit[data-workspace-max-sm='true']) to (.geo-toolkit) {
+  .geo-motion-dialog-content[data-dialog-expanded='true'] {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+  }
+}
 .geo-motion-dialog-content[data-state='open'] {
   animation: geo-motion-surface-in var(--geo-motion-panel, 350ms) var(--geo-motion-easing, ease-out) both;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { Maximize2, Minimize2, X } from 'lucide-react'
 import { cn } from '../utils.js'
 import { useWorkspace } from '../workspace/workspace-context.js'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from './dialog.js'
@@ -33,6 +33,11 @@ export interface DialogShellProps {
   /** Accessible name for the header close button. */
   closeLabel?: string
   size?: keyof typeof sizeClasses
+  /**
+   * Offer a button beside the close button that fills the window (or the
+   * embedding workspace) with the dialog and back. Off by default.
+   */
+  expandable?: boolean
   /** Controlled open state. Defaults to open, for dialogs mounted only while shown. */
   open?: boolean
   /** Opening is reported immediately; closing is reported after the exit completes. */
@@ -75,6 +80,7 @@ export function DialogShell({
   footer,
   closeLabel = 'Close',
   size = 'lg',
+  expandable = false,
   open = true,
   onOpenChange,
   onClose,
@@ -90,6 +96,10 @@ export function DialogShell({
   // A controlled reopen cancels a pending user close before anything commits.
   if (closeRequest.open !== open) setCloseRequest({ open, closing: open ? false : closeRequest.closing })
   const effectiveOpen = open && !closeRequest.closing
+  const [expanded, setExpanded] = useState(false)
+  // Each opening starts at the dialog's own size.
+  if (!open && expanded) setExpanded(false)
+  const filled = expandable && expanded
   const { present } = useMotionPresence(effectiveOpen)
   const pendingClose = useRef(false)
   const previousOpen = useRef(open)
@@ -145,6 +155,8 @@ export function DialogShell({
           className,
         )}
         {...contentProps}
+        // The fill is CSS (`styles.css`): it must beat the host's own height classes at every width.
+        data-dialog-expanded={filled ? 'true' : undefined}
         aria-hidden={!effectiveOpen || undefined}
         {...(!effectiveOpen ? { inert: '' } : {})}
         onOpenAutoFocus={(event) => {
@@ -184,15 +196,33 @@ export function DialogShell({
             )}
             {context && <p className="mt-1 text-xs font-medium text-sky-700 dark:text-sky-400">{context}</p>}
           </div>
-          <DialogClose asChild>
-            <button
-              type="button"
-              aria-label={closeLabel}
-              className="-m-1 shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground touch:p-2.5"
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </DialogClose>
+          <div className="-m-1 flex shrink-0 items-center gap-1">
+            {expandable && (
+              <button
+                type="button"
+                aria-label={filled ? 'Exit full screen' : 'Full screen'}
+                aria-pressed={filled}
+                title={filled ? 'Exit full screen' : 'Full screen'}
+                onClick={() => setExpanded((value) => !value)}
+                className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground touch:p-2.5"
+              >
+                {filled ? (
+                  <Minimize2 className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  <Maximize2 className="h-5 w-5" aria-hidden="true" />
+                )}
+              </button>
+            )}
+            <DialogClose asChild>
+              <button
+                type="button"
+                aria-label={closeLabel}
+                className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground touch:p-2.5"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </DialogClose>
+          </div>
         </header>
 
         {/*
