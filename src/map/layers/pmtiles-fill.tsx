@@ -85,7 +85,6 @@ export function MapPmtilesFillLayer({
   const selectedLayerId = `pmtiles-sel-${uid}`
   const onClickRef = useRef(onFeatureClick)
   const pickPriorityRef = useRef(pickPriority)
-  pickPriorityRef.current = pickPriority
   const hoverHtmlRef = useRef(hoverHtml)
   const idPropRef = useRef(idProperty)
   const idSourceRef = useRef(idSource)
@@ -96,6 +95,10 @@ export function MapPmtilesFillLayer({
   useEffect(() => {
     onClickRef.current = onFeatureClick
   }, [onFeatureClick])
+
+  useEffect(() => {
+    pickPriorityRef.current = pickPriority
+  }, [pickPriority])
 
   useEffect(() => {
     hoverHtmlRef.current = hoverHtml

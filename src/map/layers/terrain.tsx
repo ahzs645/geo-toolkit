@@ -1,7 +1,8 @@
 import type * as MapLibreGL from 'maplibre-gl'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import { useMap } from '../map-context.js'
+import { useLayerBefore } from './place.js'
 
 export type MapTerrainProps = {
   /** Elevation tiles. Hillshade and 3D terrain each get their own source from this. */
@@ -26,7 +27,10 @@ export type MapTerrainProps = {
    * atmosphere stay as the map set them, which a globe view relies on.
    */
   terrainOnly?: boolean
-  /** Draw the hillshade below this layer, when it exists. Defaults to under the labels. */
+  /**
+   * Draw the hillshade below this layer, when it exists. Defaults to under the labels. A change
+   * moves the hillshade and keeps its tiles; it is never added again.
+   */
   beforeId?: string
   hillshade?: boolean
   exaggeration?: number
@@ -102,6 +106,11 @@ export function MapTerrain({
   const hillshadeLayerId = `${id}-hillshade`
   const { tiles, encoding, tileSize = 256, maxZoom, attribution } = dem
   const tilesKey = tiles.join('|')
+  // Read when the hillshade is added; a later change moves it (`useLayerBefore`) instead.
+  const beforeIdRef = useRef(beforeId)
+  useEffect(() => {
+    beforeIdRef.current = beforeId
+  })
 
   // A style swap (theme change) resets `isLoaded`, which rebuilds these on the new style.
   useEffect(() => {
@@ -127,14 +136,13 @@ export function MapTerrain({
             ...(hillshadeHighlightColor && { 'hillshade-highlight-color': hillshadeHighlightColor }),
           },
         },
-        beforeId && map.getLayer(beforeId) ? beforeId : firstSymbolLayerId(map),
+        beforeIdRef.current && map.getLayer(beforeIdRef.current) ? beforeIdRef.current : firstSymbolLayerId(map),
       )
     }
     return () =>
       releaseMapTerrain(map, { hillshadeLayerId, hillshadeSourceId, terrainSourceId }, { reliefOnly, terrainOnly })
   }, [
     attribution,
-    beforeId,
     encoding,
     hillshadeHighlightColor,
     hillshadeLayerId,
@@ -149,6 +157,8 @@ export function MapTerrain({
     tileSize,
     tilesKey,
   ])
+
+  useLayerBefore(map, isLoaded, hillshadeLayerId, beforeId, terrainOnly)
 
   useEffect(() => {
     if (reliefOnly || !terrain || !terrainGroundColor || !isLoaded || !map) return

@@ -20,6 +20,7 @@ export {
   boundsToQuad,
   type MapCanvasLayerProps,
   type MapImageLayerProps,
+  type MapImagePixels,
   type MapQuadCoordinates,
   type MapRasterQuadStyle,
 } from './layers/canvas.js'
