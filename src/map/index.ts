@@ -16,3 +16,7 @@ export { resizeMap, visibleMapBounds, mapCoveredBottom, type VisibleMapBounds } 
 export * from './use-map-viewport.js'
 export * from './screen-point-clusters.js'
 export * from './use-screen-point-clusters.js'
+export * from './view-window.js'
+export * from './use-view-window.js'
+export * from './map-layer-handoff.js'
+export * from './map-raster-handoff.js'

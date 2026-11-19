@@ -3,6 +3,7 @@ import { MapboxOverlay } from '@deck.gl/mapbox'
 import type * as MapLibreGL from 'maplibre-gl'
 import { useMap } from './map-context.js'
 import { attachPointerDismiss } from './map-pointer.js'
+import { exposeMapTransform } from './map-transform.js'
 
 export interface UseDeckOverlayOptions {
   /** Skip attaching while false, e.g. a layer the user has toggled off. Defaults to true. */
@@ -46,6 +47,7 @@ export function useDeckOverlay(options: UseDeckOverlayOptions = {}): RefObject<M
   useEffect(() => {
     if (!isLoaded || !map || !enabled) return
 
+    exposeMapTransform(map)
     const overlay = new MapboxOverlay({ interleaved: true, layers: [] })
     map.addControl(overlay as unknown as MapLibreGL.IControl)
     overlayRef.current = overlay

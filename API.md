@@ -22,7 +22,7 @@ not a promise that every historical module is stable.
 | `/grids`                             | `decodePngPixels`, `reconstructImageClassGrid`, `rasterGridCellRing`, grid constants and data types                                                                                                                                                                                                                                                                                                                            | None                                                           |
 | `/grids/map-raster-grid`             | `createRasterGridLayer`, `RasterGridPick`                                                                                                                                                                                                                                                                                                                                                                                      | `@deck.gl/core`, `@deck.gl/geo-layers`, `@deck.gl/layers`      |
 | `/terrain`                           | Terrarium DEM tiles: `ElevationGrid` (bilinear, `NaN` for missing ground), `loadElevationGrid` with an injectable decoder and `createTerrainTileStore`, `createTerrainTileCache`, tile ranges, Web Mercator and pixel conversions, `ElevationSource`, `CanopySource`                                                                                                                                                           | None                                                           |
-| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), `resizeMap`, `ensureRtlTextPlugin`, settled viewport observation and screen-point clustering, `captureMapImage`, offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants                                                                    | React, React DOM, MapLibre                                     |
+| `/map`                               | `Map`, markers/popups, `MapDonutMarker`, controls, routes, layer components, `MapStory` composition, camera/scale helpers (`pointBounds`, `fitMapToPoints`), `resizeMap`, `ensureRtlTextPlugin`, settled viewport observation, view windows (`useViewWindow`), tile-layer hand-off (`MapRasterHandoff`) and screen-point clustering, `captureMapImage`, offline `geojsonBasemapStyle`/`graticuleLines` and shared map style constants                                                                    | React, React DOM, MapLibre                                     |
 | `/map/persistent-map`                | `PersistentMapProvider`, `PersistentMapHost`, `SharedMap`, `usePersistentMap`, `useMapBasemap`                                                                                                                                                                                                                                                                                                                                 | React, React DOM, MapLibre                                     |
 | `/map/map-deck`                      | Shared deck.gl overlay integration                                                                                                                                                                                                                                                                                                                                                                                             | React, React DOM, MapLibre, `@deck.gl/core`, `@deck.gl/mapbox` |
 | `/workspace`                         | `WorkspaceProvider`, `MapSectionLayout`, responsive media hooks and `requestMapSearch`                                                                                                                                                                                                                                                                                                                                         | React, React DOM                                               |
@@ -877,8 +877,15 @@ circles, all sharing `layerOrder`, `clickHtml` and `hoverHtml`.
 worker) to four corners; build them with `boundsToQuad({ west, south, east,
 north })`. Change `revision` after repainting so MapLibre uploads the new
 pixels, or set `animate` for a canvas that changes every frame.
-`MapImageLayer` does the same for an image URL. Pass `id` when the host has to look
-the source or layer up; otherwise one is generated.
+`MapImageLayer` does the same for an image URL, or for decoded pixels: pass `image` (an
+`ImageBitmap`, `ImageData`, canvas or image element) in place of `url` for a picture made in the
+browser, and MapLibre uploads it as it is, with no PNG encode, request or decode. That needs
+MapLibre 6.18 or later; on an older one the layer encodes the pixels to a data URL itself. A new
+`url`, `image` or `coordinates` replaces the picture in place: MapLibre keeps the old picture at its
+old corners until the new one is there, so hand the layer a picture and its corners together and
+never unmount it to change either. `attribution` puts a credit in the map's attribution while the
+layer is on, which the style spec gives an image source no field for. Pass `id` when the host has
+to look the source or layer up; otherwise one is generated.
 A host running its own timed drawing, such as a crossfade, passes `onSource` to receive the
 `CanvasSource` and calls `play` and `pause` itself; `revision` is then ignored. `id` names the
 source and layer, and `beforeId` can be a function that finds a layer once the style is ready.
@@ -888,6 +895,13 @@ tiles load.
 `bounds` limits tile requests, `id` gives the source and layer a stable name, and
 `addOnStyleLoad` adds the layer once the style is usable rather than after the map's first
 full load, for imagery the map opens to show.
+The layer follows two props without being added again, because adding it again drops every
+loaded tile, blanks the layer until they return and asks the host for all of them once more.
+A changed `beforeId` moves the layer (`moveLayer`; `MapTerrain`'s hillshade does the same). A
+changed `tiles` reloads in place (`setTiles`): each tile on show stays until its replacement
+arrives, so two versions show side by side meanwhile. Never remount it with a `key` to change
+either. A layer whose source must change as a whole hands over instead (see **Tile layers that
+change source**).
 
 `MapTerrain` adds relief shading and 3D terrain from one elevation dataset, keeping the
 separate sources MapLibre needs for the two. The host supplies `dem`, and optionally
@@ -1102,6 +1116,76 @@ snapshot or `null` before one is published for that map. Both hooks accept
 `enabled` and `refreshKey`; changing the key republishes according to `initial`
 even without a map gesture. These are settled-event helpers, not per-frame
 camera or drawing controllers.
+
+### deck.gl on MapLibre 6
+
+`useDeckOverlay` (`/map/map-deck`) calls `exposeMapTransform(map)` before it attaches its overlay.
+`@deck.gl/mapbox` 9.3 reads `map.transform` on every frame of an interleaved overlay, and MapLibre 6
+keeps the transform on the map's camera: without the getter each frame throws "Cannot read
+properties of undefined (reading 'height')" and no deck.gl layer draws. A host that attaches a
+`MapboxOverlay` of its own calls `exposeMapTransform` (`/map/map-transform`) first. MapLibre 5 maps
+are left as they are.
+
+### View windows
+
+`useViewWindow(map, options)` gives a layer that draws one image a view, or reads one bounding
+box a view, the window to read, following the map **while it moves**. `useMapViewport` above is
+for settled-view figures; this is for what is drawn. The rule is `view-window.ts`, DOM-free
+(`makeViewWindow`, `windowServes`, `createViewWindowScheduler`), and follows what OpenLayers'
+`ImageWMS` and Leaflet's `GridLayer` do.
+
+```ts
+const { window, paused, moving } = useViewWindow(map, { enabled: shown, minZoom: 12, gridDeg: 0.01 })
+useEffect(() => {
+  if (!window) return
+  const controller = new AbortController()
+  read(window.bounds, controller.signal).then(show)
+  return () => controller.abort() // a newer window supersedes this read
+}, [window])
+```
+
+- The window is the view grown by `overscan` (1.5) and optionally snapped outward to `gridDeg`,
+  so a small pan reads nothing. It is kept while the view stays inside it at the same resolution
+  `level` (the host's: by default the whole zoom).
+- When the view comes within `edgeShare` (0.1) of its size of the window's edge, or leaves it, the
+  next window is published during the move, at most every `throttleMs` (250), and checked once more
+  `settleMs` (100) after the move ends.
+- The window object stays the same while it serves, so it goes straight into effect dependencies.
+  The hook re-renders only when the window, `paused` or `moving` changes.
+- Below `minZoom` the hook keeps the window and reports `paused`: a stated state a layer may hide
+  for. Nothing here hides a picture because the camera moves, and the host must not either: keep
+  what is drawn until the next picture is ready, then swap (`MapImageLayer` swaps in place).
+- A figure read over the window covers more than the visible map. Say so where it is shown.
+
+### Tile layers that change source
+
+A raster tile layer whose source changes as a whole (a timeline's release, a year, a scenario)
+hands over through `useMapLayerHandoff` and `MapRasterHandoff`: the layer on show stays until the
+next has its tiles for the view, then the two swap in one frame.
+
+```tsx
+const handoff = useMapLayerHandoff('imagery', release ? { key: release.id, value: release } : null)
+// …inside the <Map>:
+<MapRasterHandoff handoff={handoff} opacity={0.8} layer={(release) => ({ tiles: [release.tiles] })} />
+<MapHandoffNote handoff={handoff}>Loading the new layer. The map still shows the previous one.</MapHandoffNote>
+```
+
+- The incoming layer loads at opacity 0 and counts as ready once a tile of its own has landed and
+  none is loading, or the map is idle. The swap has no opacity transition, and two layers are never
+  drawn at once, so a translucent layer does not read darker. Pass `opacity` to `MapRasterHandoff`,
+  not in `layer`.
+- At most two layers are mounted, under the host's id and `${id}-handoff` in turn. Code that moves
+  or reads the layer uses `handoff.shownLayerId`, and moves only that one.
+- A request made while one is loading replaces it. Once the map has shown an old layer for
+  `LAYER_HANDOFF_TIME_LIMIT_MS` (4 s, or `timeLimitMs`), newer requests wait for the loading one,
+  so a timeline played faster than its tiles still moves a whole release at a time; a layer still
+  loading after its own time limit is shown as it stands.
+- Keep the request non-null across the change. A host that clears it while it checks or fetches
+  something for the next value switches the hand-off off and blanks the map as a remount would.
+- While the next loads the map shows the previous value (`handoff.shown`, `handoff.pending`).
+  Where a legend or readout already names the new one, `MapHandoffNote` says so on the map, only
+  once the hand-off has lasted `HANDOFF_NOTE_DELAY_MS` (400), and goes in the frame of the swap.
+- The rule is `map-layer-handoff.ts`, DOM-free (`requestHandoff`, `promoteHandoff`, `holdHandoff`).
 
 ### Screen-point clustering
 

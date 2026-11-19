@@ -1,9 +1,16 @@
-import { useEffect, useId, useState } from 'react'
+import type * as MapLibreGL from 'maplibre-gl'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useMap } from '../map-context.js'
 import { registerMapLayerOrder } from '../map-layer-order.js'
+import { useLayerBefore } from './place.js'
 
 export type MapRasterLayerProps = {
-  /** Array of tile URL templates — use {z}/{x}/{y} placeholders */
+  /**
+   * Array of tile URL templates — use {z}/{x}/{y} placeholders. A change is followed in place
+   * (`setTiles`): the tiles on show stay until each new one arrives, so the layer never blanks.
+   * Tiles are replaced one by one, so two versions show side by side meanwhile; a timeline that
+   * must change as a whole hands over instead (`MapRasterHandoff`).
+   */
   tiles: string[]
   /** Tile size in pixels (default: 256) */
   tileSize?: number
@@ -21,7 +28,10 @@ export type MapRasterLayerProps = {
   fadeDuration?: number
   /** Attribution text shown in map corner */
   attribution?: string
-  /** Insert this layer before another layer ID (default: added on top) */
+  /**
+   * Insert this layer before another layer ID (default: added on top). A change moves the layer
+   * and keeps its tiles; it is never added again.
+   */
   beforeId?: string
   /** Draw-order slot shared with the vector layers; higher draws on top. Overrides beforeId. */
   layerOrder?: number
@@ -57,6 +67,8 @@ export function MapRasterLayer({
   const sourceId = id ?? `raster-src-${uid}`
   const layerId = id ?? `raster-layer-${uid}`
   const [styleLoads, setStyleLoads] = useState(0)
+  const tilesKey = tiles.join('\n')
+  const sourceTiles = useRef('')
   const isLoaded = mapLoaded || (addOnStyleLoad && styleLoads > 0)
 
   // A new style drops the source and layer, so they are rebuilt on each load.
@@ -83,6 +95,7 @@ export function MapRasterLayer({
       ...(bounds && { bounds }),
       ...(attribution && { attribution }),
     })
+    sourceTiles.current = tilesKey
 
     map.addLayer(
       {
@@ -111,6 +124,17 @@ export function MapRasterLayer({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, map, layerOrder, styleLoads])
+
+  // A new set of tiles reloads in place: MapLibre keeps each old tile drawn until its replacement lands.
+  useEffect(() => {
+    if (!isLoaded || !map || sourceTiles.current === tilesKey) return
+    const source = map.getSource(sourceId) as MapLibreGL.RasterTileSource | undefined
+    if (!source || typeof source.setTiles !== 'function') return
+    source.setTiles(tilesKey.split('\n'))
+    sourceTiles.current = tilesKey
+  }, [tilesKey, isLoaded, map, sourceId])
+
+  useLayerBefore(map, isLoaded, layerId, beforeId, layerOrder !== undefined)
 
   // Update opacity
   useEffect(() => {
