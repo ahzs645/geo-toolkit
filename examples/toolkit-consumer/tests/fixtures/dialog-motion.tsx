@@ -63,6 +63,16 @@ function Fixture() {
           </div>
         </DialogContent>
       </Dialog>
+      <Dialog>
+        <DialogTrigger>Open drawer settings</DialogTrigger>
+        <DialogContent variant="sheet" sheetWide="end">
+          <div style={{ padding: 24 }}>
+            <DialogTitle>Drawer settings</DialogTitle>
+            <DialogDescription>A sheet on a phone, a drawer above it.</DialogDescription>
+            <DialogClose>Done</DialogClose>
+          </div>
+        </DialogContent>
+      </Dialog>
       <button onClick={() => setConditional('shell')}>Open conditional shell</button>
       <button onClick={() => setConditional('record')}>Open conditional record</button>
       {conditional === 'shell' && (

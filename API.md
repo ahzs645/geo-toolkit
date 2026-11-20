@@ -401,6 +401,12 @@ shows as a blank flash. Hosts that own a raw MapLibre map should call
 `resizeMap(map)` from `/map` in their `ResizeObserver` callback instead of
 `map.resize()`; do not defer it to `requestAnimationFrame`.
 
+`DialogContent variant="sheet"` is a bottom sheet while the workspace is phone
+width (below its `sm` width) and a centred modal above it. `sheetWide="end"`
+makes it a full-height drawer against the right edge above phone width instead,
+sliding in from that edge, for settings worked on beside the view; the content
+carries `data-sheet-wide` for host styling.
+
 `DialogShell` starts its visual close immediately, then invokes `onClose` and
 `onOpenChange(false)` after exit (immediately with reduced motion). Opening
 `onOpenChange(true)` remains immediate. Controlled reopening cancels pending
