@@ -154,6 +154,22 @@
     translate: 0 100%;
   }
 }
+@keyframes geo-motion-drawer-in {
+  from {
+    translate: 100% 0;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+@keyframes geo-motion-drawer-out {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 100% 0;
+  }
+}
 @keyframes geo-motion-presence-out {
   from {
     opacity: 1;
@@ -303,7 +319,7 @@
   transform: translate(-50%, -50%);
 }
 @scope (.geo-toolkit[data-workspace-sm='true']) to (.geo-toolkit) {
-  .geo-motion-dialog-content[data-dialog-variant='sheet'] {
+  .geo-motion-dialog-content[data-dialog-variant='sheet']:not([data-sheet-wide='end']) {
     transform: translate(-50%, -50%);
   }
 }
@@ -535,6 +551,15 @@
   }
   .geo-motion-dialog-content[data-dialog-variant='sheet'][data-state='closed'] {
     animation-name: geo-motion-sheet-out;
+  }
+}
+/* `sheetWide="end"`: above a phone the sheet is a drawer, so it slides in from the right edge. */
+@scope (.geo-toolkit[data-workspace-sm='true']) to (.geo-toolkit) {
+  .geo-motion-dialog-content[data-sheet-wide='end'][data-state='open'] {
+    animation-name: geo-motion-drawer-in;
+  }
+  .geo-motion-dialog-content[data-sheet-wide='end'][data-state='closed'] {
+    animation-name: geo-motion-drawer-out;
   }
 }
 @scope (.geo-toolkit[data-workspace-desktop='true']) to (.geo-toolkit) {

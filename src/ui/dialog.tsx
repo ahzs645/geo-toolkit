@@ -61,6 +61,11 @@ export type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPri
    * `sheet`: full-width bottom sheet on mobile, centered modal on desktop.
    */
   variant?: 'center' | 'sheet'
+  /**
+   * What a `sheet` becomes once the workspace is wider than a phone: `center` (default) a centred
+   * modal, `end` a full-height drawer against the right edge, for settings worked on beside the view.
+   */
+  sheetWide?: 'center' | 'end'
   theme?: 'light' | 'dark'
   portalContainer?: HTMLElement | null
   onOpenEffect?: (open: boolean) => void
@@ -81,6 +86,7 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
       className,
       children,
       variant = 'center',
+      sheetWide = 'center',
       elevated = false,
       showClose = true,
       overlayClassName,
@@ -125,16 +131,26 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
           <DialogPrimitive.Content
             ref={ref}
             data-dialog-variant={variant}
+            data-sheet-wide={variant === 'sheet' ? sheetWide : undefined}
             className={cn(
               layer,
               position,
               'geo-motion-dialog-content pointer-events-auto',
               variant === 'sheet'
-                ? // Bottom sheet on mobile, centered modal on desktop.
-                  'inset-x-0 bottom-0 top-auto flex max-h-[96dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-background/95 shadow-2xl backdrop-blur workspace-sm:inset-x-auto workspace-sm:bottom-auto workspace-sm:left-[50%] workspace-sm:top-[50%] workspace-sm:max-h-[calc(100dvh-2rem)] workspace-sm:w-[calc(100%-2rem)] workspace-sm:max-w-lg workspace-sm:rounded-2xl'
+                ? cn(
+                    // Bottom sheet on mobile; a centred modal or a drawer at the right edge above it.
+                    'inset-x-0 bottom-0 top-auto flex max-h-[96dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-background/95 shadow-2xl backdrop-blur',
+                    sheetWide === 'end'
+                      ? 'workspace-sm:left-auto workspace-sm:top-0 workspace-sm:max-h-none workspace-sm:w-[min(24rem,calc(100%-1.5rem))] workspace-sm:rounded-none workspace-sm:rounded-l-2xl'
+                      : 'workspace-sm:inset-x-auto workspace-sm:bottom-auto workspace-sm:left-[50%] workspace-sm:top-[50%] workspace-sm:max-h-[calc(100dvh-2rem)] workspace-sm:w-[calc(100%-2rem)] workspace-sm:max-w-lg workspace-sm:rounded-2xl',
+                  )
                 : 'left-[50%] top-[50%] grid w-[calc(100%-2rem)] max-w-lg gap-4 rounded-xl border border-border bg-background p-6 shadow-xl',
               embedded &&
-                (variant === 'sheet' ? 'max-h-[96%] workspace-sm:max-h-[calc(100%-2rem)]' : 'max-h-[calc(100%-2rem)]'),
+                (variant !== 'sheet'
+                  ? 'max-h-[calc(100%-2rem)]'
+                  : sheetWide === 'end'
+                    ? 'max-h-[96%] workspace-sm:max-h-none'
+                    : 'max-h-[96%] workspace-sm:max-h-[calc(100%-2rem)]'),
               className,
             )}
             {...props}

@@ -62,6 +62,27 @@ for (const viewport of [
       expect(errors).toEqual([])
     })
 
+    test('a sheet with sheetWide="end" is a drawer at the right edge above phone width', async ({ page }) => {
+      await page.goto('/tests/fixtures/dialog-motion.html')
+      await page.getByRole('button', { name: 'Open drawer settings' }).click()
+      const dialog = page.getByRole('dialog', { name: 'Drawer settings' })
+      await expect(dialog).toHaveAttribute('data-sheet-wide', 'end')
+      await dialog.evaluate(async (node) => {
+        await Promise.all(node.getAnimations().map((animation) => animation.finished))
+      })
+      const bounds = (await dialog.boundingBox())!
+      if (viewport.name === 'mobile') {
+        expect(Math.abs(bounds.x)).toBeLessThan(1)
+        expect(Math.abs(bounds.width - viewport.width)).toBeLessThan(1)
+        expect(Math.abs(bounds.y + bounds.height - viewport.height)).toBeLessThan(1)
+      } else {
+        expect(Math.abs(bounds.x + bounds.width - viewport.width)).toBeLessThan(1)
+        expect(Math.abs(bounds.y)).toBeLessThan(1)
+        expect(Math.abs(bounds.height - viewport.height)).toBeLessThan(1)
+        expect(bounds.width).toBeLessThan(viewport.width / 2)
+      }
+    })
+
     for (const kind of ['shell', 'record']) {
       test(`conditionally mounted ${kind} completes its exit before notifying its host`, async ({ page }) => {
         await page.goto('/tests/fixtures/dialog-motion.html')
