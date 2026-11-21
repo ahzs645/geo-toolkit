@@ -82,6 +82,13 @@ export interface MapTimelineProps {
   placement?: 'map-overlay' | 'inline'
   /** Room per axis label before the axis thins out. */
   minLabelPx?: number
+  /**
+   * Makes each axis label a button, called with its bucket's index: a page uses it to open a
+   * period (zoom into a year) or to jump to a bucket. Without it the labels are plain text.
+   */
+  onTickSelect?: (index: number) => void
+  /** The accessible name of a label's button, e.g. "Show 2019". Defaults to the bucket's label. */
+  tickSelectLabel?: (bucket: TimelineBucket) => string
   className?: string
 }
 
@@ -292,6 +299,8 @@ export function MapTimeline({
   density: densityProp = 'auto',
   placement = 'map-overlay',
   minLabelPx,
+  onTickSelect,
+  tickSelectLabel,
   className,
 }: MapTimelineProps) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -872,23 +881,42 @@ export function MapTimeline({
             </div>
           )}
         </div>
-        {/* Axis labels */}
-        <div aria-hidden="true" className="relative mt-1 h-3.5 overflow-hidden text-3xs leading-none">
+        {/* Axis labels: plain text, or buttons with `onTickSelect`. */}
+        <div
+          aria-hidden={onTickSelect ? undefined : 'true'}
+          className={cn('relative mt-1 overflow-hidden text-3xs leading-none', onTickSelect ? 'h-4' : 'h-3.5')}
+        >
           {ticks.map((i) => {
             const left = (i + 0.5) / count
-            return (
-              <span
+            const className = cn(
+              'absolute top-0 whitespace-nowrap tabular-nums',
+              i >= range.start && i <= range.end ? 'font-semibold text-foreground' : 'text-muted-foreground',
+            )
+            const style = {
+              left: `${left * 100}%`,
+              // Centred mid-axis, sliding to start or end at the edges so none is clipped.
+              transform: `translateX(-${left * 100}%)`,
+            }
+            return onTickSelect ? (
+              <button
                 key={buckets[i].key}
+                type="button"
+                aria-label={tickSelectLabel?.(buckets[i]) ?? buckets[i].label}
                 className={cn(
-                  'absolute top-0 whitespace-nowrap tabular-nums',
-                  i >= range.start && i <= range.end ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                  className,
+                  // The strip clips a ring, so focus shows as an underline, as hover does.
+                  'h-4 cursor-pointer rounded-sm px-0.5 underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline',
                 )}
-                style={{
-                  left: `${left * 100}%`,
-                  // Centred mid-axis, sliding to start or end at the edges so none is clipped.
-                  transform: `translateX(-${left * 100}%)`,
+                style={style}
+                onClick={() => {
+                  setPlaying(false)
+                  onTickSelect(i)
                 }}
               >
+                {buckets[i].tickLabel}
+              </button>
+            ) : (
+              <span key={buckets[i].key} className={className} style={style}>
                 {buckets[i].tickLabel}
               </span>
             )
