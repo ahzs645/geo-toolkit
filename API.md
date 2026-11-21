@@ -1051,6 +1051,11 @@ const range = timelineWindow(buckets.length, value, size, 'end') // filter your 
   selected ones stand in for the playhead, and the skip and speed controls go,
   as do the step buttons on a phone, where the arrow keys still step.
   It is capped at 36 rem wide and needs 520 px for one row (560 px on touch).
+- **Axis labels.** With `onTickSelect` each label is a button that hands back
+  its bucket's index (name it with `tickSelectLabel`, e.g. "Show 2019"): a page
+  can open that period, giving the timeline that period's buckets, or jump to
+  the bucket. Pressing one stops playback. Without it the labels stay text and
+  the axis is hidden from assistive technology, as the slider names the value.
 - **Window options.** `timelineWindowOptions` drops fixed windows as long as the
   data, which only repeat the end of the cumulative window, and offers nothing
   for a single bucket. The selected option always stays.
