@@ -56,9 +56,15 @@ export const VIEW_WINDOW_DEFAULTS: ViewWindowRule = {
   settleMs: 100,
 }
 
-/** The rule with its parts held in range: overscan at least 1, the edge inside the overscan's margin. */
+/**
+ * The rule with its parts held in range: overscan at least 1, the edge inside the overscan's margin.
+ * A part given as `undefined` keeps its default: `useViewWindow` passes each option through whether
+ * or not its caller set it, and a spread would let the `undefined` replace the default (an overscan
+ * of 1 and no throttle, a new window on every frame of a drag).
+ */
 export function viewWindowRule(rule: Partial<ViewWindowRule> = {}): ViewWindowRule {
-  const merged = { ...VIEW_WINDOW_DEFAULTS, ...rule }
+  const given = Object.fromEntries(Object.entries(rule).filter(([, value]) => value !== undefined))
+  const merged: ViewWindowRule = { ...VIEW_WINDOW_DEFAULTS, ...given }
   const overscan = Math.max(1, Number.isFinite(merged.overscan) ? merged.overscan : 1)
   return {
     overscan,

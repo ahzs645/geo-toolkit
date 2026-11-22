@@ -4,6 +4,7 @@ import {
   isUsableView,
   makeViewWindow,
   overscanBounds,
+  VIEW_WINDOW_DEFAULTS,
   viewWindowRule,
   windowHoldsView,
   windowServes,
@@ -35,6 +36,18 @@ describe('view window rule', () => {
     const rule = viewWindowRule({ overscan: 1.5, edgeShare: 0.4 })
     const window = makeViewWindow(VIEW, 13, rule)
     expect(windowServes(window, VIEW, 13, rule)).toBe(true)
+  })
+
+  it('keeps the default for a part given as undefined, as the hook passes unset options', () => {
+    const rule = viewWindowRule({
+      overscan: undefined,
+      edgeShare: undefined,
+      gridDeg: undefined,
+      throttleMs: undefined,
+      settleMs: undefined,
+    })
+    expect(rule).toEqual(VIEW_WINDOW_DEFAULTS)
+    expect(viewWindowRule({ overscan: 2, throttleMs: undefined })).toMatchObject({ overscan: 2, throttleMs: 250 })
   })
 
   it('reuses a window while the view stays inside it at the same level, and not otherwise', () => {

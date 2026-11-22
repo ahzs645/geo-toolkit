@@ -1160,6 +1160,7 @@ useEffect(() => {
 }, [window])
 ```
 
+- Every rule option is optional; one left unset or passed as `undefined` keeps its default.
 - The window is the view grown by `overscan` (1.5) and optionally snapped outward to `gridDeg`,
   so a small pan reads nothing. It is kept while the view stays inside it at the same resolution
   `level` (the host's: by default the whole zoom).
