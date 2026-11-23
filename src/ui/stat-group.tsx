@@ -111,8 +111,6 @@ export function StatTileBody({
           className="absolute inset-0 z-[1] cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
       )}
-      {/* A dl entry holds only its term and descriptions: the note is a second description. */}
-      {item.note && <dd className="text-2xs leading-snug text-muted-foreground">{item.note}</dd>}
       {/* Uppercase only for md tiles from sm up: tracked capitals overflow a quarter-width phone tile. */}
       {/* The label truncates in narrow tiles; the full text stays a hover away. */}
       <dt
@@ -146,6 +144,9 @@ export function StatTileBody({
           {item.icon}
         </dd>
       )}
+      {/* A dl entry is its term, then its descriptions: the note is the last description in source order, and
+          `-order-1` draws it under the label in the reversed column. */}
+      {item.note && <dd className="-order-1 text-2xs leading-snug text-muted-foreground">{item.note}</dd>}
     </div>
   )
 }

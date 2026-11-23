@@ -38,3 +38,20 @@ describe('inline stat group', () => {
     expect(dd).toContain('[@container(max-width:14rem)]:[zoom:0.7]')
   })
 })
+
+describe('stat tiles', () => {
+  it('writes each entry term first, with the note drawn under the label', () => {
+    // HTML allows only a dt followed by its dds inside a dl's div; a dd before the dt is invalid.
+    const html = renderToStaticMarkup(
+      createElement(StatGroup, {
+        variant: 'tiles',
+        items: [{ label: 'Visible', value: '12%', note: 'of the landform', wrapLabel: true }],
+      }),
+    )
+    const entry = /<div class="[^"]*flex-col-reverse[^"]*">([\s\S]*?)<\/div>/.exec(html)?.[1] ?? ''
+    const tags = [...entry.matchAll(/<(dt|dd)[ >]/g)].map((match) => match[1])
+    expect(tags[0]).toBe('dt')
+    expect(tags.slice(1).every((tag) => tag === 'dd')).toBe(true)
+    expect(entry).toMatch(/<dd class="-order-1[^"]*">of the landform<\/dd>/)
+  })
+})
