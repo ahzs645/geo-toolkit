@@ -153,7 +153,7 @@ export function MapLayersControl<T extends string = string>({
             setOpen(!open)
           }}
           className={cn(
-            'flex size-11 items-center justify-center transition-colors hover:bg-accent dark:hover:bg-accent/40 workspace-desktop:size-8',
+            'flex size-11 items-center justify-center transition-colors hover:bg-accent dark:hover:bg-accent/40 workspace-desktop:size-8 touch:!size-11',
             open && 'bg-accent dark:bg-accent/40',
           )}
         >

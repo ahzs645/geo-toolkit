@@ -107,7 +107,8 @@ function ControlButton({
       aria-pressed={pressed}
       type="button"
       className={cn(
-        'flex size-11 items-center justify-center transition-colors hover:bg-accent dark:hover:bg-accent/40 workspace-desktop:size-8',
+        // 44 px under a finger at every width: a desktop workspace on a tablet or a phone on its side is still touched.
+        'flex size-11 items-center justify-center transition-colors hover:bg-accent dark:hover:bg-accent/40 workspace-desktop:size-8 touch:!size-11',
         disabled && 'opacity-50 pointer-events-none cursor-not-allowed',
       )}
       disabled={disabled}

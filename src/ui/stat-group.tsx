@@ -29,6 +29,8 @@ export interface StatItem {
   toggleLabel?: string
   /** Classes while pressed; defaults to a primary ring. */
   pressedClassName?: string
+  /** The label wraps rather than truncate, for tiles too narrow for it on one line. */
+  wrapLabel?: boolean
 }
 
 const toneClasses: Record<NonNullable<StatItem['tone']>, string> = {
@@ -109,12 +111,14 @@ export function StatTileBody({
           className="absolute inset-0 z-[1] cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
       )}
-      {item.note && <div className="text-2xs leading-snug text-muted-foreground">{item.note}</div>}
+      {/* A dl entry holds only its term and descriptions: the note is a second description. */}
+      {item.note && <dd className="text-2xs leading-snug text-muted-foreground">{item.note}</dd>}
       {/* Uppercase only for md tiles from sm up: tracked capitals overflow a quarter-width phone tile. */}
       {/* The label truncates in narrow tiles; the full text stays a hover away. */}
       <dt
         className={cn(
-          'max-w-full truncate text-xs text-muted-foreground',
+          'max-w-full text-xs text-muted-foreground',
+          item.wrapLabel ? 'text-balance' : 'truncate',
           size === 'md' && 'workspace-sm:uppercase workspace-sm:tracking-wide',
         )}
         title={typeof item.label === 'string' ? item.label : undefined}
@@ -138,9 +142,9 @@ export function StatTileBody({
         {item.loading ? '...' : item.value}
       </dd>
       {item.icon && (
-        <div className={cn('mb-0.5 flex text-primary', align === 'center' && 'justify-center')} aria-hidden="true">
+        <dd className={cn('mb-0.5 flex text-primary', align === 'center' && 'justify-center')} aria-hidden="true">
           {item.icon}
-        </div>
+        </dd>
       )}
     </div>
   )
