@@ -1157,16 +1157,19 @@ export function MapLegendPanel({
       const sheet = parseFloat(getComputedStyle(panel).getPropertyValue('--map-mobile-sheet-visible-height')) || 0
       const bottomCorner =
         rect.height > 0 && bounds.right - rect.right < 32 && bounds.bottom - sheet - rect.bottom < rect.top - bounds.top
+      // Written only when it changes: the root's style is also watched below.
+      const set = (name: string, value: string | null) => {
+        if (root.style.getPropertyValue(name) === (value ?? '')) return
+        if (value === null) root.style.removeProperty(name)
+        else root.style.setProperty(name, value)
+      }
       if (bottomCorner) {
         const footprint = `calc(0.625rem + ${Math.ceil(rect.height)}px)`
-        root.style.setProperty('--map-legend-panel-visible-height', footprint)
-        root.style.setProperty(
-          '--map-legend-stack-height',
-          `calc(${footprint} + var(--map-bottom-right-controls-height, 0px))`,
-        )
+        set('--map-legend-panel-visible-height', footprint)
+        set('--map-legend-stack-height', `calc(${footprint} + var(--map-bottom-right-controls-height, 0px))`)
       } else {
-        root.style.removeProperty('--map-legend-panel-visible-height')
-        root.style.removeProperty('--map-legend-stack-height')
+        set('--map-legend-panel-visible-height', null)
+        set('--map-legend-stack-height', null)
       }
     }
     syncLegendHeight()
@@ -1175,7 +1178,12 @@ export function MapLegendPanel({
     observer.observe(panel)
     // Responsive page overrides can move the panel without resizing it.
     window.addEventListener('resize', syncLegendHeight)
+    // So can a phone's sheet, which moves the panel through a variable on the root: a full sheet pushes it out of
+    // the corner and a lowered one brings it back, with neither resized.
+    const rootStyle = new MutationObserver(syncLegendHeight)
+    rootStyle.observe(root, { attributes: true, attributeFilter: ['style'] })
     return () => {
+      rootStyle.disconnect()
       observer.disconnect()
       window.removeEventListener('resize', syncLegendHeight)
       root.style.removeProperty('--map-legend-panel-visible-height')
