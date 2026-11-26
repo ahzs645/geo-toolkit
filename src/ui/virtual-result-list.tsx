@@ -38,15 +38,31 @@ export function VirtualResultList<T>({
     [],
   )
   const focusedIndex = focusedKey === null ? -1 : items.findIndex((item) => getKey(item) === focusedKey)
+  // TanStack Virtual memoizes its row positions on `getItemKey`'s identity: a new function makes it
+  // throw away the rows it has measured and walk the whole list again, calling `getKey` and allocating
+  // a position for every item. Callers pass `getKey` inline, and scrolling re-renders synchronously on
+  // each scroll event, so a 30,000-row list did that on every frame. Keep the key function stable while
+  // `items` is the same array; a new array (a filter, a sort) is a new list and is walked once.
+  const getKeyRef = useRef(getKey)
+  getKeyRef.current = getKey
+  const getItemKey = useCallback(
+    // A queued ResizeObserver entry can refer to a removed row after filtering.
+    // Active keys are strings; negative numbers safely identify those stale indexes.
+    (index: number) => (index >= 0 && index < items.length ? getKeyRef.current(items[index]) : -Math.abs(index) - 1),
+    [items],
+  )
+  // Each row whose measured height differs from the estimate makes TanStack recompute every row after
+  // it, so a list whose estimate is a few pixels off walks to its end for each row scrolled into view.
+  // Estimate unmeasured rows at the height measured rows most often have, once a handful agree.
+  const learnedSize = useRef<number | null>(null)
+  const estimateItemSize = useCallback(() => learnedSize.current ?? estimateSize, [estimateSize])
   // The component opts out of compiler memoization above; this mutable API must remain live.
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement,
-    // A queued ResizeObserver entry can refer to a removed row after filtering.
-    // Active keys are strings; negative numbers safely identify those stale indexes.
-    getItemKey: (index) => (index >= 0 && index < items.length ? getKey(items[index]) : -Math.abs(index) - 1),
-    estimateSize: () => estimateSize,
+    getItemKey,
+    estimateSize: estimateItemSize,
     scrollMargin,
     // A sticky ListHeader directly above covers whatever is scrolled to the top.
     scrollPaddingStart: stickyHeaderHeight,
@@ -58,6 +74,14 @@ export function VirtualResultList<T>({
         ? indexes
         : [...indexes, focusedIndex].sort((a, b) => a - b)
     },
+  })
+
+  useLayoutEffect(() => {
+    // Mounted rows are measured as they mount, so after a render their sizes are measured heights.
+    learnedSize.current = typicalRowSize(
+      virtualizer.getVirtualItems().map((row) => row.size),
+      learnedSize.current,
+    )
   })
 
   useLayoutEffect(() => {
@@ -180,4 +204,20 @@ export function VirtualResultList<T>({
       ))}
     </div>
   )
+}
+
+/** Fewest measured rows that must share a height before it replaces the caller's estimate. */
+const LEARN_MIN_ROWS = 5
+
+/**
+ * The height most measured rows share, or `previous` when fewer than `LEARN_MIN_ROWS` agree. Rows that
+ * grew to show a detail are outliers and do not move it.
+ */
+export function typicalRowSize(sizes: ReadonlyArray<number | undefined>, previous: number | null): number | null {
+  const counts = new Map<number, number>()
+  for (const size of sizes) if (typeof size === 'number' && size > 0) counts.set(size, (counts.get(size) ?? 0) + 1)
+  let best: number | null = null
+  let bestCount = 0
+  for (const [size, count] of counts) if (count > bestCount) [best, bestCount] = [size, count]
+  return bestCount >= LEARN_MIN_ROWS ? best : previous
 }
