@@ -1,5 +1,6 @@
 export * from './map.js'
 export * from './map-layers.js'
+export * from './map-images.js'
 export { xyzTileTemplate } from './raster-tile-template.js'
 export * from './map-styles.js'
 export * from './selection-color.js'

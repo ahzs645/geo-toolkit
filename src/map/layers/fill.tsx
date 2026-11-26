@@ -3,6 +3,7 @@ import { useMap, dispatchMobileMapFeatureClick } from '../map-context.js'
 import { registerMapLayerOrder } from '../map-layer-order.js'
 import { retainGeoJsonSource, updateGeoJsonSource, releaseGeoJsonSource } from '../map-shared-source.js'
 import { syncFeatureState, type MapFeatureStateById } from '../map-feature-state.js'
+import { retainMapImage, type MapStyleImage } from '../map-images.js'
 import { attachPointerDismiss } from '../map-pointer.js'
 import { SELECTION_WIDTH, BORDER_COLOR } from '../map-styles.js'
 import { useSelectionColor } from '../selection-color.js'
@@ -41,6 +42,13 @@ export type MapFillLayerProps = {
   fillColor: MapStyleValue<string>
   /** Fill opacity (default: 0.72) — number or MapLibre expression */
   fillOpacity?: MapStyleValue<number>
+  /**
+   * An image repeated across every shape in place of `fillColor` (MapLibre's `fill-pattern`), such as a hatch tile
+   * from `@pgmaps/geo-toolkit/patterns`. The layer adds it to the style, keeps it through style reloads and removes
+   * it when no layer uses it. Its `id` must change when its pixels do. `fillOpacity` still applies; the selection
+   * fill keeps `fillColor`.
+   */
+  fillPattern?: MapStyleImage | null
   /** Border line color — static string or MapLibre expression (default: '#0f172a') */
   lineColor?: MapStyleValue<string>
   /** Border line width (default: 0.7) — number or MapLibre expression */
@@ -107,6 +115,7 @@ export function MapFillLayer({
   sourceKey,
   fillColor,
   fillOpacity = 0.72,
+  fillPattern = null,
   lineColor = BORDER_COLOR,
   lineWidth = 0.7,
   lineOpacity = 0.45,
@@ -147,6 +156,8 @@ export function MapFillLayer({
   idPropRef.current = idProperty
   const filterRef = useRef(filter)
   filterRef.current = filter
+  const fillPatternRef = useRef(fillPattern)
+  fillPatternRef.current = fillPattern
   const tooltipRef = useRef<MapLibreGLRuntime.Popup | null>(null)
   const boxZoomWasEnabledRef = useRef(false)
   const doubleClickZoomWasEnabledRef = useRef(false)
@@ -181,6 +192,7 @@ export function MapFillLayer({
       paint: {
         'fill-color': fillColor as never,
         'fill-opacity': effectiveFillOpacity as never,
+        ...(fillPatternRef.current && { 'fill-pattern': fillPatternRef.current.id }),
         ...(fadeEnabled && { 'fill-opacity-transition': { duration: fadeMs } }),
       },
     })
@@ -383,6 +395,26 @@ export function MapFillLayer({
     syncFeatureState(map, sourceId, appliedStateRef.current, featureState)
     appliedStateRef.current = featureState
   }, [featureState, isLoaded, map, sourceId, layerOrder])
+
+  // Keep the pattern image in the style while the layer paints with it. Declared after the mount
+  // effect, so on unmount the layer is gone before its image is released.
+  const fillPatternId = fillPattern?.id ?? null
+  useEffect(() => {
+    if (!isLoaded || !map) return
+    const image = fillPatternRef.current
+    const release = image ? retainMapImage(map, image) : null
+    if (map.getLayer(fillLayerId))
+      map.setPaintProperty(fillLayerId, 'fill-pattern', (fillPatternId ?? undefined) as never)
+    return () => {
+      try {
+        if (map.getStyle() && map.getLayer(fillLayerId))
+          map.setPaintProperty(fillLayerId, 'fill-pattern', undefined as never)
+      } catch {
+        // Map already destroyed during unmount
+      }
+      release?.()
+    }
+  }, [fillPatternId, fillLayerId, isLoaded, map, layerOrder])
 
   // Update the optional base-layer filter without rebuilding the source.
   useEffect(() => {

@@ -68,6 +68,10 @@
       "types": "./dist/format/index.d.ts",
       "default": "./dist/format/index.js"
     },
+    "./patterns": {
+      "types": "./dist/patterns/index.d.ts",
+      "default": "./dist/patterns/index.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./*.css": "./dist/*.css",
     "./*.mjs": {

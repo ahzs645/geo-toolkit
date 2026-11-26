@@ -30,6 +30,7 @@ not a promise that every historical module is stable.
 | `/projects`                          | Scene/layer types, codecs, repositories and JSON import/export/share ports                                                                                                                                                                                                                                                                                                                                                     | None                                                           |
 | `/export`                            | `toCsv`, `csvRows`, `csvCell`, `downloadBlob`, `downloadText`; `CsvColumn`, `CsvOptions`                                                                                                                                                                                                                                                                                                                                       | None; downloads need a browser DOM                             |
 | `/format`                            | `formatMeasure`, `formatNumber`, `formatPercent`, currency/date/byte/length/area formatters                                                                                                                                                                                                                                                                                                                                    | None                                                           |
+| `/patterns`                         | Organic hatch field (`organicHatchStrokes`, `organicHatchTileStrokes`, `organicHatchSvgGroup`), saved recipes (`OrganicHatchRecipe`, `parseOrganicHatchRecipe`, `recipeStrokes`, `ORGANIC_HATCH_PRESETS`), clipped SVG layers (`organicHatchSvgLayer`) and RGBA tiles or chunks (`organicHatchTile`, `organicHatchChunk`)                                                                                                                                        | None                                                           |
 | `/stories/model/types`               | Native editorial document types                                                                                                                                                                                                                                                                                                                                                                                                | None; type-only                                                |
 | `/stories/model/validate.mjs`        | `parseEditorialDocument`, `validateEditorialDocument`                                                                                                                                                                                                                                                                                                                                                                          | None                                                           |
 | `/stories` and `/stories/components` | `EditorialDocumentRenderer`, `SceneStoryRenderer`, editorial components and diagrams                                                                                                                                                                                                                                                                                                                                           | React, React DOM                                               |
@@ -674,6 +675,42 @@ layout. `/stories` also exports their functions for React consumers. The
 current extraction provides validated JSON authoring and reusable rendering;
 a visual project editor remains a separate capability. ArcGIS source-graph
 adapters and PG Maps' full catalog orchestration stay host-owned.
+
+## Generated area patterns
+
+`/patterns` generates the organic hatch: short cubic strokes following waving
+contour bands, as on a hand-hatched illustrated map. It is a pure function of
+position and seed. Two windows that share the field's origin draw the same
+strokes where they overlap, so map chunks, neighbouring polygons and the pieces
+of a print meet without seams.
+
+- **Recipe.** `OrganicHatchRecipe` is the saved contract: `type`, `version`,
+  seed, spacing, band height, stroke width, curvature, colour, opacity, the
+  field's `origin` and `scale` (output units per pattern unit).
+  `parseOrganicHatchRecipe` refuses unknown versions and out-of-range values
+  instead of substituting defaults. `ORGANIC_HATCH_PRESETS` holds art-directed
+  starting points such as `northern-bc-reference`.
+- **Where paint goes.** The pattern field, the chosen coverage and the land mask
+  are separate inputs; the painted area is coverage ∩ land.
+  `organicHatchSvgLayer` writes coverage shapes as sibling paths of one clip,
+  so overlapping coverage is inked once, and puts the even-odd land clip
+  outside it, so islands are painted and lakes are not. The coastline clips the
+  strokes; it does not steer them.
+- **Density.** `organicHatchStrokes` keeps the recipe's spacing for any window
+  and throws a `RangeError` past `maxStrokes` rather than thinning silently.
+  Only the legacy artboard writer `organicHatchSvgGroup` widens its spacing to
+  stay under 30,000 strokes, and it reports that in `data-budget-limited`.
+- **Screens.** `organicHatchTile` draws a seamless repeating tile for
+  `fill-pattern`. The field is blended with itself to repeat, so its waves are
+  calmer than an export's. `organicHatchChunk` draws a window of the open field
+  exactly. Use it for cached chunks that reveal more of the same field as the
+  map pans. Exports should draw the curves, not either image.
+
+`MapFillLayer` takes `fillPattern` (a `MapStyleImage`: id, size, RGBA,
+`pixelRatio`) in place of `fillColor`. `retainMapImage` from `/map` is the lease
+it uses: it adds the image, re-adds it after `styleimagemissing` and removes it
+when the last layer releases it. Change the image's id whenever its pixels
+change.
 
 ## Exports and display formatting
 
