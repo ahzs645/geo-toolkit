@@ -5,14 +5,17 @@ It has no PG Maps source aliases, routes, datasets, theme provider, or data-buil
 steps. All observations and places are fictional. Basemaps use local background
 styles so no external map services or credentials are needed.
 
-From the repository root:
+From the toolkit's root, standalone or as the `packages/geo-toolkit` submodule in PG Maps:
 
 ```sh
-npm run build
-npm run dev --workspace @pgmaps/toolkit-consumer
-npm run build --workspace @pgmaps/toolkit-consumer
-npm run test:browser --workspace @pgmaps/toolkit-consumer
+npm run example         # build the toolkit, then start the example
+npm run example:build   # build the toolkit, then type-check and build the example
+npm run example:test    # build the toolkit, then run the example's browser tests
 ```
+
+The scripts run the example by path (`npm --prefix examples/toolkit-consumer run …`), not as an npm
+workspace. Inside PG Maps, npm treats PG Maps as the workspace root, so `--workspace @pgmaps/toolkit-consumer`
+finds nothing there; by path, the example resolves its packages from whichever root installed them.
 
 The example exercises the reusable Index Lab controller, metric library, weight
 editors, method controls and results with an injected local catalog and comparison

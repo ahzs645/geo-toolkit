@@ -5,13 +5,9 @@
  * so it runs in tests and workers alike. Crossing strokes are merged per sample, so the hatch
  * darkens nowhere twice, as an SVG group with one opacity. No DOM or network access.
  */
-import {
-  organicHatchStrokes,
-  organicHatchTileStrokes,
-  type HatchWindow,
-  type OrganicHatchStroke,
-} from './organic-hatch.js'
-import { recipeHatchOptions, type OrganicHatchRecipe } from './recipe.js'
+import { organicHatchTileStrokes, type HatchWindow, type OrganicHatchStroke } from './organic-hatch.js'
+import { patchHatchTileStrokes } from './patch-hatch.js'
+import { recipeFieldStrokes, recipeHatchOptions, recipePatchOptions, type OrganicHatchRecipe } from './recipe.js'
 
 export interface HatchRgbaImage {
   width: number
@@ -159,14 +155,16 @@ export interface HatchTile extends HatchRgbaImage {
 }
 
 /**
- * A tile that repeats seamlessly, about `targetPx` device pixels a side, for `fill-pattern`. The
- * field is blended with itself to repeat, so the waves are somewhat calmer than in an export; a
- * larger tile repeats less visibly. The tile is anchored at the field's origin.
+ * A tile that repeats seamlessly, about `targetPx` device pixels a side, for `fill-pattern`, anchored
+ * at the field's origin. A contour field is blended with itself to repeat, so its waves are somewhat
+ * calmer than in an export; a patch field wraps its patch lattice instead, so it is drawn as in an
+ * export, two patches across at least (and so possibly larger than asked).
  */
 export function organicHatchTile(
   recipe: OrganicHatchRecipe,
   { pixelsPerUnit, background, targetPx = 512 }: HatchRasterOptions & { targetPx?: number },
 ): HatchTile {
+  if (recipe.style === 'patch') return patchTile(recipe, { pixelsPerUnit, background, targetPx })
   const unitPx = pixelsPerUnit * recipe.scale
   const side = Math.max(8, Math.min(MAX_HATCH_IMAGE_PX, Math.round(targetPx)))
   // Whole bands down and whole pixels both ways, so the tile meets itself exactly.
@@ -175,6 +173,29 @@ export function organicHatchTile(
   const height = Math.max(1, Math.round(rows * options.bandHeight * unitPx))
   const width = side
   const tile = organicHatchTileStrokes(options, { width: width / unitPx, height: height / unitPx })
+  const mask = new Uint16Array(width * height)
+  coverStrokes(mask, width, height, tile.strokes, unitPx, 0, 0, true)
+  return {
+    ...compose(mask, width, height, recipe.color, recipe.opacity, background),
+    period: { width: width / pixelsPerUnit, height: height / pixelsPerUnit },
+  }
+}
+
+function patchTile(
+  recipe: OrganicHatchRecipe,
+  { pixelsPerUnit, background, targetPx }: HatchRasterOptions & { targetPx: number },
+): HatchTile {
+  const options = recipePatchOptions(recipe)
+  const cellPx = options.patchSize * pixelsPerUnit * recipe.scale
+  // As many patch columns as rows, an even number: patches are half as tall as wide, so the tile
+  // is twice as wide as tall, and both sides are whole pixels once the width is even.
+  const cells = Math.max(2, 2 * Math.round(targetPx / cellPx / 2))
+  let width = Math.round(cells * cellPx)
+  width += width % 2
+  width = Math.min(MAX_HATCH_IMAGE_PX, width)
+  const height = width / 2
+  const unitPx = width / (cells * options.patchSize)
+  const tile = patchHatchTileStrokes(options, { columns: cells, rows: cells })
   const mask = new Uint16Array(width * height)
   coverStrokes(mask, width, height, tile.strokes, unitPx, 0, 0, true)
   return {
@@ -201,10 +222,12 @@ export function organicHatchChunk(
     )
   const [ox, oy] = recipe.origin
   const s = recipe.scale
-  const { strokes } = organicHatchStrokes(
-    { x: (window.x - ox) / s, y: (window.y - oy) / s, width: window.width / s, height: window.height / s },
-    recipeHatchOptions(recipe),
-  )
+  const strokes = recipeFieldStrokes(recipe, {
+    x: (window.x - ox) / s,
+    y: (window.y - oy) / s,
+    width: window.width / s,
+    height: window.height / s,
+  })
   const mask = new Uint16Array(width * height)
   const unitPx = pixelsPerUnit * s
   coverStrokes(

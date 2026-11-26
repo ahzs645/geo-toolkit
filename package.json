@@ -108,9 +108,9 @@
     "lint": "eslint src scripts tests tailwind.config.js examples/toolkit-consumer/src examples/toolkit-consumer/tests",
     "format": "prettier --write \"{src,scripts,tests}/**/*.{ts,tsx,css,mjs}\" \"examples/toolkit-consumer/{src,tests}/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"{src,scripts,tests}/**/*.{ts,tsx,css,mjs}\" \"examples/toolkit-consumer/{src,tests}/**/*.{ts,tsx,css}\"",
-    "example": "npm run build && npm run dev --workspace @pgmaps/toolkit-consumer",
-    "example:build": "npm run build && npm run build --workspace @pgmaps/toolkit-consumer",
-    "example:test": "npm run build && npm run test:browser --workspace @pgmaps/toolkit-consumer",
+    "example": "npm run build && npm --prefix examples/toolkit-consumer run dev",
+    "example:build": "npm run build && npm --prefix examples/toolkit-consumer run build",
+    "example:test": "npm run build && npm --prefix examples/toolkit-consumer run test:browser",
     "watch:check": "node scripts/toolkit/check-watch.mjs",
     "nested:test": "npm run build && node scripts/toolkit/check-nested-workspace.mjs",
     "pack:check": "npm run build && node scripts/toolkit/check-packed-consumer.mjs"
