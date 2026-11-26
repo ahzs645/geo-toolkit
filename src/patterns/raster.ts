@@ -46,11 +46,12 @@ function flatten(stroke: OrganicHatchStroke, scale: number, dx: number, dy: numb
 }
 
 /**
- * Marks the samples each stroke covers in a per-pixel 16-bit sample mask. `scale` is pixels per
+ * Marks the samples each stroke covers in a per-pixel 16-bit sample mask (4 × 4 samples a pixel,
+ * bit `row * 4 + column`). `scale` is pixels per
  * stroke unit and (dx, dy) the pixel position of the strokes' origin; `wrap` also draws every
  * stroke shifted by ± the image size, for a repeating tile.
  */
-function coverStrokes(
+export function coverHatchStrokes(
   mask: Uint16Array,
   width: number,
   height: number,
@@ -119,21 +120,26 @@ function popcount16(value: number) {
   return (value + (value >> 8)) & 0x1f
 }
 
-/** The hatch over an optional background, as straight-alpha pixels. */
-function compose(
+/**
+ * The hatch over an optional background, as straight-alpha pixels. With `clip`, a second sample
+ * mask, only samples set in both are inked: an area mask drawn on the same sample grid keeps the
+ * strokes' edges and the area's antialiased together.
+ */
+export function composeHatch(
   mask: Uint16Array,
   width: number,
   height: number,
   color: string,
   opacity: number,
   background?: { color: string; opacity?: number },
+  clip?: Uint16Array,
 ): HatchRgbaImage {
   const data = new Uint8ClampedArray(width * height * 4)
   const ink = rgb(color)
   const paper = background ? rgb(background.color) : ([0, 0, 0] as const)
   const paperAlpha = background ? (background.opacity ?? 1) : 0
   for (let i = 0; i < width * height; i++) {
-    const a = (opacity * popcount16(mask[i])) / (SAMPLES * SAMPLES)
+    const a = (opacity * popcount16(clip ? mask[i] & clip[i] : mask[i])) / (SAMPLES * SAMPLES)
     const out = a + paperAlpha * (1 - a)
     if (out <= 0) continue
     for (let c = 0; c < 3; c++) data[i * 4 + c] = (ink[c] * a + paper[c] * paperAlpha * (1 - a)) / out
@@ -174,9 +180,9 @@ export function organicHatchTile(
   const width = side
   const tile = organicHatchTileStrokes(options, { width: width / unitPx, height: height / unitPx })
   const mask = new Uint16Array(width * height)
-  coverStrokes(mask, width, height, tile.strokes, unitPx, 0, 0, true)
+  coverHatchStrokes(mask, width, height, tile.strokes, unitPx, 0, 0, true)
   return {
-    ...compose(mask, width, height, recipe.color, recipe.opacity, background),
+    ...composeHatch(mask, width, height, recipe.color, recipe.opacity, background),
     period: { width: width / pixelsPerUnit, height: height / pixelsPerUnit },
   }
 }
@@ -197,9 +203,9 @@ function patchTile(
   const unitPx = width / (cells * options.patchSize)
   const tile = patchHatchTileStrokes(options, { columns: cells, rows: cells })
   const mask = new Uint16Array(width * height)
-  coverStrokes(mask, width, height, tile.strokes, unitPx, 0, 0, true)
+  coverHatchStrokes(mask, width, height, tile.strokes, unitPx, 0, 0, true)
   return {
-    ...compose(mask, width, height, recipe.color, recipe.opacity, background),
+    ...composeHatch(mask, width, height, recipe.color, recipe.opacity, background),
     period: { width: width / pixelsPerUnit, height: height / pixelsPerUnit },
   }
 }
@@ -230,7 +236,7 @@ export function organicHatchChunk(
   })
   const mask = new Uint16Array(width * height)
   const unitPx = pixelsPerUnit * s
-  coverStrokes(
+  coverHatchStrokes(
     mask,
     width,
     height,
@@ -240,5 +246,5 @@ export function organicHatchChunk(
     (oy - window.y) * pixelsPerUnit,
     false,
   )
-  return compose(mask, width, height, recipe.color, recipe.opacity, background)
+  return composeHatch(mask, width, height, recipe.color, recipe.opacity, background)
 }

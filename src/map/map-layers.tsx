@@ -34,3 +34,4 @@ export {
   type PieClusterPointProperties,
 } from './layers/pie-cluster.js'
 export { MapPmtilesFillLayer, type MapPmtilesFillLayerProps } from './layers/pmtiles-fill.js'
+export { MapHatchLayer, hatchAnchor, HATCH_TILE_PROTOCOL, type MapHatchLayerProps } from './layers/hatch.js'

@@ -712,6 +712,16 @@ of a print meet without seams.
   exactly. Use it for cached chunks that reveal more of the same field as the
   map pans. Exports should draw the curves, not either image.
 
+`MapHatchLayer` (from `/map`) draws a recipe on a live map as raster tiles of
+the open field through a `pgmaps-hatch://` protocol, drawn in a worker and masked
+to `areas` (`land` even-odd, `coverage` a union of polygons, in longitude and
+latitude). Tiles meet without seams, a pan shows more of the same field, and an
+aborted tile is dropped before it is drawn. The field is anchored at `anchor`
+(default: the land's north-west corner) and drawn in CSS pixels of each tile's
+zoom up to `maxFieldZoom`, past which the map enlarges the last level's tiles.
+`renderHatchTile` and `prepareHatchAreas` (from `/patterns`) are the pure
+tile maths.
+
 `MapFillLayer` takes `fillPattern` (a `MapStyleImage`: id, size, RGBA,
 `pixelRatio`) in place of `fillColor`. `retainMapImage` from `/map` is the lease
 it uses: it adds the image, re-adds it after `styleimagemissing` and removes it
