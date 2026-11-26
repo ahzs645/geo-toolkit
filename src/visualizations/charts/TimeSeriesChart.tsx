@@ -5,6 +5,10 @@ import { rangeIndices, type NumericRange } from './geometry.js'
 import { axisStyle, tooltipStyle, tooltipWrapperStyle, numberLabel } from './axes.js'
 import type { ChartAxis, ChartSeries, TimelineRow } from './types.js'
 
+/** Room the x-axis label adds under the ticks, and its gap above the navigator, in pixels. */
+const X_LABEL_BAND = 24
+const X_LABEL_GAP = 6
+
 /** Controlled drag/brush range; hosts link the returned numeric interval to other plots. */
 export function TimeSeriesChart({
   rows,
@@ -76,10 +80,18 @@ export function TimeSeriesChart({
               domain={['dataMin', 'dataMax']}
               tickFormatter={xAxis.format}
               ticks={xAxis.ticks ? [...xAxis.ticks] : undefined}
-              height={xAxis.label ? 45 : 30}
+              // The navigator starts where the axis band ends, so a label anchored to the band's bottom
+              // edge sat on the navigator's top border. Leave the label a gap above it.
+              height={xAxis.label ? 30 + X_LABEL_BAND : 30}
               label={
                 xAxis.label
-                  ? { value: xAxis.label, position: 'insideBottom', offset: 0, fill: axisStyle.stroke, fontSize: 11 }
+                  ? {
+                      value: xAxis.label,
+                      position: 'insideBottom',
+                      offset: X_LABEL_GAP,
+                      fill: axisStyle.stroke,
+                      fontSize: 11,
+                    }
                   : undefined
               }
               minTickGap={35}
